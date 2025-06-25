@@ -1,0 +1,32 @@
+<div class="product-details-container">
+  <button class="back-btn" id="back-to-scanner">← Back</button>
+  <div class="product-image-wrap">
+    <img id="product-image" src="" alt="Product Image" onerror="this.src='assets/no-image.png'">
+  </div>
+  <h2 id="product-name"></h2>
+  <div class="product-meta">
+    <span id="product-code"></span>
+    <span id="product-barcode"></span>
+  </div>
+  <div class="product-price" id="product-price"></div>
+  <div class="product-description" id="product-description"></div>
+  <div class="product-links">
+    <a href="#" id="datasheet-link" target="_blank">View Datasheet</a>
+    <a href="#" id="diagram-link" target="_blank">Technical Diagram</a>
+    <a href="#" id="website-link" target="_blank">Product Page</a>
+  </div>
+  <div class="annotation-field">
+    <label for="product-annotation">Add Notes (Optional):</label>
+    <textarea id="product-annotation" rows="3" maxlength="140" placeholder="E.g., Quantity needed, special requirements..."></textarea>
+    <div id="annotation-char-count" style="font-size:0.95em;color:#888;text-align:right;margin-top:2px;">0/140</div>
+  </div>
+  <div class="room-select-field">
+    <label for="room-select">Room:</label>
+    <select id="room-select"></select>
+  </div>
+  <div class="quantity-field">
+    <label for="product-quantity">Quantity:</label>
+    <input type="number" id="product-quantity" min="1" value="1" required>
+  </div>
+  <button class="primary-btn" id="add-to-room-btn">Add to Room</button>
+</div> 
