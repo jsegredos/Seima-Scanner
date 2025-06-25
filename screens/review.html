@@ -1,5 +1,6 @@
 <div class="review-container">
-  <button class="back-btn" id="back-to-scanner">← Back</button>
+  <img src="assets/seima-logo.png" alt="SEIMA Logo" class="page-logo">
+  <button class="back-btn" id="back-to-scanner" aria-label="Back to Scanner">&#60;</button>
   <h2>Review Selection</h2>
   <p class="subtitle">Your product selections</p>
   <div id="review-list"></div>
@@ -8,4 +9,27 @@
     <button id="send-pdf-btn" class="primary-btn">Send PDF</button>
   </div>
   <div id="review-empty" class="empty-state" style="display:none;">No products selected yet.</div>
+  <div id="pdf-email-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <h3 style="margin-top:0;">Send PDF to Email</h3>
+      <form id="pdf-email-form" autocomplete="off">
+        <label for="user-project">Project<span style="color:#b91c1c;">*</span></label>
+        <input type="text" id="user-project" name="user-project" required maxlength="60" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
+        <label for="user-location">Location<span style="color:#b91c1c;">*</span></label>
+        <input type="text" id="user-location" name="user-location" required maxlength="80" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
+        <label for="user-name">Name<span style="color:#b91c1c;">*</span></label>
+        <input type="text" id="user-name" name="user-name" required maxlength="60" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
+        <label for="user-email">Email Address<span style="color:#b91c1c;">*</span></label>
+        <input type="email" id="user-email" name="user-email" required maxlength="80" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
+        <label for="user-mobile">Mobile Phone Number (optional)</label>
+        <input type="tel" id="user-mobile" name="user-mobile" maxlength="20" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
+        <label for="user-comments">Comments (optional)</label>
+        <textarea id="user-comments" name="user-comments" maxlength="200" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;"></textarea>
+        <div style="display:flex;gap:16px;justify-content:flex-end;margin-top:10px;">
+          <button type="button" id="pdf-email-cancel" class="secondary-btn">Cancel</button>
+          <button type="submit" id="pdf-email-send" class="primary-btn">Send</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div> 

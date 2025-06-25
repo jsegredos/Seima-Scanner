@@ -1,13 +1,13 @@
 const predefinedRooms = [
   { name: "Bath 1", icon: "🛁" },
   { name: "Bath 2", icon: "🛁" },
+  { name: "Bath 3", icon: "🛁" },
   { name: "Ensuite", icon: "🚿" },
   { name: "Powder", icon: "🚽" },
   { name: "Kitchen", icon: "🍽️" },
-  { name: "Laundry", icon: "🧺" },
-  { name: "Alfresco", icon: "🌿" },
   { name: "Butlers", icon: "👨‍🍳" },
-  { name: "Other", icon: "🏠" }
+  { name: "Laundry", icon: "🧺" },
+  { name: "Alfresco", icon: "🍖" }
 ];
 
 let customRooms = JSON.parse(localStorage.getItem('customRooms') || '[]');
@@ -115,6 +115,15 @@ function setupProductSearch() {
   const dropdown = document.getElementById('product-search-dropdown');
   if (!input || !dropdown) return;
   let matches = [];
+  input.addEventListener('focus', function() {
+    if (window.scannerController) window.scannerController.stopScanning();
+    setTimeout(() => {
+      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  });
+  input.addEventListener('blur', function() {
+    if (window.scannerController) window.scannerController.startScanning();
+  });
   input.addEventListener('input', function() {
     const q = input.value.trim().toLowerCase();
     if (!q || !productCatalogLoaded) {
@@ -141,10 +150,12 @@ function setupProductSearch() {
     }
     dropdown.classList.remove('visible');
     input.value = '';
+    if (window.scannerController) window.scannerController.startScanning();
   };
   document.addEventListener('click', function(e) {
     if (!dropdown.contains(e.target) && e.target !== input) {
       dropdown.classList.remove('visible');
+      if (window.scannerController) window.scannerController.startScanning();
     }
   });
 }
@@ -217,17 +228,26 @@ function showProductDetailsScreen(product) {
       const annotationInput = document.getElementById('product-annotation');
       const charCount = document.getElementById('annotation-char-count');
       if (annotationInput && charCount) {
-        const updateCharCount = () => {
-          let val = annotationInput.value;
-          if (val.length > 140) {
-            val = val.slice(0, 140);
-            annotationInput.value = val;
-          }
-          charCount.textContent = val.length + '/140';
-        };
-        annotationInput.addEventListener('input', updateCharCount);
-        updateCharCount();
+        annotationInput.addEventListener('input', function() {
+          // Prevent carriage returns
+          annotationInput.value = annotationInput.value.replace(/\r?\n|\r/g, ' ');
+          charCount.textContent = annotationInput.value.length + '/140';
+        });
+        annotationInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') e.preventDefault();
+        });
+        charCount.textContent = annotationInput.value.length + '/140';
       }
+      // Set product links to always open in a new tab/window
+      const diagramLink = document.getElementById('diagram-link');
+      const datasheetLink = document.getElementById('datasheet-link');
+      const websiteLink = document.getElementById('website-link');
+      [diagramLink, datasheetLink, websiteLink].forEach(link => {
+        if (link) {
+          link.setAttribute('target', '_blank');
+          link.setAttribute('rel', 'noopener noreferrer');
+        }
+      });
     });
 }
 
@@ -276,8 +296,7 @@ function addProductToSelection(product, notes, roomOverride, quantity) {
     selection.push(item);
   }
   localStorage.setItem('selection', JSON.stringify(selection));
-  alert('Product added to room!');
-  showScannerScreen();
+  showReviewScreen();
 }
 
 function showReviewScreen() {
@@ -443,18 +462,38 @@ function showPdfFormScreen() {
   const roomNames = Object.keys(byRoom);
   const drawImage = (imgUrl, x, y, w, h, cb) => {
     if (!imgUrl) return cb && cb();
-    let proxiedUrl = imgUrl;
-    if (/^https?:\/\//.test(imgUrl) && !imgUrl.includes('localhost') && !imgUrl.includes('127.0.0.1')) {
-      proxiedUrl = 'https://corsproxy.io/?' + imgUrl;
-    }
+    // Try direct load first
     const img = new window.Image();
     img.crossOrigin = 'Anonymous';
+    let triedProxy = false;
+    let finished = false;
+    // Timeout: skip image if not loaded in 2 seconds
+    const timeout = setTimeout(() => {
+      if (!finished) {
+        finished = true;
+        if (cb) cb();
+      }
+    }, 2000);
     img.onload = function() {
-      try { doc.addImage(img, 'JPEG', x, y, w, h); } catch(e) {}
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeout);
+      try { doc.addImage(img, 'JPEG', x, y, w, h); } catch(e) {/* image may be corrupt, skip */}
       if (cb) cb();
     };
-    img.onerror = function() { if (cb) cb(); };
-    img.src = proxiedUrl;
+    img.onerror = function() {
+      if (finished) return;
+      if (!triedProxy && /^https?:\/\//.test(imgUrl) && !imgUrl.includes('localhost') && !imgUrl.includes('127.0.0.1')) {
+        // Retry with CORS proxy
+        triedProxy = true;
+        img.src = 'https://corsproxy.io/?' + imgUrl;
+      } else {
+        finished = true;
+        clearTimeout(timeout);
+        if (cb) cb();
+      }
+    };
+    img.src = imgUrl;
   };
   // 4 products per page, equal height
   const maxRowsPerPage = 4;
@@ -496,7 +535,6 @@ function showPdfFormScreen() {
         doc.text('Page ' + i + ' of ' + pageCount, leftMargin, pageHeight-16);
       }
       doc.save('Seima-Product-Selection.pdf');
-      alert('PDF generated and downloaded!');
       return;
     }
     const row = rowsToDraw[rowIdx];
@@ -589,6 +627,263 @@ function showPdfFormScreen() {
   drawNextRow();
 }
 
+// Helper to generate PDF as Blob (for email attachment)
+async function generatePdfBlob(userDetails) {
+  // Copy of showPdfFormScreen, but returns Blob instead of saving
+  const selection = JSON.parse(localStorage.getItem('selection') || '[]');
+  if (!selection.length) {
+    alert('No products selected.');
+    return null;
+  }
+  // Group by room
+  const byRoom = {};
+  selection.forEach(item => {
+    if (!byRoom[item.Room]) byRoom[item.Room] = [];
+    byRoom[item.Room].push(item);
+  });
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  // --- Cover Page ---
+  doc.setFontSize(32);
+  doc.setTextColor('#222');
+  doc.text('SEIMA Product Selection', pageWidth/2, 90, { align: 'center' });
+  doc.setFontSize(18);
+  doc.setTextColor('#444');
+  doc.text('Project: ' + (userDetails.project || ''), 60, 140);
+  doc.text('Location: ' + (userDetails.location || ''), 60, 170);
+  doc.text('Client: ' + (userDetails.name || ''), 60, 200);
+  doc.text('Email: ' + (userDetails.email || ''), 60, 230);
+  if (userDetails.mobile) doc.text('Mobile: ' + userDetails.mobile, 60, 260);
+  if (userDetails.comments) doc.text('Comments: ' + userDetails.comments, 60, 290);
+  doc.text('Date: ' + new Date().toLocaleDateString(), 60, 320);
+  doc.setFontSize(14);
+  doc.setTextColor('#888');
+  doc.text('Generated by Seima Showroom Scanner', 60, 350);
+  // Branding bar
+  doc.setFillColor('#222');
+  doc.rect(0, pageHeight-40, pageWidth, 40, 'F');
+  doc.setTextColor('#fff');
+  doc.setFontSize(16);
+  doc.text('www.seima.com.au', pageWidth-180, pageHeight-16);
+  // New page for product table
+  doc.addPage();
+  // Margins and layout
+  const leftMargin = 32;
+  const rightMargin = 32;
+  const tableWidth = pageWidth - leftMargin - rightMargin;
+  let currentY = 48;
+  // Table headings (no Product/Diagram, Total at far right)
+  const headers = ['Code', 'Description', 'Qty', 'Price ea', 'Total'];
+  // Column layout: [images, code, description, qty, price, total]
+  const imgW = 90, imgPad = 12;
+  const codeX = leftMargin + imgW*2 + imgPad*2;
+  const descX = codeX + 60;
+  const qtyX = pageWidth - 240;
+  const priceX = pageWidth - 160;
+  const totalX = pageWidth - 80;
+  const colX = [leftMargin, codeX, descX, qtyX, priceX, totalX];
+  const colW = [imgW, imgW, 60, qtyX-descX, 80, 80];
+  doc.setFontSize(10);
+  doc.setTextColor('#555');
+  doc.setFillColor('#e0e0e0');
+  doc.rect(leftMargin, currentY, tableWidth, 18, 'F');
+  doc.setTextColor('#222');
+  // Align headers with columns
+  doc.text('Code', codeX+30, currentY+12, { align: 'center' });
+  doc.text('Description', descX + (qtyX-descX)/2, currentY+12, { align: 'center' });
+  doc.text('Qty', qtyX+40, currentY+12, { align: 'center' });
+  doc.text('Price ea', priceX+40, currentY+12, { align: 'center' });
+  doc.text('Total', totalX+40, currentY+12, { align: 'center' });
+  currentY += 24;
+  // For each room, render products and a separator
+  const roomNames = Object.keys(byRoom);
+  const drawImage = (imgUrl, x, y, w, h, cb) => {
+    if (!imgUrl) { console.log('No image URL, skipping'); return cb && cb(); }
+    // Try direct load first
+    const img = new window.Image();
+    img.crossOrigin = 'Anonymous';
+    let triedProxy = false;
+    let finished = false;
+    // Timeout: skip image if not loaded in 0.5 seconds
+    const timeout = setTimeout(() => {
+      if (!finished) {
+        finished = true;
+        console.warn('Image load timed out:', imgUrl);
+        if (cb) cb();
+      }
+    }, 500);
+    img.onload = function() {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeout);
+      try { doc.addImage(img, 'JPEG', x, y, w, h); console.log('Image added:', imgUrl); } catch(e) { console.error('Image add error:', imgUrl, e); }
+      if (cb) cb();
+    };
+    img.onerror = function(e) {
+      if (finished) return;
+      if (!triedProxy && /^https?:\/\//.test(imgUrl) && !imgUrl.includes('localhost') && !imgUrl.includes('127.0.0.1')) {
+        // Retry with CORS proxy
+        triedProxy = true;
+        console.warn('Retrying image with proxy:', imgUrl);
+        img.src = 'https://corsproxy.io/?' + imgUrl;
+      } else {
+        finished = true;
+        clearTimeout(timeout);
+        console.error('Image failed to load:', imgUrl, e);
+        if (cb) cb();
+      }
+    };
+    img.src = imgUrl;
+  };
+  // 4 products per page, equal height
+  const maxRowsPerPage = 4;
+  const rowHeight = Math.floor((pageHeight-120) / maxRowsPerPage);
+  let rowsToDraw = [];
+  roomNames.forEach((room, rIdx) => {
+    const items = byRoom[room];
+    items.forEach((item, iIdx) => {
+      rowsToDraw.push({
+        y: currentY,
+        item,
+        room,
+        rIdx,
+        iIdx,
+        isFirstInRoom: iIdx === 0,
+        roomCount: items.length
+      });
+      currentY += rowHeight;
+      // Add separator after last item in room (except last room)
+      if (iIdx === items.length-1 && rIdx < roomNames.length-1) {
+        rowsToDraw.push({ isSeparator: true, y: currentY });
+        currentY += 8;
+      }
+    });
+  });
+  // Draw all rows (images async)
+  let rowIdx = 0;
+  let pageRow = 0;
+  return new Promise(resolve => {
+    let resolved = false;
+    // Global fallback timeout
+    const globalTimeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        console.error('PDF generation timed out, forcing download.');
+        doc.output('blob', resolve);
+      }
+    }, 5000);
+    function drawNextRow() {
+      if (rowIdx >= rowsToDraw.length) {
+        clearTimeout(globalTimeout);
+        resolved = true;
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
+          doc.setFillColor('#222');
+          doc.rect(0, pageHeight-40, pageWidth, 40, 'F');
+          doc.setTextColor('#fff');
+          doc.setFontSize(14);
+          doc.text('www.seima.com.au', pageWidth-180, pageHeight-16);
+          doc.text('Page ' + i + ' of ' + pageCount, leftMargin, pageHeight-16);
+        }
+        console.log('PDF generation complete, resolving blob.');
+        doc.output('blob', resolve);
+        return;
+      }
+      const row = rowsToDraw[rowIdx];
+      if (row.isSeparator) {
+        doc.setDrawColor('#bbb');
+        doc.setLineWidth(2);
+        doc.line(leftMargin, row.y+4, pageWidth-rightMargin, row.y+4);
+        rowIdx++;
+        drawNextRow();
+        return;
+      }
+      const { y, item, isFirstInRoom, room, roomCount } = row;
+      // New page if needed
+      if (pageRow >= maxRowsPerPage) {
+        doc.addPage();
+        currentY = 48;
+        // Table header on new page
+        doc.setFontSize(10);
+        doc.setTextColor('#555');
+        doc.setFillColor('#e0e0e0');
+        doc.rect(leftMargin, currentY, tableWidth, 18, 'F');
+        doc.setTextColor('#222');
+        doc.text('Code', codeX+30, currentY+12, { align: 'center' });
+        doc.text('Description', descX + (qtyX-descX)/2, currentY+12, { align: 'center' });
+        doc.text('Qty', qtyX+40, currentY+12, { align: 'center' });
+        doc.text('Price ea', priceX+40, currentY+12, { align: 'center' });
+        doc.text('Total', totalX+40, currentY+12, { align: 'center' });
+        currentY += 24;
+        pageRow = 0;
+      }
+      // Room header (smaller, above image, left-aligned, margin below)
+      if (isFirstInRoom) {
+        doc.setFontSize(9);
+        doc.setTextColor('#888');
+        doc.text(room + ' (' + roomCount + ')', leftMargin, y+10);
+      }
+      // Product image (expanded)
+      drawImage(item.Image_URL || '', colX[0], y+28, imgW, rowHeight-36, function() {
+        // Diagram image (expanded)
+        drawImage(item.Diagram_URL || '', colX[0]+imgW+imgPad, y+28, imgW, rowHeight-36, function() {
+          // Code (top-aligned)
+          doc.setFontSize(10);
+          doc.setTextColor('#222');
+          const codeY = y+28; // top-aligned
+          doc.text(String(item.OrderCode || ''), Number(colX[1])+30, codeY+10, { align: 'center' });
+          // Datasheet link under code, with padding
+          if (item.Datasheet_URL && item.Datasheet_URL !== '#') {
+            const dsY = codeY+26;
+            doc.setFontSize(9);
+            doc.setTextColor(80, 80, 80);
+            doc.textWithLink('Datasheet', Number(colX[1])+30, dsY, { url: item.Datasheet_URL, align: 'center' });
+            // Underline
+            const dsWidth = doc.getTextWidth('Datasheet');
+            doc.setDrawColor(180, 180, 180);
+            doc.setLineWidth(0.7);
+            doc.line(Number(colX[1])+30-dsWidth/2, dsY+1.5, Number(colX[1])+30+dsWidth/2, dsY+1.5);
+          }
+          // Add extra vertical space below code/datasheet
+          let descY = codeY+44;
+          // Description (top-aligned)
+          doc.setFontSize(10);
+          doc.setTextColor('#222');
+          doc.text(String(item.Description || ''), Number(colX[2])+5, descY);
+          // Notes below description, with padding
+          if (item.Notes) {
+            descY += 14;
+            doc.setFontSize(9);
+            doc.setTextColor('#444');
+            const notesText = 'Notes: ' + String(item.Notes).replace(/\r?\n|\r/g, ' ');
+            doc.text(notesText, Number(colX[2])+13, descY);
+          }
+          // Qty (top-aligned)
+          doc.setFontSize(10);
+          doc.setTextColor('#222');
+          doc.text(String(item.Quantity || 1), Number(colX[3])+40, codeY+10, { align: 'center' });
+          // Price ea (top-aligned)
+          doc.setFontSize(10);
+          doc.setTextColor('#222');
+          doc.text(item.RRP_INCGST ? ('$' + Number(item.RRP_INCGST).toFixed(2)) : '', Number(colX[4])+40, codeY+10, { align: 'center' });
+          // Total (top-aligned, far right)
+          doc.setFontSize(10);
+          doc.setTextColor('#222');
+          doc.text(item.RRP_INCGST ? ('$' + (Number(item.RRP_INCGST) * (item.Quantity || 1)).toFixed(2)) : '', Number(colX[5])+40, codeY+10, { align: 'center' });
+          rowIdx++;
+          pageRow++;
+          console.log('Finished row', rowIdx, 'of', rowsToDraw.length);
+          drawNextRow();
+        });
+      });
+    }
+    drawNextRow();
+  });
+}
+
 // Update selection count in scanner
 function updateSelectionCount() {
   const selection = JSON.parse(localStorage.getItem('selection') || '[]');
@@ -601,6 +896,30 @@ document.addEventListener('DOMContentLoaded', function() {
   if (startBtn) {
     startBtn.addEventListener('click', function() {
       showRoomSelection();
+    });
+  }
+  const viewSelectionBtn = document.getElementById('view-selection-btn');
+  if (viewSelectionBtn) {
+    viewSelectionBtn.addEventListener('click', function() {
+      showReviewScreen();
+    });
+  }
+  const clearSelectionBtn = document.getElementById('clear-selection-btn');
+  const clearModal = document.getElementById('clear-selection-modal');
+  const modalCancelBtn = document.getElementById('modal-cancel-btn');
+  const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+  if (clearSelectionBtn && clearModal && modalCancelBtn && modalConfirmBtn) {
+    clearSelectionBtn.addEventListener('click', function() {
+      clearModal.style.display = 'flex';
+    });
+    modalCancelBtn.addEventListener('click', function() {
+      clearModal.style.display = 'none';
+    });
+    modalConfirmBtn.addEventListener('click', function() {
+      localStorage.removeItem('selection');
+      localStorage.removeItem('customRooms');
+      clearModal.style.display = 'none';
+      location.reload();
     });
   }
 });
@@ -639,17 +958,29 @@ class ScannerController {
         }
     }
     initializeQuagga() {
-        window.Quagga.init({
+        // Device detection for mobile
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        let constraints;
+        if (isMobile) {
+            constraints = {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: "environment"
+            };
+        } else {
+            constraints = {
+                width: { min: 640, ideal: 1920 },
+                height: { min: 480, ideal: 1080 },
+                facingMode: "environment",
+                aspectRatio: { ideal: 1.7777777778 }
+            };
+        }
+        Quagga.init({
             inputStream: {
                 name: "Live",
                 type: "LiveStream",
                 target: "#scanner-viewport",
-                constraints: {
-                    width: { min: 640, ideal: 1920 },
-                    height: { min: 480, ideal: 1080 },
-                    facingMode: "environment",
-                    aspectRatio: { ideal: 1.7777777778 }
-                },
+                constraints: constraints,
             },
             locator: {
                 patchSize: "medium",
@@ -669,10 +1000,13 @@ class ScannerController {
                 this.showCameraError();
                 return;
             }
+
             console.log('Quagga initialized successfully');
-            window.Quagga.start();
+            Quagga.start();
         });
-        window.Quagga.onDetected((result) => {
+
+        // Handle successful scans
+        Quagga.onDetected((result) => {
             this.handleScanResult(result);
         });
     }

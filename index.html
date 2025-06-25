@@ -10,8 +10,19 @@
 <body>
   <div class="welcome-container">
     <img src="assets/seima-logo.png" alt="SEIMA Logo" class="logo">
-    <h1 class="tagline">Showroom Product Selection Assistant</h1>
-    <button id="start-btn" class="primary-btn">Start Scanning</button>
+    <h1 class="tagline">Product Selector</h1>
+    <button id="start-btn" class="primary-btn">Select Products</button>
+    <button id="view-selection-btn" class="primary-btn" style="margin-top: 18px;">View Selection</button>
+    <button id="clear-selection-btn" class="clear-selection-btn">Clear Selection</button>
+  </div>
+  <div id="clear-selection-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <p style="margin-bottom: 24px;">Are you sure you want to clear all product and room selections?</p>
+      <div style="display: flex; gap: 16px; justify-content: flex-end;">
+        <button id="modal-cancel-btn" class="secondary-btn">Cancel</button>
+        <button id="modal-confirm-btn" class="primary-btn" style="background: #b91c1c; color: #fff;">Clear All</button>
+      </div>
+    </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.1/umd/index.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
