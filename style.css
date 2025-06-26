@@ -321,7 +321,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 4px 0 4px 0 !important;
+  margin: 4px auto 4px auto !important;
   padding: 0 !important;
   box-shadow: none !important;
 }
@@ -347,10 +347,11 @@ body {
   margin-bottom: 8px;
 }
 .product-price {
-  font-size: 1.2rem;
+  font-size: 1.08rem;
   font-weight: 600;
   color: #1a7f4e;
   margin-bottom: 8px;
+  text-align: center;
 }
 .product-description {
   font-size: 1rem;
@@ -475,8 +476,24 @@ body {
   margin-left: 8px;
 }
 #add-to-room-btn {
+  background: linear-gradient(90deg, #e0e7ef 0%, #f3f4f6 100%);
+  color: #222;
+  font-size: 1.2rem;
+  font-weight: 600;
+  padding: 18px 48px;
+  border: none;
+  border-radius: 32px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.08);
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+  outline: none;
   width: 100%;
   margin-top: 8px;
+}
+#add-to-room-btn:hover, #add-to-room-btn:focus {
+  background: linear-gradient(90deg, #f3f4f6 0%, #e0e7ef 100%);
+  box-shadow: 0 4px 16px 0 rgba(0,0,0,0.12);
+  transform: translateY(-2px) scale(1.03);
 }
 
 /* Product Search Dropdown (Scanner) */
@@ -943,7 +960,7 @@ body {
     padding: 0 0 24px 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
   }
   .product-image-wrap {
     width: 60vw;
