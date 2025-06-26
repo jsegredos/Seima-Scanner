@@ -7,7 +7,7 @@ const predefinedRooms = [
   { name: "Kitchen", icon: "🍽️" },
   { name: "Butlers", icon: "👨‍🍳" },
   { name: "Laundry", icon: "🧺" },
-  { name: "Alfresco", icon: "🍖" }
+  { name: "Alfresco", icon: "🍽️" }
 ];
 
 let customRooms = JSON.parse(localStorage.getItem('customRooms') || '[]');
@@ -30,14 +30,41 @@ let scannerEngine = 'zxing'; // default
 })();
 
 function loadProductCatalog() {
-  const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQw5X0aAe5yYbfqfTlgBIdNqnDIjs-YFhNh1IQ8lIB5RfjBl5VBRwQAMKIwlXz6L6oXI8ittrQD91Ob/pub?output=csv';
+  const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQw5X0aAe5yYbfqfTlgBIdNqnDIjs-YFhNh1IQ8lIB5RfjBl5VBRwQAMKIwlXz6L6oXI8ittrQD91Ob/pub?gid=114771048&single=true&output=csv';
   window.Papa.parse(csvUrl, {
     download: true,
     header: true,
     complete: function(results) {
-      productCatalog = results.data;
+      // Normalize PriceList columns to legacy field names for app compatibility
+      productCatalog = results.data.map(row => ({
+        // Main display name remains Description
+        Description: row['Description'] || '',
+        ProductName: (row['Product Name'] || '').trim(),
+        OrderCode: row['Order Code'] || row['OrderCode'] || '',
+        LongDescription: row['Long Description'] || row['LongDescription'] || '',
+        RRP_EXGST: row['RRP EX GST'] || row['RRP_EXGST'] || '',
+        RRP_INCGST: row['RRP INC GST'] || row['RRP_INCGST'] || '',
+        Website_URL: row['Website_URL'] || row['Website URL'] || '',
+        Image_URL: row['Image_URL'] || row['Image URL'] || '',
+        Diagram_URL: row['Diagram_URL'] || row['Diagram URL'] || '',
+        Datasheet_URL: row['Datasheet_URL'] || row['Datasheet URL'] || '',
+        BARCODE: row['BARCODE'] || '',
+        Group: row['Group'] || '',
+        ReleaseNote: row['Release Note'] || '',
+        X_Dimension: row['X Dimension (mm)'] || '',
+        Y_Dimension: row['Y Dimension (mm)'] || '',
+        Z_Dimension: row['Z Dimension (mm)'] || '',
+        Weight: row['WEIGHT'] || '',
+        WELS_NO: row['WELS NO'] || '',
+        WELS_STAR: row['WELS STAR'] || '',
+        WELS_CONSUMPTION: row['WELS CONSUMPTION'] || '',
+        WELS_Expiry: row['WELS Expiry'] || '',
+        WATERMARK: row['WATERMARK'] || '',
+        // Keep all other fields for future-proofing
+        ...row
+      }));
+      window.productCatalog = productCatalog;
       productCatalogLoaded = true;
-      console.log('Product catalog loaded:', productCatalog.length, 'products');
     },
     error: function(err) {
       alert('Failed to load product catalog.');
@@ -86,12 +113,17 @@ function selectRoom(roomName) {
 }
 
 function showScannerScreen() {
+  // Before rendering scanner, stop any active scanning
+  if (window.scannerController) window.scannerController.stopScanning();
   fetch('screens/scanner.html')
     .then(res => res.text())
     .then(html => {
       document.body.innerHTML = html;
       document.getElementById('current-room-badge').textContent = selectedRoom;
-      document.getElementById('back-to-rooms').onclick = showRoomSelection;
+      document.getElementById('back-to-rooms').onclick = () => {
+        if (window.scannerController) window.scannerController.stopScanning();
+        showRoomSelection();
+      };
       setupProductSearch();
       // Scanner engine toggle
       const engineToggle = document.getElementById('scanner-engine-toggle');
@@ -105,7 +137,10 @@ function showScannerScreen() {
       }
       // Start scanning using ScannerController
       window.scannerController.startScanning();
-      document.getElementById('review-btn').onclick = showReviewScreen;
+      document.getElementById('review-btn').onclick = () => {
+        if (window.scannerController) window.scannerController.stopScanning();
+        showReviewScreen();
+      };
       updateSelectionCount();
     });
 }
@@ -131,7 +166,14 @@ function setupProductSearch() {
       dropdown.classList.remove('visible');
       return;
     }
-    matches = productCatalog.filter(p => p.Description && p.Description.toLowerCase().includes(q));
+    matches = productCatalog.filter(p => {
+      return (
+        (p.Description && p.Description.toLowerCase().includes(q)) ||
+        (p.ProductName && p.ProductName.toLowerCase().includes(q)) ||
+        (p.OrderCode && String(p.OrderCode).toLowerCase().includes(q)) ||
+        (p.BARCODE && String(p.BARCODE).toLowerCase().includes(q))
+      );
+    });
     matches = matches.slice(0, 8);
     if (matches.length === 0) {
       dropdown.innerHTML = '<li>No products found</li>';
@@ -191,11 +233,14 @@ function handleRemoveCustomRoom(idx) {
   }
 }
 
-function showProductDetailsScreen(product) {
+function showProductDetailsScreen(product, options = {}) {
   fetch('screens/product-details.html')
     .then(res => res.text())
     .then(html => {
       document.body.innerHTML = html;
+      // Fix: define variantRow and variantSelect for variant dropdown logic
+      const variantRow = document.getElementById('variant-select-row');
+      const variantSelect = document.getElementById('variant-select');
       // Populate product info
       document.getElementById('product-image').src = product.Image_URL || 'assets/no-image.png';
       document.getElementById('product-name').textContent = product.Description || '';
@@ -207,6 +252,43 @@ function showProductDetailsScreen(product) {
       setLink('datasheet-link', product.Datasheet_URL);
       setLink('diagram-link', product.Diagram_URL);
       setLink('website-link', product.Website_URL);
+      // --- VARIANT DROPDOWN LOGIC ---
+      if (variantRow && variantSelect) {
+        let productName = product.ProductName || product['Product Name'] || '';
+        if (typeof productName === 'string') productName = productName.trim();
+        let variants = [];
+        if (productName) {
+          variants = window.productCatalog.filter(p => {
+            let pName = p.ProductName || p['Product Name'] || '';
+            if (typeof pName === 'string') pName = pName.trim();
+            return pName && pName === productName;
+          });
+        }
+        if (variants.length > 1) {
+          // Sort alphabetically by Description
+          variants.sort((a, b) => (a.Description || '').localeCompare(b.Description || ''));
+          variantRow.style.display = '';
+          variantSelect.innerHTML = variants.map(v => `<option value="${v.OrderCode}"${v.OrderCode === product.OrderCode ? ' selected' : ''}>${v.Description}</option>`).join('');
+          variantSelect.onchange = function() {
+            const selectedCode = variantSelect.value;
+            const selected = variants.find(v => v.OrderCode === selectedCode);
+            if (selected && selected.OrderCode !== product.OrderCode) {
+              // Keep notes and quantity if present
+              const notes = document.getElementById('product-annotation')?.value || options.notes || '';
+              const qtyInput = document.getElementById('product-quantity');
+              let quantity = 1;
+              if (qtyInput && qtyInput.value) {
+                quantity = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+              } else if (options.quantity) {
+                quantity = options.quantity;
+              }
+              showProductDetailsScreen(selected, { notes, quantity });
+            }
+          };
+        } else {
+          variantRow.style.display = 'none';
+        }
+      }
       // Room selector
       populateRoomSelect();
       // Add to Room
@@ -237,6 +319,13 @@ function showProductDetailsScreen(product) {
           if (e.key === 'Enter') e.preventDefault();
         });
         charCount.textContent = annotationInput.value.length + '/140';
+        // Restore notes if passed in options
+        if (options.notes) annotationInput.value = options.notes;
+      }
+      // Restore quantity if passed in options
+      if (options.quantity) {
+        const qtyInput = document.getElementById('product-quantity');
+        if (qtyInput) qtyInput.value = options.quantity;
       }
       // Set product links to always open in a new tab/window
       const diagramLink = document.getElementById('diagram-link');
@@ -1013,8 +1102,6 @@ class ScannerController {
     handleScanResult(result) {
         const code = result.codeResult.code;
         this.stopScanning();
-        console.log('Barcode detected:', code);
-        this.provideHapticFeedback();
         if (window.app && typeof window.app.handleScannedProduct === 'function') {
             window.app.handleScannedProduct(code);
         } else {
@@ -1080,8 +1167,6 @@ window.app = {
       document.getElementById('scanner-feedback').textContent = 'Product data loading, please wait...';
       return;
     }
-    // Debug: log detected barcode and first 10 catalog barcodes
-    console.log('Detected barcode:', barcode);
     // Show detected barcode in UI
     document.getElementById('scanner-feedback').textContent = 'Detected: ' + barcode;
     const product = productCatalog.find(p => p.BARCODE && p.BARCODE.trim() === barcode.trim());
