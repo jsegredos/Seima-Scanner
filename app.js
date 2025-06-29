@@ -245,8 +245,7 @@ function showProductDetailsScreen(product, options = {}) {
       document.getElementById('product-image').src = product.Image_URL || 'assets/no-image.png';
       document.getElementById('product-name').textContent = product.Description || '';
       document.getElementById('product-code').textContent = product.OrderCode ? 'Code: ' + product.OrderCode : '';
-      document.getElementById('product-barcode').textContent = product.BARCODE ? 'Barcode: ' + product.BARCODE : '';
-      document.getElementById('product-price').textContent = product.RRP_INCGST ? `$${Number(product.RRP_INCGST).toFixed(2)} inc GST` : '';
+      document.getElementById('product-price-inline').textContent = product.RRP_INCGST ? `$${Number(product.RRP_INCGST).toFixed(2)} inc GST` : '';
       document.getElementById('product-description').textContent = product.LongDescription || '';
       // Links
       setLink('datasheet-link', product.Datasheet_URL);
