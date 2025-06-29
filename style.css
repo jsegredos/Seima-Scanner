@@ -188,6 +188,7 @@ body {
 
 /* Scanner Screen - Responsive */
 .scanner-container {
+  position: relative;
   max-width: var(--container-max-width);
   width: 100%;
   margin: 0 auto;
@@ -201,6 +202,13 @@ body {
   border-radius: var(--border-radius);
   box-shadow: 0 4px 32px 0 rgba(0,0,0,0.04);
   box-sizing: border-box;
+}
+
+.scanner-container .back-btn {
+  position: absolute;
+  top: calc(var(--spacing-unit) * 2.25);
+  left: calc(var(--spacing-unit) * 2.25);
+  z-index: 10;
 }
 
 .scanner-header {
