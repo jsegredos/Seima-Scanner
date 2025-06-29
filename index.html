@@ -39,5 +39,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <script src="app.js"></script>
+  <div id="version-info" style="position:fixed;bottom:10px;left:0;right:0;text-align:center;font-size:0.98rem;color:#888;z-index:10;pointer-events:none;">Ver: <span id="version-number">1.0.0</span></div>
+  <script>
+    fetch('version.txt').then(r => r.text()).then(v => {
+      document.getElementById('version-number').textContent = v.trim();
+    });
+  </script>
 </body>
 </html> 
