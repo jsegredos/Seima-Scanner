@@ -62,11 +62,6 @@ function loadProductCatalog() {
           WATERMARK: row['WATERMARK'] || '',
           ...row
         };
-        // Debug logging for 191046
-        if (product.OrderCode === '191046') {
-          console.log('DEBUG 191046 row:', row);
-          console.log('DEBUG 191046 final Image_URL:', product.Image_URL);
-        }
         return product;
       });
       window.productCatalog = productCatalog;
@@ -248,7 +243,6 @@ function showProductDetailsScreen(product, options = {}) {
       if (productImage) {
         productImage.src = product.Image_URL || 'assets/no-image.png';
         productImage.onerror = function() {
-          console.warn('Image failed to load:', product.Image_URL);
           this.src = 'assets/no-image.png';
         };
       }
@@ -414,6 +408,7 @@ function showReviewScreen() {
     .then(res => res.text())
     .then(html => {
       document.body.innerHTML = html;
+      ensurePdfSpinner();
       renderReviewList();
       document.getElementById('add-more-btn').onclick = showScannerScreen;
       // Show modal on Send PDF
@@ -464,7 +459,7 @@ function renderReviewList() {
         <div class="review-product-card" style="display: flex; flex-direction: column; align-items: stretch;">
           <div style="display: flex; flex-direction: row; align-items: flex-start;">
             <div class="review-product-thumb-wrap">
-              <img class="review-product-thumb" src="${item.Image_URL || 'assets/no-image.png'}" alt="Product" onerror="this.src='assets/no-image.png'; console.warn('Review image failed:', '${item.Image_URL}');" onload="console.log('Review image loaded:', '${item.Image_URL}');">
+              <img class="review-product-thumb" src="${item.Image_URL || 'assets/no-image.png'}" alt="Product" onerror="this.src='assets/no-image.png';" onload="">
               <div class="review-qty-pill" data-room="${room}" data-idx="${idx}">
                 <button class="review-qty-btn${(item.Quantity||1)===1?' delete':''}" data-action="decrement" title="${(item.Quantity||1)===1?'Delete':'Decrease'}">
                   ${(item.Quantity||1)===1?`<svg viewBox='0 0 64 64' width='64' height='64'><rect x='10' y='8' width='44' height='6' rx='3' fill='black'/><polygon points='7,18 57,18 52,58 12,58' fill='none' stroke='black' stroke-width='7'/></svg>`:'–'}
@@ -521,6 +516,8 @@ function renderReviewList() {
 }
 
 function showPdfFormScreen(userDetails) {
+  const spinner = document.getElementById('pdf-spinner');
+  if (spinner) spinner.style.display = 'flex';
   loadImageAsDataURL('assets/seima-logo.png', function(logoDataUrl, logoNaturalW, logoNaturalH) {
     // Before PDF export, ensure window.seimaLogoImg is loaded
     function ensureSeimaLogoLoaded(cb) {
@@ -536,6 +533,7 @@ function showPdfFormScreen(userDetails) {
     const selection = JSON.parse(localStorage.getItem('selection') || '[]');
     if (!selection.length) {
       alert('No products selected.');
+      if (spinner) spinner.style.display = 'none';
       return;
     }
     // Group by room
@@ -642,7 +640,6 @@ function showPdfFormScreen(userDetails) {
           const timeout = setTimeout(() => {
             if (!finished) {
               finished = true;
-              console.warn('Image load timed out:', proxiedUrl);
               if (cb) cb();
             }
           }, 10000);
@@ -702,6 +699,7 @@ function showPdfFormScreen(userDetails) {
               doc.text('Page ' + (i-1) + ' of ' + pageCount, leftMargin, pageHeight-10);
             }
             doc.save('Seima-Product-Selection.pdf');
+            if (spinner) spinner.style.display = 'none';
             return;
           }
           // New page if needed
@@ -863,7 +861,6 @@ async function generatePdfBlob(userDetails) {
     const timeout = setTimeout(() => {
       if (!finished) {
         finished = true;
-        console.warn('Image load timed out:', proxiedUrl);
         if (cb) cb();
       }
     }, 10000);
@@ -1024,7 +1021,6 @@ async function generatePdfBlob(userDetails) {
         doc.text(pdfTotalStr, Number(colX[5])+20, codeY+10, { align: 'center' });
         rowIdx++;
         pageRow++;
-        console.log('Finished row', rowIdx, 'of', rowsToDraw.length);
         drawNextRow();
       });
     });
@@ -1047,7 +1043,6 @@ function drawImageWithAspect(doc, imgUrl, x, y, maxW, maxH, cb) {
   const timeout = setTimeout(() => {
     if (!finished) {
       finished = true;
-      console.warn('Image load timed out:', proxiedUrl);
       if (cb) cb();
     }
   }, 10000);
@@ -1062,11 +1057,10 @@ function drawImageWithAspect(doc, imgUrl, x, y, maxW, maxH, cb) {
     }
     if (cb) cb();
   };
-  img.onerror = function(e) {
+  img.onerror = function() {
     if (finished) return;
     finished = true;
     clearTimeout(timeout);
-    console.error('Image failed to load for PDF:', proxiedUrl, e);
     if (cb) cb();
   };
   img.src = proxiedUrl;
@@ -1130,7 +1124,6 @@ class ScannerController {
             this.lastScannedCode = null;
             this.initializeQuagga();
         } catch (error) {
-            console.error('Error starting scanner:', error);
             this.showCameraError();
         }
     }
@@ -1184,13 +1177,9 @@ class ScannerController {
             locate: true
         }, (err) => {
             if (err) {
-                console.error('Quagga initialization failed:', err);
                 this.showCameraError();
                 return;
             }
-
-            console.log('Quagga initialized successfully');
-            Quagga.start();
         });
 
         // Handle successful scans
@@ -1314,4 +1303,30 @@ function loadImageAsDataURL(src, cb) {
     cb(canvas.toDataURL('image/png'), img.width, img.height);
   };
   img.src = src;
+}
+
+function ensurePdfSpinner() {
+  if (!document.getElementById('pdf-spinner')) {
+    const spinner = document.createElement('div');
+    spinner.id = 'pdf-spinner';
+    spinner.style.display = 'none';
+    spinner.style.position = 'fixed';
+    spinner.style.top = '0';
+    spinner.style.left = '0';
+    spinner.style.width = '100vw';
+    spinner.style.height = '100vh';
+    spinner.style.zIndex = '9999';
+    spinner.style.background = 'rgba(255,255,255,0.7)';
+    spinner.style.alignItems = 'center';
+    spinner.style.justifyContent = 'center';
+    spinner.innerHTML = '<div style="border:6px solid #e0e0e0;border-top:6px solid #2563eb;border-radius:50%;width:54px;height:54px;animation:spin 1s linear infinite;"></div>';
+    document.body.appendChild(spinner);
+    // Add keyframes if not present
+    if (!document.getElementById('pdf-spinner-style')) {
+      const style = document.createElement('style');
+      style.id = 'pdf-spinner-style';
+      style.innerHTML = '@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }';
+      document.head.appendChild(style);
+    }
+  }
 } 
