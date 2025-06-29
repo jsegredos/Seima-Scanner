@@ -35,34 +35,40 @@ function loadProductCatalog() {
     download: true,
     header: true,
     complete: function(results) {
-      // Normalize PriceList columns to legacy field names for app compatibility
-      productCatalog = results.data.map(row => ({
-        // Main display name remains Description
-        Description: row['Description'] || '',
-        ProductName: (row['Product Name'] || '').trim(),
-        OrderCode: row['Order Code'] || row['OrderCode'] || '',
-        LongDescription: row['Long Description'] || row['LongDescription'] || '',
-        RRP_EXGST: row['RRP EX GST'] || row['RRP_EXGST'] || '',
-        RRP_INCGST: row['RRP INC GST'] || row['RRP_INCGST'] || '',
-        Website_URL: row['Website_URL'] || row['Website URL'] || '',
-        Image_URL: row['Image_URL'] || row['Image URL'] || '',
-        Diagram_URL: row['Diagram_URL'] || row['Diagram URL'] || '',
-        Datasheet_URL: row['Datasheet_URL'] || row['Datasheet URL'] || '',
-        BARCODE: row['BARCODE'] || '',
-        Group: row['Group'] || '',
-        ReleaseNote: row['Release Note'] || '',
-        X_Dimension: row['X Dimension (mm)'] || '',
-        Y_Dimension: row['Y Dimension (mm)'] || '',
-        Z_Dimension: row['Z Dimension (mm)'] || '',
-        Weight: row['WEIGHT'] || '',
-        WELS_NO: row['WELS NO'] || '',
-        WELS_STAR: row['WELS STAR'] || '',
-        WELS_CONSUMPTION: row['WELS CONSUMPTION'] || '',
-        WELS_Expiry: row['WELS Expiry'] || '',
-        WATERMARK: row['WATERMARK'] || '',
-        // Keep all other fields for future-proofing
-        ...row
-      }));
+      // Restore original mapping logic
+      productCatalog = results.data.map(row => {
+        const product = {
+          Description: row['Description'] || '',
+          ProductName: (row['Product Name'] || '').trim(),
+          OrderCode: row['Order Code'] || row['OrderCode'] || '',
+          LongDescription: row['Long Description'] || row['LongDescription'] || '',
+          RRP_EXGST: (row['RRP EX GST'] || row['RRP_EXGST'] || '').toString().trim(),
+          RRP_INCGST: (row['RRP INC GST'] || row['RRP_INCGST'] || '').toString().trim(),
+          Website_URL: row['Website_URL'] || row['Website URL'] || '',
+          Image_URL: row['Image_URL'] || row['Image URL'] || '',
+          Diagram_URL: row['Diagram_URL'] || row['Diagram URL'] || '',
+          Datasheet_URL: row['Datasheet_URL'] || row['Datasheet URL'] || '',
+          BARCODE: row['BARCODE'] || '',
+          Group: row['Group'] || '',
+          ReleaseNote: row['Release Note'] || '',
+          X_Dimension: row['X Dimension (mm)'] || '',
+          Y_Dimension: row['Y Dimension (mm)'] || '',
+          Z_Dimension: row['Z Dimension (mm)'] || '',
+          Weight: row['WEIGHT'] || '',
+          WELS_NO: row['WELS NO'] || '',
+          WELS_STAR: row['WELS STAR'] || '',
+          WELS_CONSUMPTION: row['WELS CONSUMPTION'] || '',
+          WELS_Expiry: row['WELS Expiry'] || '',
+          WATERMARK: row['WATERMARK'] || '',
+          ...row
+        };
+        // Debug logging for 191046
+        if (product.OrderCode === '191046') {
+          console.log('DEBUG 191046 row:', row);
+          console.log('DEBUG 191046 final Image_URL:', product.Image_URL);
+        }
+        return product;
+      });
       window.productCatalog = productCatalog;
       productCatalogLoaded = true;
     },
@@ -238,26 +244,42 @@ function showProductDetailsScreen(product, options = {}) {
     .then(res => res.text())
     .then(html => {
       document.body.innerHTML = html;
-      // Fix: define variantRow and variantSelect for variant dropdown logic
-      const variantRow = document.getElementById('variant-select-row');
-      const variantSelect = document.getElementById('variant-select');
-      // Populate product info
-      document.getElementById('product-image').src = product.Image_URL || 'assets/no-image.png';
+      const productImage = document.getElementById('product-image');
+      if (productImage) {
+        productImage.src = product.Image_URL || 'assets/no-image.png';
+        productImage.onerror = function() {
+          console.warn('Image failed to load:', product.Image_URL);
+          this.src = 'assets/no-image.png';
+        };
+      }
       document.getElementById('product-name').textContent = product.Description || '';
       document.getElementById('product-code').textContent = product.OrderCode ? 'Code: ' + product.OrderCode : '';
-      document.getElementById('product-price-inline').textContent = product.RRP_INCGST ? `$${Number(product.RRP_INCGST).toFixed(2)} inc GST` : '';
+      let price = '';
+      // Robust price parsing: remove commas, parse float
+      let priceNum = NaN;
+      if (product.RRP_INCGST) {
+        priceNum = parseFloat(product.RRP_INCGST.toString().replace(/,/g, ''));
+      }
+      if (!isNaN(priceNum) && priceNum > 0) {
+        price = `$${priceNum.toFixed(2)} inc GST`;
+      } else {
+        price = 'Price unavailable';
+      }
+      document.getElementById('product-price-inline').textContent = price;
       document.getElementById('product-description').textContent = product.LongDescription || '';
       // Links
       setLink('datasheet-link', product.Datasheet_URL);
       setLink('diagram-link', product.Diagram_URL);
       setLink('website-link', product.Website_URL);
       // --- VARIANT DROPDOWN LOGIC ---
+      const variantRow = document.getElementById('variant-select-row');
+      const variantSelect = document.getElementById('variant-select');
       if (variantRow && variantSelect) {
         let productName = product.ProductName || product['Product Name'] || '';
         if (typeof productName === 'string') productName = productName.trim();
         let variants = [];
         if (productName) {
-          variants = window.productCatalog.filter(p => {
+          variants = productCatalog.filter(p => {
             let pName = p.ProductName || p['Product Name'] || '';
             if (typeof pName === 'string') pName = pName.trim();
             return pName && pName === productName;
@@ -424,7 +446,7 @@ function renderReviewList() {
         <div class="review-product-card" style="display: flex; flex-direction: column; align-items: stretch;">
           <div style="display: flex; flex-direction: row; align-items: flex-start;">
             <div class="review-product-thumb-wrap">
-              <img class="review-product-thumb" src="${item.Image_URL || 'assets/no-image.png'}" alt="Product">
+              <img class="review-product-thumb" src="${item.Image_URL || 'assets/no-image.png'}" alt="Product" onerror="this.src='assets/no-image.png'; console.warn('Review image failed:', '${item.Image_URL}');" onload="console.log('Review image loaded:', '${item.Image_URL}');">
               <div class="review-qty-pill" data-room="${room}" data-idx="${idx}">
                 <button class="review-qty-btn${(item.Quantity||1)===1?' delete':''}" data-action="decrement" title="${(item.Quantity||1)===1?'Delete':'Decrease'}">
                   ${(item.Quantity||1)===1?`<svg viewBox='0 0 64 64' width='64' height='64'><rect x='10' y='8' width='44' height='6' rx='3' fill='black'/><polygon points='7,18 57,18 52,58 12,58' fill='none' stroke='black' stroke-width='7'/></svg>`:'–'}
@@ -524,16 +546,16 @@ function showPdfFormScreen() {
   const tableWidth = pageWidth - leftMargin - rightMargin;
   let currentY = 48;
   // Table headings (no Product/Diagram, Total at far right)
-  const headers = ['Code', 'Description', 'Qty', 'Price ea', 'Total'];
-  // Column layout: [images, code, description, qty, price, total]
+  const headers = ['Code', 'Description', 'Price ea', 'Qty', 'Total'];
+  // Column layout: [images, code, description, price, qty, total]
   const imgW = 90, imgPad = 12;
   const codeX = leftMargin + imgW*2 + imgPad*2;
   const descX = codeX + 60;
-  const qtyX = pageWidth - 240;
-  const priceX = pageWidth - 160;
-  const totalX = pageWidth - 80;
-  const colX = [leftMargin, codeX, descX, qtyX, priceX, totalX];
-  const colW = [imgW, imgW, 60, qtyX-descX, 80, 80];
+  const priceX = pageWidth - 200;
+  const qtyX = pageWidth - 120;
+  const totalX = pageWidth - 60;
+  const colX = [leftMargin, codeX, descX, priceX, qtyX, totalX];
+  const colW = [imgW, imgW, 60, priceX-descX, 60, 60];
   doc.setFontSize(10);
   doc.setTextColor('#555');
   doc.setFillColor('#e0e0e0');
@@ -541,57 +563,64 @@ function showPdfFormScreen() {
   doc.setTextColor('#222');
   // Align headers with columns
   doc.text('Code', codeX+30, currentY+12, { align: 'center' });
-  doc.text('Description', descX + (qtyX-descX)/2, currentY+12, { align: 'center' });
-  doc.text('Qty', qtyX+40, currentY+12, { align: 'center' });
-  doc.text('Price ea', priceX+40, currentY+12, { align: 'center' });
-  doc.text('Total', totalX+40, currentY+12, { align: 'center' });
+  doc.text('Description', descX + (priceX-descX)/2, currentY+12, { align: 'center' });
+  doc.text('Price ea', priceX+30, currentY+12, { align: 'center' });
+  doc.text('Qty', qtyX+20, currentY+12, { align: 'center' });
+  doc.text('Total', totalX+20, currentY+12, { align: 'center' });
   currentY += 24;
   // For each room, render products and a separator
   const roomNames = Object.keys(byRoom);
-  const drawImage = (imgUrl, x, y, w, h, cb) => {
-    if (!imgUrl) return cb && cb();
-    // Try direct load first
+  const drawImage = (doc, imgUrl, x, y, maxW, maxH, cb) => {
+    if (!imgUrl) { console.log('No image URL, skipping'); return cb && cb(); }
+    let proxiedUrl = imgUrl;
+    // Use CORS proxy for PDF export only
+    if (!imgUrl.startsWith('data:') && !imgUrl.startsWith('assets/')) {
+      proxiedUrl = 'https://corsproxy.io/?' + encodeURIComponent(imgUrl);
+      // Alternative: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(imgUrl);
+    }
+    console.log('[PDF] Starting image load:', proxiedUrl);
     const img = new window.Image();
     img.crossOrigin = 'Anonymous';
-    let triedProxy = false;
     let finished = false;
-    // Timeout: skip image if not loaded in 2 seconds
     const timeout = setTimeout(() => {
       if (!finished) {
         finished = true;
+        console.warn('[PDF] Image load timed out:', proxiedUrl);
         if (cb) cb();
       }
-    }, 2000);
+    }, 10000);
     img.onload = function() {
       if (finished) return;
       finished = true;
       clearTimeout(timeout);
-      try { doc.addImage(img, 'JPEG', x, y, w, h); } catch(e) {/* image may be corrupt, skip */}
+      console.log('[PDF] Image loaded:', proxiedUrl, 'Dimensions:', img.width, img.height);
+      try {
+        doc.addImage(img, 'JPEG', x, y, maxW, maxH);
+        console.log('[PDF] Image added to PDF:', proxiedUrl);
+      } catch (e) {
+        console.error('[PDF] addImage error:', e, 'for', proxiedUrl);
+      }
       if (cb) cb();
     };
-    img.onerror = function() {
+    img.onerror = function(e) {
       if (finished) return;
-      if (!triedProxy && /^https?:\/\//.test(imgUrl) && !imgUrl.includes('localhost') && !imgUrl.includes('127.0.0.1')) {
-        // Retry with CORS proxy
-        triedProxy = true;
-        img.src = 'https://corsproxy.io/?' + imgUrl;
-      } else {
-        finished = true;
-        clearTimeout(timeout);
-        if (cb) cb();
-      }
+      finished = true;
+      clearTimeout(timeout);
+      console.error('[PDF] Image failed to load for PDF:', proxiedUrl, e);
+      if (cb) cb();
     };
-    img.src = imgUrl;
+    img.src = proxiedUrl;
   };
-  // 4 products per page, equal height
+  // 4 products per page, maximize image height by reducing row padding
   const maxRowsPerPage = 4;
-  const rowHeight = Math.floor((pageHeight-120) / maxRowsPerPage);
+  // Reduce vertical padding to allow larger images
+  const rowPadding = 8; // was 28+36, now less
+  const rowHeight = Math.floor((pageHeight-80) / maxRowsPerPage); // less top/bottom margin
   let rowsToDraw = [];
   roomNames.forEach((room, rIdx) => {
     const items = byRoom[room];
     items.forEach((item, iIdx) => {
       rowsToDraw.push({
-        y: currentY,
         item,
         room,
         rIdx,
@@ -599,12 +628,6 @@ function showPdfFormScreen() {
         isFirstInRoom: iIdx === 0,
         roomCount: items.length
       });
-      currentY += rowHeight;
-      // Add separator after last item in room (except last room)
-      if (iIdx === items.length-1 && rIdx < roomNames.length-1) {
-        rowsToDraw.push({ isSeparator: true, y: currentY });
-        currentY += 8;
-      }
     });
   });
   // Draw all rows (images async)
@@ -612,100 +635,149 @@ function showPdfFormScreen() {
   let pageRow = 0;
   function drawNextRow() {
     if (rowIdx >= rowsToDraw.length) {
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
+      const pageCount = doc.internal.getNumberOfPages() - 1; // exclude cover
+      for (let i = 2; i <= pageCount + 1; i++) { // start from 2 (first product page)
         doc.setPage(i);
+        // Footer bar (reduced height and font size)
         doc.setFillColor('#222');
-        doc.rect(0, pageHeight-40, pageWidth, 40, 'F');
+        doc.rect(0, pageHeight-28, pageWidth, 28, 'F');
         doc.setTextColor('#fff');
-        doc.setFontSize(14);
-        doc.text('www.seima.com.au', pageWidth-180, pageHeight-16);
-        doc.text('Page ' + i + ' of ' + pageCount, leftMargin, pageHeight-16);
+        doc.setFontSize(11);
+        doc.text('www.seima.com.au', pageWidth-140, pageHeight-10);
+        doc.text('Page ' + (i-1) + ' of ' + pageCount, leftMargin, pageHeight-10);
       }
       doc.save('Seima-Product-Selection.pdf');
       return;
     }
-    const row = rowsToDraw[rowIdx];
-    if (row.isSeparator) {
-      doc.setDrawColor('#bbb');
-      doc.setLineWidth(2);
-      doc.line(leftMargin, row.y+4, pageWidth-rightMargin, row.y+4);
-      rowIdx++;
-      drawNextRow();
-      return;
-    }
-    const { y, item, isFirstInRoom, room, roomCount } = row;
     // New page if needed
     if (pageRow >= maxRowsPerPage) {
       doc.addPage();
       currentY = 48;
-      // Table header on new page
-      doc.setFontSize(10);
-      doc.setTextColor('#555');
+      // --- Draw header background from top, full width, no gap ---
       doc.setFillColor('#e0e0e0');
-      doc.rect(leftMargin, currentY, tableWidth, 18, 'F');
-      doc.setTextColor('#222');
-      doc.text('Code', codeX+30, currentY+12, { align: 'center' });
-      doc.text('Description', descX + (qtyX-descX)/2, currentY+12, { align: 'center' });
-      doc.text('Qty', qtyX+40, currentY+12, { align: 'center' });
-      doc.text('Price ea', priceX+40, currentY+12, { align: 'center' });
-      doc.text('Total', totalX+40, currentY+12, { align: 'center' });
-      currentY += 24;
-      pageRow = 0;
+      doc.rect(0, 0, pageWidth, 42, 'F');
+      // --- Draw SEIMA logo at top left, maintain aspect ratio (60x22) ---
+      drawImage(doc, 'assets/seima-logo.png', leftMargin, 8, 60, 22, function() {
+        // Table header on new page (no gap)
+        doc.setFontSize(10);
+        doc.setTextColor('#555');
+        doc.setFillColor('#e0e0e0');
+        doc.rect(0, 24, pageWidth, 18, 'F');
+        doc.setTextColor('#222');
+        doc.text('Code', codeX+30, 24+12, { align: 'center' });
+        doc.text('Description', descX + (priceX-descX)/2, 24+12, { align: 'center' });
+        doc.text('Price ea', priceX+30, 24+12, { align: 'center' });
+        doc.text('Qty', qtyX+20, 24+12, { align: 'center' });
+        doc.text('Total', totalX+20, 24+12, { align: 'center' });
+        currentY = 24+18;
+        pageRow = 0;
+      });
     }
+    // On first product page, also draw header background and logo
+    if (doc.internal.getCurrentPageInfo().pageNumber === 2 && pageRow === 0) {
+      doc.setFillColor('#e0e0e0');
+      doc.rect(0, 0, pageWidth, 42, 'F');
+      drawImage(doc, 'assets/seima-logo.png', leftMargin, 8, 60, 22, function() {
+        doc.setFontSize(10);
+        doc.setTextColor('#555');
+        doc.setFillColor('#e0e0e0');
+        doc.rect(0, 24, pageWidth, 18, 'F');
+        doc.setTextColor('#222');
+        doc.text('Code', codeX+30, 24+12, { align: 'center' });
+        doc.text('Description', descX + (priceX-descX)/2, 24+12, { align: 'center' });
+        doc.text('Price ea', priceX+30, 24+12, { align: 'center' });
+        doc.text('Qty', qtyX+20, 24+12, { align: 'center' });
+        doc.text('Total', totalX+20, 24+12, { align: 'center' });
+        currentY = 24+18;
+      });
+    }
+    const row = rowsToDraw[rowIdx];
+    // Calculate y for this row
+    const y = currentY + (rowHeight * pageRow);
     // Room header (smaller, above image, left-aligned, margin below)
-    if (isFirstInRoom) {
+    if (row.isFirstInRoom && pageRow === 0) {
       doc.setFontSize(9);
       doc.setTextColor('#888');
-      doc.text(room + ' (' + roomCount + ')', leftMargin, y+10);
+      doc.text(row.room + ' (' + row.roomCount + ')', leftMargin, y+10);
     }
-    // Product image (expanded)
-    drawImage(item.Image_URL || '', colX[0], y+28, imgW, rowHeight-36, function() {
-      // Diagram image (expanded)
-      drawImage(item.Diagram_URL || '', colX[0]+imgW+imgPad, y+28, imgW, rowHeight-36, function() {
+    // Product image (maintain aspect ratio)
+    drawImage(doc, row.item.Image_URL || '', colX[0], y+rowPadding, imgW, rowHeight-rowPadding*2, function() {
+      // Diagram image (maintain aspect ratio)
+      drawImage(doc, row.item.Diagram_URL || '', colX[0]+imgW+imgPad, y+rowPadding, imgW, rowHeight-rowPadding*2, function() {
         // Code (top-aligned)
         doc.setFontSize(10);
         doc.setTextColor('#222');
         const codeY = y+28; // top-aligned
-        doc.text(String(item.OrderCode || ''), Number(colX[1])+30, codeY+10, { align: 'center' });
+        doc.text(String(row.item.OrderCode || ''), Number(colX[1])+30, codeY+10, { align: 'center' });
         // Datasheet link under code, with padding
-        if (item.Datasheet_URL && item.Datasheet_URL !== '#') {
-          const dsY = codeY+26;
+        let linkY = codeY+26;
+        if (row.item.Datasheet_URL && row.item.Datasheet_URL !== '#') {
           doc.setFontSize(9);
           doc.setTextColor(80, 80, 80);
-          doc.textWithLink('Datasheet', Number(colX[1])+30, dsY, { url: item.Datasheet_URL, align: 'center' });
+          doc.textWithLink('Datasheet', Number(colX[1])+30, linkY, { url: row.item.Datasheet_URL, align: 'center' });
           // Underline
           const dsWidth = doc.getTextWidth('Datasheet');
           doc.setDrawColor(180, 180, 180);
           doc.setLineWidth(0.7);
-          doc.line(Number(colX[1])+30-dsWidth/2, dsY+1.5, Number(colX[1])+30+dsWidth/2, dsY+1.5);
+          doc.line(Number(colX[1])+30-dsWidth/2, linkY+1.5, Number(colX[1])+30+dsWidth/2, linkY+1.5);
+          linkY += 14;
         }
-        // Add extra vertical space below code/datasheet
-        let descY = codeY+44;
-        // Description (top-aligned)
+        // Website link under datasheet
+        if (row.item.Website_URL && row.item.Website_URL !== '#') {
+          doc.setFontSize(9);
+          doc.setTextColor(80, 80, 200);
+          doc.textWithLink('Website', Number(colX[1])+30, linkY, { url: row.item.Website_URL, align: 'center' });
+          // Underline
+          const wsWidth = doc.getTextWidth('Website');
+          doc.setDrawColor(120, 120, 200);
+          doc.setLineWidth(0.7);
+          doc.line(Number(colX[1])+30-wsWidth/2, linkY+1.5, Number(colX[1])+30+wsWidth/2, linkY+1.5);
+          linkY += 14;
+        }
+        // Description (top-aligned with code)
+        let descY = codeY+10;
         doc.setFontSize(10);
         doc.setTextColor('#222');
-        doc.text(String(item.Description || ''), Number(colX[2])+5, descY);
-        // Notes below description, with padding
-        if (item.Notes) {
-          descY += 14;
+        // Main description
+        const descColWidth = priceX - descX - 10;
+        let descLines = doc.splitTextToSize(String(row.item.Description || ''), descColWidth);
+        doc.text(descLines, Number(colX[2])+5, descY);
+        descY += descLines.length * 12;
+        // Long description
+        if (row.item.LongDescription) {
           doc.setFontSize(9);
           doc.setTextColor('#444');
-          const notesText = 'Notes: ' + String(item.Notes).replace(/\r?\n|\r/g, ' ');
-          doc.text(notesText, Number(colX[2])+13, descY);
+          let longDescLines = doc.splitTextToSize(String(row.item.LongDescription), descColWidth);
+          doc.text(longDescLines, Number(colX[2])+5, descY);
+          descY += longDescLines.length * 11;
         }
-        // Qty (top-aligned)
-        doc.setFontSize(10);
-        doc.setTextColor('#222');
-        doc.text(String(item.Quantity || 1), Number(colX[3])+40, codeY+10, { align: 'center' });
+        // Notes below long description, with padding
+        if (row.item.Notes) {
+          doc.setFontSize(9);
+          doc.setTextColor('#444');
+          let notesLines = doc.splitTextToSize('Notes: ' + String(row.item.Notes).replace(/\r?\n|\r/g, ' '), descColWidth);
+          doc.text(notesLines, Number(colX[2])+5, descY);
+          descY += notesLines.length * 11;
+        }
         // Price ea (top-aligned)
         doc.setFontSize(10);
         doc.setTextColor('#222');
-        doc.text(item.RRP_INCGST ? ('$' + Number(item.RRP_INCGST).toFixed(2)) : '', Number(colX[4])+40, codeY+10, { align: 'center' });
+        // Robust price parsing for PDF
+        let pdfPriceNum = NaN;
+        if (row.item.RRP_INCGST) {
+          pdfPriceNum = parseFloat(row.item.RRP_INCGST.toString().replace(/,/g, ''));
+        }
+        let pdfPriceStr = pdfPriceNum && !isNaN(pdfPriceNum) && pdfPriceNum > 0 ? ('$' + pdfPriceNum.toFixed(2)) : '';
+        doc.text(pdfPriceStr, Number(colX[3])+30, codeY+10, { align: 'center' });
+        // Qty (top-aligned)
+        doc.setFontSize(10);
+        doc.setTextColor('#222');
+        doc.text(String(row.item.Quantity || 1), Number(colX[4])+20, codeY+10, { align: 'center' });
         // Total (top-aligned, far right)
         doc.setFontSize(10);
         doc.setTextColor('#222');
-        doc.text(item.RRP_INCGST ? ('$' + (Number(item.RRP_INCGST) * (item.Quantity || 1)).toFixed(2)) : '', Number(colX[5])+40, codeY+10, { align: 'center' });
+        let pdfTotalStr = pdfPriceNum && !isNaN(pdfPriceNum) && pdfPriceNum > 0 ? ('$' + (pdfPriceNum * (row.item.Quantity || 1)).toFixed(2)) : '';
+        doc.text(pdfTotalStr, Number(colX[5])+20, codeY+10, { align: 'center' });
         rowIdx++;
         pageRow++;
         drawNextRow();
@@ -763,16 +835,16 @@ async function generatePdfBlob(userDetails) {
   const tableWidth = pageWidth - leftMargin - rightMargin;
   let currentY = 48;
   // Table headings (no Product/Diagram, Total at far right)
-  const headers = ['Code', 'Description', 'Qty', 'Price ea', 'Total'];
-  // Column layout: [images, code, description, qty, price, total]
+  const headers = ['Code', 'Description', 'Price ea', 'Qty', 'Total'];
+  // Column layout: [images, code, description, price, qty, total]
   const imgW = 90, imgPad = 12;
   const codeX = leftMargin + imgW*2 + imgPad*2;
   const descX = codeX + 60;
-  const qtyX = pageWidth - 240;
-  const priceX = pageWidth - 160;
-  const totalX = pageWidth - 80;
-  const colX = [leftMargin, codeX, descX, qtyX, priceX, totalX];
-  const colW = [imgW, imgW, 60, qtyX-descX, 80, 80];
+  const priceX = pageWidth - 200;
+  const qtyX = pageWidth - 120;
+  const totalX = pageWidth - 60;
+  const colX = [leftMargin, codeX, descX, priceX, qtyX, totalX];
+  const colW = [imgW, imgW, 60, priceX-descX, 60, 60];
   doc.setFontSize(10);
   doc.setTextColor('#555');
   doc.setFillColor('#e0e0e0');
@@ -780,60 +852,59 @@ async function generatePdfBlob(userDetails) {
   doc.setTextColor('#222');
   // Align headers with columns
   doc.text('Code', codeX+30, currentY+12, { align: 'center' });
-  doc.text('Description', descX + (qtyX-descX)/2, currentY+12, { align: 'center' });
-  doc.text('Qty', qtyX+40, currentY+12, { align: 'center' });
-  doc.text('Price ea', priceX+40, currentY+12, { align: 'center' });
-  doc.text('Total', totalX+40, currentY+12, { align: 'center' });
+  doc.text('Description', descX + (priceX-descX)/2, currentY+12, { align: 'center' });
+  doc.text('Price ea', priceX+30, currentY+12, { align: 'center' });
+  doc.text('Qty', qtyX+20, currentY+12, { align: 'center' });
+  doc.text('Total', totalX+20, currentY+12, { align: 'center' });
   currentY += 24;
   // For each room, render products and a separator
   const roomNames = Object.keys(byRoom);
-  const drawImage = (imgUrl, x, y, w, h, cb) => {
+  const drawImage = (doc, imgUrl, x, y, maxW, maxH, cb) => {
     if (!imgUrl) { console.log('No image URL, skipping'); return cb && cb(); }
-    // Try direct load first
+    let proxiedUrl = imgUrl;
+    // Use CORS proxy for PDF export only
+    if (!imgUrl.startsWith('data:') && !imgUrl.startsWith('assets/')) {
+      proxiedUrl = 'https://corsproxy.io/?' + encodeURIComponent(imgUrl);
+      // Alternative: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(imgUrl);
+    }
+    console.log('[PDF] Starting image load:', proxiedUrl);
     const img = new window.Image();
     img.crossOrigin = 'Anonymous';
-    let triedProxy = false;
     let finished = false;
-    // Timeout: skip image if not loaded in 0.5 seconds
     const timeout = setTimeout(() => {
       if (!finished) {
         finished = true;
-        console.warn('Image load timed out:', imgUrl);
+        console.warn('[PDF] Image load timed out:', proxiedUrl);
         if (cb) cb();
       }
-    }, 500);
+    }, 10000);
     img.onload = function() {
       if (finished) return;
       finished = true;
       clearTimeout(timeout);
-      try { doc.addImage(img, 'JPEG', x, y, w, h); console.log('Image added:', imgUrl); } catch(e) { console.error('Image add error:', imgUrl, e); }
+      console.log('[PDF] Image loaded:', proxiedUrl, 'Dimensions:', img.width, img.height);
+      try { doc.addImage(img, 'JPEG', x, y, maxW, maxH); console.log('Image added:', imgUrl); } catch(e) { console.error('Image add error:', imgUrl, e); }
       if (cb) cb();
     };
     img.onerror = function(e) {
       if (finished) return;
-      if (!triedProxy && /^https?:\/\//.test(imgUrl) && !imgUrl.includes('localhost') && !imgUrl.includes('127.0.0.1')) {
-        // Retry with CORS proxy
-        triedProxy = true;
-        console.warn('Retrying image with proxy:', imgUrl);
-        img.src = 'https://corsproxy.io/?' + imgUrl;
-      } else {
-        finished = true;
-        clearTimeout(timeout);
-        console.error('Image failed to load:', imgUrl, e);
-        if (cb) cb();
-      }
+      finished = true;
+      clearTimeout(timeout);
+      console.error('Image failed to load for PDF:', proxiedUrl, e);
+      if (cb) cb();
     };
-    img.src = imgUrl;
+    img.src = proxiedUrl;
   };
-  // 4 products per page, equal height
+  // 4 products per page, maximize image height by reducing row padding
   const maxRowsPerPage = 4;
-  const rowHeight = Math.floor((pageHeight-120) / maxRowsPerPage);
+  // Reduce vertical padding to allow larger images
+  const rowPadding = 8; // was 28+36, now less
+  const rowHeight = Math.floor((pageHeight-80) / maxRowsPerPage); // less top/bottom margin
   let rowsToDraw = [];
   roomNames.forEach((room, rIdx) => {
     const items = byRoom[room];
     items.forEach((item, iIdx) => {
       rowsToDraw.push({
-        y: currentY,
         item,
         room,
         rIdx,
@@ -841,135 +912,182 @@ async function generatePdfBlob(userDetails) {
         isFirstInRoom: iIdx === 0,
         roomCount: items.length
       });
-      currentY += rowHeight;
-      // Add separator after last item in room (except last room)
-      if (iIdx === items.length-1 && rIdx < roomNames.length-1) {
-        rowsToDraw.push({ isSeparator: true, y: currentY });
-        currentY += 8;
-      }
     });
   });
   // Draw all rows (images async)
   let rowIdx = 0;
   let pageRow = 0;
-  return new Promise(resolve => {
-    let resolved = false;
-    // Global fallback timeout
-    const globalTimeout = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        console.error('PDF generation timed out, forcing download.');
-        doc.output('blob', resolve);
+  function drawNextRow() {
+    if (rowIdx >= rowsToDraw.length) {
+      clearTimeout(globalTimeout);
+      resolved = true;
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFillColor('#222');
+        doc.rect(0, pageHeight-40, pageWidth, 40, 'F');
+        doc.setTextColor('#fff');
+        doc.setFontSize(14);
+        doc.text('www.seima.com.au', pageWidth-180, pageHeight-16);
+        doc.text('Page ' + i + ' of ' + pageCount, leftMargin, pageHeight-16);
       }
-    }, 5000);
-    function drawNextRow() {
-      if (rowIdx >= rowsToDraw.length) {
-        clearTimeout(globalTimeout);
-        resolved = true;
-        const pageCount = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-          doc.setPage(i);
-          doc.setFillColor('#222');
-          doc.rect(0, pageHeight-40, pageWidth, 40, 'F');
-          doc.setTextColor('#fff');
-          doc.setFontSize(14);
-          doc.text('www.seima.com.au', pageWidth-180, pageHeight-16);
-          doc.text('Page ' + i + ' of ' + pageCount, leftMargin, pageHeight-16);
-        }
-        console.log('PDF generation complete, resolving blob.');
-        doc.output('blob', resolve);
-        return;
-      }
-      const row = rowsToDraw[rowIdx];
-      if (row.isSeparator) {
-        doc.setDrawColor('#bbb');
-        doc.setLineWidth(2);
-        doc.line(leftMargin, row.y+4, pageWidth-rightMargin, row.y+4);
-        rowIdx++;
-        drawNextRow();
-        return;
-      }
-      const { y, item, isFirstInRoom, room, roomCount } = row;
-      // New page if needed
-      if (pageRow >= maxRowsPerPage) {
-        doc.addPage();
-        currentY = 48;
-        // Table header on new page
-        doc.setFontSize(10);
-        doc.setTextColor('#555');
-        doc.setFillColor('#e0e0e0');
-        doc.rect(leftMargin, currentY, tableWidth, 18, 'F');
-        doc.setTextColor('#222');
-        doc.text('Code', codeX+30, currentY+12, { align: 'center' });
-        doc.text('Description', descX + (qtyX-descX)/2, currentY+12, { align: 'center' });
-        doc.text('Qty', qtyX+40, currentY+12, { align: 'center' });
-        doc.text('Price ea', priceX+40, currentY+12, { align: 'center' });
-        doc.text('Total', totalX+40, currentY+12, { align: 'center' });
-        currentY += 24;
-        pageRow = 0;
-      }
-      // Room header (smaller, above image, left-aligned, margin below)
-      if (isFirstInRoom) {
-        doc.setFontSize(9);
-        doc.setTextColor('#888');
-        doc.text(room + ' (' + roomCount + ')', leftMargin, y+10);
-      }
-      // Product image (expanded)
-      drawImage(item.Image_URL || '', colX[0], y+28, imgW, rowHeight-36, function() {
-        // Diagram image (expanded)
-        drawImage(item.Diagram_URL || '', colX[0]+imgW+imgPad, y+28, imgW, rowHeight-36, function() {
-          // Code (top-aligned)
-          doc.setFontSize(10);
-          doc.setTextColor('#222');
-          const codeY = y+28; // top-aligned
-          doc.text(String(item.OrderCode || ''), Number(colX[1])+30, codeY+10, { align: 'center' });
-          // Datasheet link under code, with padding
-          if (item.Datasheet_URL && item.Datasheet_URL !== '#') {
-            const dsY = codeY+26;
-            doc.setFontSize(9);
-            doc.setTextColor(80, 80, 80);
-            doc.textWithLink('Datasheet', Number(colX[1])+30, dsY, { url: item.Datasheet_URL, align: 'center' });
-            // Underline
-            const dsWidth = doc.getTextWidth('Datasheet');
-            doc.setDrawColor(180, 180, 180);
-            doc.setLineWidth(0.7);
-            doc.line(Number(colX[1])+30-dsWidth/2, dsY+1.5, Number(colX[1])+30+dsWidth/2, dsY+1.5);
-          }
-          // Add extra vertical space below code/datasheet
-          let descY = codeY+44;
-          // Description (top-aligned)
-          doc.setFontSize(10);
-          doc.setTextColor('#222');
-          doc.text(String(item.Description || ''), Number(colX[2])+5, descY);
-          // Notes below description, with padding
-          if (item.Notes) {
-            descY += 14;
-            doc.setFontSize(9);
-            doc.setTextColor('#444');
-            const notesText = 'Notes: ' + String(item.Notes).replace(/\r?\n|\r/g, ' ');
-            doc.text(notesText, Number(colX[2])+13, descY);
-          }
-          // Qty (top-aligned)
-          doc.setFontSize(10);
-          doc.setTextColor('#222');
-          doc.text(String(item.Quantity || 1), Number(colX[3])+40, codeY+10, { align: 'center' });
-          // Price ea (top-aligned)
-          doc.setFontSize(10);
-          doc.setTextColor('#222');
-          doc.text(item.RRP_INCGST ? ('$' + Number(item.RRP_INCGST).toFixed(2)) : '', Number(colX[4])+40, codeY+10, { align: 'center' });
-          // Total (top-aligned, far right)
-          doc.setFontSize(10);
-          doc.setTextColor('#222');
-          doc.text(item.RRP_INCGST ? ('$' + (Number(item.RRP_INCGST) * (item.Quantity || 1)).toFixed(2)) : '', Number(colX[5])+40, codeY+10, { align: 'center' });
-          rowIdx++;
-          pageRow++;
-          console.log('Finished row', rowIdx, 'of', rowsToDraw.length);
-          drawNextRow();
-        });
-      });
+      console.log('PDF generation complete, resolving blob.');
+      doc.output('blob', resolve);
+      return;
     }
-    drawNextRow();
-  });
+    // New page if needed
+    if (pageRow >= maxRowsPerPage) {
+      doc.addPage();
+      currentY = 48;
+      // Table header on new page
+      doc.setFontSize(10);
+      doc.setTextColor('#555');
+      doc.setFillColor('#e0e0e0');
+      doc.rect(leftMargin, currentY, tableWidth, 18, 'F');
+      doc.setTextColor('#222');
+      doc.text('Code', codeX+30, currentY+12, { align: 'center' });
+      doc.text('Description', descX + (priceX-descX)/2, currentY+12, { align: 'center' });
+      doc.text('Price ea', priceX+30, currentY+12, { align: 'center' });
+      doc.text('Qty', qtyX+20, currentY+12, { align: 'center' });
+      doc.text('Total', totalX+20, currentY+12, { align: 'center' });
+      currentY += 24;
+      pageRow = 0;
+    }
+    const row = rowsToDraw[rowIdx];
+    // Calculate y for this row
+    const y = currentY + (rowHeight * pageRow);
+    // Room header (smaller, above image, left-aligned, margin below)
+    if (row.isFirstInRoom && pageRow === 0) {
+      doc.setFontSize(9);
+      doc.setTextColor('#888');
+      doc.text(row.room + ' (' + row.roomCount + ')', leftMargin, y+10);
+    }
+    // Product image (maintain aspect ratio)
+    drawImage(doc, row.item.Image_URL || '', colX[0], y+rowPadding, imgW, rowHeight-rowPadding*2, function() {
+      // Diagram image (maintain aspect ratio)
+      drawImage(doc, row.item.Diagram_URL || '', colX[0]+imgW+imgPad, y+rowPadding, imgW, rowHeight-rowPadding*2, function() {
+        // Code (top-aligned)
+        doc.setFontSize(10);
+        doc.setTextColor('#222');
+        const codeY = y+28; // top-aligned
+        doc.text(String(row.item.OrderCode || ''), Number(colX[1])+30, codeY+10, { align: 'center' });
+        // Datasheet link under code, with padding
+        let linkY = codeY+26;
+        if (row.item.Datasheet_URL && row.item.Datasheet_URL !== '#') {
+          doc.setFontSize(9);
+          doc.setTextColor(80, 80, 80);
+          doc.textWithLink('Datasheet', Number(colX[1])+30, linkY, { url: row.item.Datasheet_URL, align: 'center' });
+          // Underline
+          const dsWidth = doc.getTextWidth('Datasheet');
+          doc.setDrawColor(180, 180, 180);
+          doc.setLineWidth(0.7);
+          doc.line(Number(colX[1])+30-dsWidth/2, linkY+1.5, Number(colX[1])+30+dsWidth/2, linkY+1.5);
+          linkY += 14;
+        }
+        // Website link under datasheet
+        if (row.item.Website_URL && row.item.Website_URL !== '#') {
+          doc.setFontSize(9);
+          doc.setTextColor(80, 80, 200);
+          doc.textWithLink('Website', Number(colX[1])+30, linkY, { url: row.item.Website_URL, align: 'center' });
+          // Underline
+          const wsWidth = doc.getTextWidth('Website');
+          doc.setDrawColor(120, 120, 200);
+          doc.setLineWidth(0.7);
+          doc.line(Number(colX[1])+30-wsWidth/2, linkY+1.5, Number(colX[1])+30+wsWidth/2, linkY+1.5);
+          linkY += 14;
+        }
+        // Description (top-aligned with code)
+        let descY = codeY+10;
+        doc.setFontSize(10);
+        doc.setTextColor('#222');
+        // Main description
+        const descColWidth = priceX - descX - 10;
+        let descLines = doc.splitTextToSize(String(row.item.Description || ''), descColWidth);
+        doc.text(descLines, Number(colX[2])+5, descY);
+        descY += descLines.length * 12;
+        // Long description
+        if (row.item.LongDescription) {
+          doc.setFontSize(9);
+          doc.setTextColor('#444');
+          let longDescLines = doc.splitTextToSize(String(row.item.LongDescription), descColWidth);
+          doc.text(longDescLines, Number(colX[2])+5, descY);
+          descY += longDescLines.length * 11;
+        }
+        // Notes below long description, with padding
+        if (row.item.Notes) {
+          doc.setFontSize(9);
+          doc.setTextColor('#444');
+          let notesLines = doc.splitTextToSize('Notes: ' + String(row.item.Notes).replace(/\r?\n|\r/g, ' '), descColWidth);
+          doc.text(notesLines, Number(colX[2])+5, descY);
+          descY += notesLines.length * 11;
+        }
+        // Price ea (top-aligned)
+        doc.setFontSize(10);
+        doc.setTextColor('#222');
+        // Robust price parsing for PDF
+        let pdfPriceNum = NaN;
+        if (row.item.RRP_INCGST) {
+          pdfPriceNum = parseFloat(row.item.RRP_INCGST.toString().replace(/,/g, ''));
+        }
+        let pdfPriceStr = pdfPriceNum && !isNaN(pdfPriceNum) && pdfPriceNum > 0 ? ('$' + pdfPriceNum.toFixed(2)) : '';
+        doc.text(pdfPriceStr, Number(colX[3])+30, codeY+10, { align: 'center' });
+        // Qty (top-aligned)
+        doc.setFontSize(10);
+        doc.setTextColor('#222');
+        doc.text(String(row.item.Quantity || 1), Number(colX[4])+20, codeY+10, { align: 'center' });
+        // Total (top-aligned, far right)
+        doc.setFontSize(10);
+        doc.setTextColor('#222');
+        let pdfTotalStr = pdfPriceNum && !isNaN(pdfPriceNum) && pdfPriceNum > 0 ? ('$' + (pdfPriceNum * (row.item.Quantity || 1)).toFixed(2)) : '';
+        doc.text(pdfTotalStr, Number(colX[5])+20, codeY+10, { align: 'center' });
+        rowIdx++;
+        pageRow++;
+        console.log('Finished row', rowIdx, 'of', rowsToDraw.length);
+        drawNextRow();
+      });
+    });
+  }
+  drawNextRow();
+}
+
+// Helper: draw image maintaining aspect ratio
+function drawImageWithAspect(doc, imgUrl, x, y, maxW, maxH, cb) {
+  if (!imgUrl) return cb && cb();
+  let proxiedUrl = imgUrl;
+  // Use CORS proxy for PDF export only
+  if (!imgUrl.startsWith('data:') && !imgUrl.startsWith('assets/')) {
+    proxiedUrl = 'https://corsproxy.io/?' + encodeURIComponent(imgUrl);
+    // Alternative: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(imgUrl);
+  }
+  const img = new window.Image();
+  img.crossOrigin = 'Anonymous';
+  let finished = false;
+  const timeout = setTimeout(() => {
+    if (!finished) {
+      finished = true;
+      console.warn('Image load timed out:', proxiedUrl);
+      if (cb) cb();
+    }
+  }, 10000);
+  img.onload = function() {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timeout);
+    try {
+      doc.addImage(img, 'JPEG', x, y, maxW, maxH);
+    } catch (e) {
+      console.error('addImage error:', e, 'for', proxiedUrl);
+    }
+    if (cb) cb();
+  };
+  img.onerror = function(e) {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timeout);
+    console.error('Image failed to load for PDF:', proxiedUrl, e);
+    if (cb) cb();
+  };
+  img.src = proxiedUrl;
 }
 
 // Update selection count in scanner
@@ -1176,4 +1294,30 @@ window.app = {
       setTimeout(() => window.scannerController.startScanning(), 1500);
     }
   }
-}; 
+};
+
+// --- PDF HEADER DRAWING LOGIC ---
+function drawPDFHeader(doc, pageWidth, pageHeight) {
+  // Header background (full width, fixed height)
+  const headerHeight = 54; // enough for logo and table header
+  doc.setFillColor('#e5e5e5');
+  doc.rect(0, 0, pageWidth, headerHeight, 'F');
+
+  // Draw SEIMA logo (fixed width, maintain aspect ratio)
+  const logoW = 60, logoH = 22, logoY = 16; // vertically center in header
+  if (window.seimaLogoImg) {
+    doc.addImage(window.seimaLogoImg, 'PNG', 24, logoY, logoW, logoH);
+  }
+
+  // Table header row (directly below logo, no gap)
+  const tableHeaderY = headerHeight - 2; // slight overlap for seamless look
+  doc.setFontSize(15);
+  doc.setTextColor('#444');
+  doc.setFont('helvetica', 'bold');
+  const colX = [120, 260, 410, 500, 580];
+  doc.text('Code', colX[0], tableHeaderY);
+  doc.text('Description', colX[1], tableHeaderY);
+  doc.text('Price ea', colX[2], tableHeaderY);
+  doc.text('Qty', colX[3], tableHeaderY);
+  doc.text('Total', colX[4], tableHeaderY);
+} 
