@@ -1130,8 +1130,10 @@ class ScannerController {
     stopScanning() {
         if (!this.isScanning) return;
         this.isScanning = false;
-        if (window.Quagga) {
-            window.Quagga.stop();
+        try {
+            if (window.Quagga) window.Quagga.stop();
+        } catch (e) {
+            // Suppress Quagga stop errors (e.g., if not initialized)
         }
         if (this.scanTimeout) {
             clearTimeout(this.scanTimeout);
