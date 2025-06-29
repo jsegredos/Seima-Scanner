@@ -1146,8 +1146,8 @@ class ScannerController {
         let constraints;
         if (isMobile) {
             constraints = {
-                width: { ideal: 640 },
-                height: { ideal: 480 },
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
                 facingMode: "environment"
             };
         } else {
