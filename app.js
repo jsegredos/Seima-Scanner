@@ -604,7 +604,7 @@ function showPdfFormScreen(userDetails) {
       const month = months[now.getMonth()];
       const year = now.getFullYear();
       const hour = String(now.getHours()).padStart(2,'0');
-      const min = String(now.getMinutes()).padStart(2,'0');
+      const min = String(now.getMinutes()).padStart(2, '0');
       const timestamp = `Printed ${day} ${month} ${year}, ${hour}:${min}`;
       doc.text(timestamp, 16, pageHeight-10);
       // www.seima.com.au (right)
@@ -1315,7 +1315,7 @@ function drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataU
   doc.text('Code', colX[1]+30, colY, { align: 'center' });
   doc.text('Description', colX[2]+(colX[3]-colX[2])/2, colY, { align: 'center' });
   if (!excludePrice) {
-    doc.text('Price ea', colX[3]+30, colY, { align: 'center' });
+    doc.text('Price ea inc GST', colX[3]+30, colY, { align: 'center' });
     doc.text('Qty', colX[4]+20, colY, { align: 'center' });
     doc.text('Total', colX[5]+20, colY, { align: 'center' });
   } else {
@@ -1377,14 +1377,18 @@ function generateAndDownloadCsv(userDetails, csvFilename) {
     const priceStr = (item.RRP_INCGST || '').toString().replace(/,/g, '');
     const priceNum = parseFloat(priceStr);
     const total = (!isNaN(priceNum) ? (priceNum * (item.Quantity || 1)).toFixed(2) : '');
+    const excludePrice = userDetails.excludePrice;
     return {
       Room: item.Room,
       Code: item.OrderCode || '',
       Description: item.Description || '',
       Quantity: item.Quantity || 1,
-      Price: item.RRP_INCGST || '',
-      Total: total,
-      Notes: item.Notes || ''
+      'Price ea inc GST': excludePrice ? '0.00' : (item.RRP_INCGST || ''),
+      'Price Total inc GST': excludePrice ? '0.00' : total,
+      Notes: item.Notes || '',
+      'Diagram URL': item.Diagram_URL || '',
+      'Datasheet URL': item.Datasheet_URL || '',
+      'Website URL': item.Website_URL || ''
     };
   });
   // Add customer details as first row (optional, or as header comment)
