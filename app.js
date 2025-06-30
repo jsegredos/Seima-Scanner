@@ -428,8 +428,9 @@ function showReviewScreen() {
         const email = document.getElementById('user-email').value.trim();
         const telephone = document.getElementById('user-telephone').value.trim();
         const excludePrice = document.getElementById('exclude-price-checkbox') ? document.getElementById('exclude-price-checkbox').checked : false;
+        const exportCsv = document.getElementById('export-csv-checkbox') ? document.getElementById('export-csv-checkbox').checked : false;
         document.getElementById('pdf-email-modal').style.display = 'none';
-        showPdfFormScreen({ name, project, address, email, telephone, excludePrice });
+        showPdfFormScreen({ name, project, address, email, telephone, excludePrice, exportCsv });
       };
       // Add back button handler
       const backBtn = document.getElementById('back-to-scanner');
@@ -699,8 +700,25 @@ function showPdfFormScreen(userDetails) {
               doc.text('www.seima.com.au', pageWidth-140, pageHeight-10);
               doc.text('Page ' + (i-1) + ' of ' + pageCount, leftMargin, pageHeight-10);
             }
-            doc.save('Seima-Product-Selection.pdf');
-            if (spinner) spinner.style.display = 'none';
+            // --- PDF FILENAME LOGIC ---
+            const now = new Date();
+            const dd = String(now.getDate()).padStart(2, '0');
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const yy = String(now.getFullYear()).slice(-2);
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const emailSafe = (userDetails.email || 'customer').replace(/[^a-zA-Z0-9@._-]/g, '_');
+            const pdfFilename = `${emailSafe}-${dd}${mm}${yy}-${hh}${min}.pdf`;
+            doc.save(pdfFilename);
+            // --- CSV EXPORT LOGIC ---
+            if (userDetails.exportCsv) {
+              // Keep spinner going
+              setTimeout(() => {
+                generateAndDownloadCsv(userDetails, pdfFilename.replace(/\.pdf$/, '.csv'));
+              }, 100); // let PDF download start first
+            } else {
+              if (spinner) spinner.style.display = 'none';
+            }
             return;
           }
           // New page if needed
@@ -1344,4 +1362,45 @@ function ensurePdfSpinner() {
       document.head.appendChild(style);
     }
   }
+}
+
+// --- CSV GENERATION AND DOWNLOAD ---
+function generateAndDownloadCsv(userDetails, csvFilename) {
+  const spinner = document.getElementById('pdf-spinner');
+  const selection = JSON.parse(localStorage.getItem('selection') || '[]');
+  if (!selection.length) {
+    if (spinner) spinner.style.display = 'none';
+    return;
+  }
+  // Prepare CSV data
+  const csvData = selection.map(item => {
+    const priceStr = (item.RRP_INCGST || '').toString().replace(/,/g, '');
+    const priceNum = parseFloat(priceStr);
+    const total = (!isNaN(priceNum) ? (priceNum * (item.Quantity || 1)).toFixed(2) : '');
+    return {
+      Room: item.Room,
+      Code: item.OrderCode || '',
+      Description: item.Description || '',
+      Quantity: item.Quantity || 1,
+      Price: item.RRP_INCGST || '',
+      Total: total,
+      Notes: item.Notes || ''
+    };
+  });
+  // Add customer details as first row (optional, or as header comment)
+  // Use PapaParse to unparse
+  const csv = window.Papa.unparse(csvData);
+  // Download CSV
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', csvFilename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+  if (spinner) spinner.style.display = 'none';
 } 
