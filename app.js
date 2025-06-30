@@ -427,8 +427,9 @@ function showReviewScreen() {
         const address = document.getElementById('user-address').value.trim();
         const email = document.getElementById('user-email').value.trim();
         const telephone = document.getElementById('user-telephone').value.trim();
+        const excludePrice = document.getElementById('exclude-price-checkbox') ? document.getElementById('exclude-price-checkbox').checked : false;
         document.getElementById('pdf-email-modal').style.display = 'none';
-        showPdfFormScreen({ name, project, address, email, telephone });
+        showPdfFormScreen({ name, project, address, email, telephone, excludePrice });
       };
       // Add back button handler
       const backBtn = document.getElementById('back-to-scanner');
@@ -688,7 +689,7 @@ function showPdfFormScreen(userDetails) {
             const pageCount = doc.internal.getNumberOfPages() - 1; // exclude cover
             for (let i = 2; i <= pageCount + 1; i++) { // start from 2 (first product page)
               doc.setPage(i);
-              drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH);
+              drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH, userDetails.excludePrice);
               currentY = footerHeight + 8;
               // Footer bar (reduced height and font size)
               doc.setFillColor('#888');
@@ -705,7 +706,7 @@ function showPdfFormScreen(userDetails) {
           // New page if needed
           if (pageRow >= maxRowsPerPage) {
             doc.addPage();
-            drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH);
+            drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH, userDetails.excludePrice);
             currentY = footerHeight + 8;
             pageRow = 0;
           }
@@ -788,7 +789,9 @@ function showPdfFormScreen(userDetails) {
                 pdfPriceNum = parseFloat(row.item.RRP_INCGST.toString().replace(/,/g, ''));
               }
               let pdfPriceStr = pdfPriceNum && !isNaN(pdfPriceNum) && pdfPriceNum > 0 ? ('$' + pdfPriceNum.toFixed(2)) : '';
-              doc.text(pdfPriceStr, Number(colX[3])+30, codeY+10, { align: 'center' });
+              if (!userDetails.excludePrice) {
+                doc.text(pdfPriceStr, Number(colX[3])+30, codeY+10, { align: 'center' });
+              }
               // Qty (top-aligned)
               doc.setFontSize(10);
               doc.setTextColor('#222');
@@ -797,7 +800,9 @@ function showPdfFormScreen(userDetails) {
               doc.setFontSize(10);
               doc.setTextColor('#222');
               let pdfTotalStr = pdfPriceNum && !isNaN(pdfPriceNum) && pdfPriceNum > 0 ? ('$' + (pdfPriceNum * (row.item.Quantity || 1)).toFixed(2)) : '';
-              doc.text(pdfTotalStr, Number(colX[5])+20, codeY+10, { align: 'center' });
+              if (!userDetails.excludePrice) {
+                doc.text(pdfTotalStr, Number(colX[5])+20, codeY+10, { align: 'center' });
+              }
               rowIdx++;
               pageRow++;
               drawNextRow();
@@ -844,7 +849,7 @@ async function generatePdfBlob(userDetails) {
   // Footer bar (reduced height and font size)
   const footerHeight = 28;
   doc.addPage();
-  drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH);
+  drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH, userDetails.excludePrice);
   let currentY = footerHeight + 8;
   // Table headings (no Product/Diagram, Total at far right)
   const headers = ['Code', 'Description', 'Price ea', 'Qty', 'Total'];
@@ -910,7 +915,7 @@ async function generatePdfBlob(userDetails) {
       const pageCount = doc.internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH);
+        drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH, userDetails.excludePrice);
         currentY = footerHeight + 8;
         doc.setFillColor('#888');
         doc.rect(0, pageHeight-footerHeight, pageWidth, footerHeight, 'F');
@@ -926,7 +931,7 @@ async function generatePdfBlob(userDetails) {
     // New page if needed
     if (pageRow >= maxRowsPerPage) {
       doc.addPage();
-      drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH);
+      drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH, userDetails.excludePrice);
       currentY = footerHeight + 8;
       pageRow = 0;
     }
@@ -1009,7 +1014,9 @@ async function generatePdfBlob(userDetails) {
           pdfPriceNum = parseFloat(row.item.RRP_INCGST.toString().replace(/,/g, ''));
         }
         let pdfPriceStr = pdfPriceNum && !isNaN(pdfPriceNum) && pdfPriceNum > 0 ? ('$' + pdfPriceNum.toFixed(2)) : '';
-        doc.text(pdfPriceStr, Number(colX[3])+30, codeY+10, { align: 'center' });
+        if (!userDetails.excludePrice) {
+          doc.text(pdfPriceStr, Number(colX[3])+30, codeY+10, { align: 'center' });
+        }
         // Qty (top-aligned)
         doc.setFontSize(10);
         doc.setTextColor('#222');
@@ -1018,7 +1025,9 @@ async function generatePdfBlob(userDetails) {
         doc.setFontSize(10);
         doc.setTextColor('#222');
         let pdfTotalStr = pdfPriceNum && !isNaN(pdfPriceNum) && pdfPriceNum > 0 ? ('$' + (pdfPriceNum * (row.item.Quantity || 1)).toFixed(2)) : '';
-        doc.text(pdfTotalStr, Number(colX[5])+20, codeY+10, { align: 'center' });
+        if (!userDetails.excludePrice) {
+          doc.text(pdfTotalStr, Number(colX[5])+20, codeY+10, { align: 'center' });
+        }
         rowIdx++;
         pageRow++;
         drawNextRow();
@@ -1269,7 +1278,7 @@ window.app = {
   }
 };
 
-function drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH) {
+function drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH, excludePrice) {
   const headerHeight = footerHeight + 5.7;
   doc.setFillColor('#222');
   doc.rect(0, 0, pageWidth, headerHeight, 'F');
@@ -1287,9 +1296,13 @@ function drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataU
   const colY = headerHeight - 8;
   doc.text('Code', colX[1]+30, colY, { align: 'center' });
   doc.text('Description', colX[2]+(colX[3]-colX[2])/2, colY, { align: 'center' });
-  doc.text('Price ea', colX[3]+30, colY, { align: 'center' });
-  doc.text('Qty', colX[4]+20, colY, { align: 'center' });
-  doc.text('Total', colX[5]+20, colY, { align: 'center' });
+  if (!excludePrice) {
+    doc.text('Price ea', colX[3]+30, colY, { align: 'center' });
+    doc.text('Qty', colX[4]+20, colY, { align: 'center' });
+    doc.text('Total', colX[5]+20, colY, { align: 'center' });
+  } else {
+    doc.text('Qty', colX[4]+20, colY, { align: 'center' });
+  }
 }
 
 // Helper to load an image as a base64 data URL

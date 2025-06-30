@@ -23,6 +23,16 @@
         <input type="email" id="user-email" name="user-email" required maxlength="80" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
         <label for="user-telephone">Telephone <span style="color:#888;font-size:0.95em;">(optional)</span></label>
         <input type="tel" id="user-telephone" name="user-telephone" maxlength="20" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
+        <div style="margin: 12px 0 0 0; display: flex; align-items: center; gap: 24px;">
+          <span style="display: flex; align-items: center;">
+            <input type="checkbox" id="exclude-price-checkbox" name="exclude-price" style="margin-right: 8px;">
+            <label for="exclude-price-checkbox" style="font-size:1.05rem; color:#222; cursor:pointer;">Exclude price</label>
+          </span>
+          <span style="display: flex; align-items: center;">
+            <input type="checkbox" id="export-csv-checkbox" name="export-csv" style="margin-right: 8px;">
+            <label for="export-csv-checkbox" style="font-size:1.05rem; color:#222; cursor:pointer;">Export CSV</label>
+          </span>
+        </div>
         <div style="display:flex;gap:16px;justify-content:flex-end;margin-top:10px;">
           <button type="button" id="pdf-email-cancel" class="secondary-btn cancel-btn">Cancel</button>
           <button type="submit" id="pdf-email-send" class="primary-btn send-btn">Send</button>
