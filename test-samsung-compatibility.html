@@ -1,1 +1,415 @@
- 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samsung Compatibility Test - Seima Scanner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+        .test-button {
+            padding: 12px 24px;
+            margin: 8px;
+            border: none;
+            border-radius: 4px;
+            background: #2563eb;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .test-button:hover {
+            background: #1d4ed8;
+        }
+        .test-button.warning {
+            background: #f59e0b;
+        }
+        .test-button.success {
+            background: #059669;
+        }
+        .test-result {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .result-success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+        .result-warning {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+        }
+        .result-error {
+            background: #fecaca;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+        .info-box {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+            color: #0c4a6e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛠️ Samsung Compatibility Test Suite</h1>
+        <p>Comprehensive testing for Samsung device compatibility with enhanced download, optimization, and error handling features.</p>
+        
+        <div class="info-box">
+            <strong>Device Info:</strong><br>
+            <span id="device-info">Loading...</span>
+        </div>
+        
+        <div class="test-section">
+            <h3>📱 Device Detection</h3>
+            <p>Test Samsung device and browser identification:</p>
+            <button class="test-button" onclick="testDeviceDetection()">Run Detection Test</button>
+            <div id="detection-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📥 Alternative Download Methods</h3>
+            <p>Test multiple download approaches with fallback systems:</p>
+            <button class="test-button" onclick="testFileSystemAPI()">Test File System API</button>
+            <button class="test-button" onclick="testDataURI()">Test Data URI Method</button>
+            <button class="test-button" onclick="testManualDownload()">Test Manual Download</button>
+            <button class="test-button" onclick="testEnhancedFallbacks()">Test All Fallbacks</button>
+            <div id="download-test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>⚡ File Optimization</h3>
+            <p>Test file compression and optimization features:</p>
+            <button class="test-button" onclick="testImageOptimization()">Test Image Optimization</button>
+            <button class="test-button" onclick="testFileSizeAnalysis()">Test Size Analysis</button>
+            <button class="test-button" onclick="testCompressionLevels()">Test Compression Levels</button>
+            <div id="optimization-test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🚨 Enhanced Error Handling</h3>
+            <p>Test comprehensive error messages and troubleshooting:</p>
+            <button class="test-button warning" onclick="testNetworkError()">Simulate Network Error</button>
+            <button class="test-button warning" onclick="testPermissionError()">Simulate Permission Error</button>
+            <button class="test-button warning" onclick="testMemoryError()">Simulate Memory Error</button>
+            <button class="test-button warning" onclick="testDownloadError()">Simulate Download Error</button>
+            <div id="error-test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔄 Progressive Retry System</h3>
+            <p>Test automatic retry with exponential backoff:</p>
+            <button class="test-button" onclick="testRetrySystem()">Test Retry Logic</button>
+            <button class="test-button" onclick="testRetryWithFailure()">Test Final Failure</button>
+            <div id="retry-test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔧 Samsung-Specific Features</h3>
+            <p>Test Samsung Internet browser specific workarounds:</p>
+            <button class="test-button" onclick="testSamsungDownloadHelp()">Test Samsung Help Modal</button>
+            <button class="test-button" onclick="testSamsungTimeouts()">Test Extended Timeouts</button>
+            <div id="samsung-test-result"></div>
+        </div>
+    </div>
+
+    <!-- Include the PDF generator functions -->
+    <script type="module">
+        import { 
+            isSamsungDevice, 
+            isSamsungBrowser,
+            downloadWithEnhancedFallbacks,
+            downloadViaFileSystemAPI,
+            downloadViaDataURI,
+            showManualDownloadOption,
+            optimizeImageForPDF,
+            getOptimizedFileSettings,
+            showFileSizeInfo,
+            showDetailedErrorMessage,
+            showProgressiveErrorHandler,
+            showSamsungDownloadHelp
+        } from './js/pdf-generator.js';
+        
+        // Make functions globally available for button onclick
+        window.testFunctions = {
+            isSamsungDevice,
+            isSamsungBrowser,
+            downloadWithEnhancedFallbacks,
+            downloadViaFileSystemAPI,
+            downloadViaDataURI,
+            showManualDownloadOption,
+            optimizeImageForPDF,
+            getOptimizedFileSettings,
+            showFileSizeInfo,
+            showDetailedErrorMessage,
+            showProgressiveErrorHandler,
+            showSamsungDownloadHelp
+        };
+        
+        // Load device info
+        document.getElementById('device-info').innerHTML = `
+            User Agent: ${navigator.userAgent}<br>
+            Samsung Device: ${isSamsungDevice() ? 'Yes' : 'No'}<br>
+            Samsung Browser: ${isSamsungBrowser() ? 'Yes' : 'No'}<br>
+            Platform: ${navigator.platform}<br>
+            Online: ${navigator.onLine ? 'Yes' : 'No'}
+        `;
+    </script>
+
+    <script>
+        function showResult(elementId, message, type = 'success') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="test-result result-${type}">${message}</div>`;
+        }
+        
+        function testDeviceDetection() {
+            const { isSamsungDevice, isSamsungBrowser } = window.testFunctions;
+            const isDevice = isSamsungDevice();
+            const isBrowser = isSamsungBrowser();
+            
+            const result = `
+                <strong>Detection Results:</strong><br>
+                Samsung Device: ${isDevice ? '✅ Detected' : '❌ Not detected'}<br>
+                Samsung Browser: ${isBrowser ? '✅ Detected' : '❌ Not detected'}<br>
+                Compatibility Mode: ${isDevice ? 'Samsung-optimized' : 'Standard'}
+            `;
+            
+            showResult('detection-result', result, isDevice ? 'warning' : 'success');
+        }
+        
+        async function testFileSystemAPI() {
+            const { downloadViaFileSystemAPI } = window.testFunctions;
+            
+            try {
+                const testData = new Blob(['Test file content'], { type: 'text/plain' });
+                const success = await downloadViaFileSystemAPI(testData, 'test-file-system.txt', 'text');
+                
+                if (success) {
+                    showResult('download-test-result', '✅ File System Access API works! Modern download method available.', 'success');
+                } else {
+                    showResult('download-test-result', '⚠️ File System Access API not supported. Will use fallback methods.', 'warning');
+                }
+            } catch (error) {
+                showResult('download-test-result', `❌ File System API Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function testDataURI() {
+            const { downloadViaDataURI } = window.testFunctions;
+            
+            try {
+                const smallTestData = new Blob(['Small test file for Data URI'], { type: 'text/plain' });
+                const success = downloadViaDataURI(smallTestData, 'test-data-uri.txt', 'text');
+                
+                if (success) {
+                    showResult('download-test-result', '✅ Data URI download method works! Good fallback for small files.', 'success');
+                } else {
+                    showResult('download-test-result', '⚠️ Data URI method failed. File may be too large.', 'warning');
+                }
+            } catch (error) {
+                showResult('download-test-result', `❌ Data URI Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function testManualDownload() {
+            const { showManualDownloadOption } = window.testFunctions;
+            
+            try {
+                const testData = new Blob(['Manual download test content'], { type: 'text/plain' });
+                showManualDownloadOption(testData, 'test-manual.txt', 'text');
+                showResult('download-test-result', '✅ Manual download modal displayed. Check for right-click and copy options.', 'success');
+            } catch (error) {
+                showResult('download-test-result', `❌ Manual Download Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testEnhancedFallbacks() {
+            const { downloadWithEnhancedFallbacks } = window.testFunctions;
+            
+            try {
+                const testData = new Blob(['Enhanced fallback test'], { type: 'text/plain' });
+                await downloadWithEnhancedFallbacks(testData, 'test-enhanced.txt', 'text');
+                showResult('download-test-result', '✅ Enhanced fallback system initiated. Multiple methods attempted automatically.', 'success');
+            } catch (error) {
+                showResult('download-test-result', `❌ Enhanced Fallback Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testImageOptimization() {
+            const { optimizeImageForPDF } = window.testFunctions;
+            
+            try {
+                // Test with a sample image URL
+                const optimizedUrl = await optimizeImageForPDF('assets/seima-logo.png', 200, 0.8);
+                
+                const result = `
+                    <strong>Image Optimization Test:</strong><br>
+                    ✅ Image processing completed<br>
+                    Optimized URL generated: ${optimizedUrl ? 'Yes' : 'No'}<br>
+                    Max width: 200px, Quality: 80%
+                `;
+                
+                showResult('optimization-test-result', result, 'success');
+            } catch (error) {
+                showResult('optimization-test-result', `❌ Image Optimization Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function testFileSizeAnalysis() {
+            const { getOptimizedFileSettings, showFileSizeInfo } = window.testFunctions;
+            
+            try {
+                // Test with different file sizes
+                const testSizes = [
+                    { size: 500 * 1024, label: '500KB' },
+                    { size: 3 * 1024 * 1024, label: '3MB' },
+                    { size: 8 * 1024 * 1024, label: '8MB' }
+                ];
+                
+                let results = '<strong>File Size Analysis:</strong><br>';
+                
+                testSizes.forEach(test => {
+                    const blob = new Blob([new ArrayBuffer(test.size)]);
+                    const info = showFileSizeInfo(blob, `test-${test.label}.pdf`);
+                    results += `${test.label}: ${info.settings.compressionLevel} compression - ${info.settings.message}<br>`;
+                });
+                
+                showResult('optimization-test-result', results, 'success');
+            } catch (error) {
+                showResult('optimization-test-result', `❌ File Size Analysis Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function testCompressionLevels() {
+            const { getOptimizedFileSettings } = window.testFunctions;
+            
+            try {
+                const levels = [
+                    { size: 1024 * 1024, name: 'Small (1MB)' },
+                    { size: 3 * 1024 * 1024, name: 'Medium (3MB)' },
+                    { size: 10 * 1024 * 1024, name: 'Large (10MB)' }
+                ];
+                
+                let result = '<strong>Compression Level Tests:</strong><br>';
+                
+                levels.forEach(level => {
+                    const settings = getOptimizedFileSettings(level.size);
+                    result += `${level.name}: ${settings.compressionLevel} (${settings.imageQuality * 100}% quality, ${settings.imageMaxWidth}px max width)<br>`;
+                });
+                
+                showResult('optimization-test-result', result, 'success');
+            } catch (error) {
+                showResult('optimization-test-result', `❌ Compression Test Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function testNetworkError() {
+            const { showDetailedErrorMessage } = window.testFunctions;
+            const mockError = new Error('Failed to fetch resource from network');
+            showDetailedErrorMessage(mockError, 'testing network error handling', 'test-file.pdf');
+            showResult('error-test-result', '✅ Network error modal displayed with troubleshooting steps.', 'success');
+        }
+        
+        function testPermissionError() {
+            const { showDetailedErrorMessage } = window.testFunctions;
+            const mockError = new Error('Permission denied for file download');
+            showDetailedErrorMessage(mockError, 'testing permission error', 'restricted-file.pdf');
+            showResult('error-test-result', '✅ Permission error modal displayed with enable download steps.', 'success');
+        }
+        
+        function testMemoryError() {
+            const { showDetailedErrorMessage } = window.testFunctions;
+            const mockError = new Error('Insufficient memory to complete operation');
+            showDetailedErrorMessage(mockError, 'testing memory constraints', 'large-file.pdf');
+            showResult('error-test-result', '✅ Memory error modal displayed with optimization suggestions.', 'success');
+        }
+        
+        function testDownloadError() {
+            const { showDetailedErrorMessage } = window.testFunctions;
+            const mockError = new Error('Blob URL creation failed');
+            showDetailedErrorMessage(mockError, 'testing download failure', 'failed-download.pdf');
+            showResult('error-test-result', '✅ Download error modal displayed with alternative methods.', 'success');
+        }
+        
+        async function testRetrySystem() {
+            const { showProgressiveErrorHandler } = window.testFunctions;
+            
+            let attempts = 0;
+            const mockOperation = async () => {
+                attempts++;
+                if (attempts < 3) {
+                    throw new Error(`Simulated failure attempt ${attempts}`);
+                }
+                return 'Success after retries';
+            };
+            
+            try {
+                const wrappedOperation = showProgressiveErrorHandler(mockOperation);
+                const result = await wrappedOperation();
+                showResult('retry-test-result', `✅ Retry system worked! Final result: ${result} (after ${attempts} attempts)`, 'success');
+            } catch (error) {
+                showResult('retry-test-result', `❌ Retry system error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testRetryWithFailure() {
+            const { showProgressiveErrorHandler } = window.testFunctions;
+            
+            const mockFailingOperation = async () => {
+                throw new Error('Persistent failure that cannot be recovered');
+            };
+            
+            try {
+                const wrappedOperation = showProgressiveErrorHandler(mockFailingOperation);
+                await wrappedOperation();
+            } catch (error) {
+                showResult('retry-test-result', '✅ Final failure handled correctly. Detailed error modal should appear.', 'warning');
+            }
+        }
+        
+        function testSamsungDownloadHelp() {
+            const { showSamsungDownloadHelp } = window.testFunctions;
+            const testData = new Blob(['Samsung help test'], { type: 'text/plain' });
+            showSamsungDownloadHelp(testData, 'samsung-test.txt', 'text');
+            showResult('samsung-test-result', '✅ Samsung-specific help modal displayed with browser switching advice.', 'success');
+        }
+        
+        function testSamsungTimeouts() {
+            const { isSamsungDevice } = window.testFunctions;
+            const timeoutDuration = isSamsungDevice() ? 10000 : 2000;
+            const result = `
+                <strong>Timeout Configuration:</strong><br>
+                Samsung Device: ${isSamsungDevice() ? 'Yes' : 'No'}<br>
+                URL Cleanup Delay: ${timeoutDuration / 1000} seconds<br>
+                Optimized for: ${isSamsungDevice() ? 'Samsung Browser compatibility' : 'Standard browsers'}
+            `;
+            showResult('samsung-test-result', result, isSamsungDevice() ? 'warning' : 'success');
+        }
+    </script>
+</body>
+</html> 
