@@ -410,8 +410,6 @@ export class NavigationManager {
     });
   }
 
-
-
   setLink(id, url) {
     const el = document.getElementById(id);
     if (url && url !== '#') {
@@ -582,11 +580,19 @@ export class NavigationManager {
     reviewList.innerHTML = Object.entries(byRoom).map(([room, items]) => `
       <div class="review-room-group">
         <div class="review-room-header">${room} <span class="room-count">(${items.length})</span></div>
-        ${items.map((item, idx) => `
+        ${items.map((item, idx) => {
+          const product = item.product;
+          // Handle different field naming conventions (catalog vs imported)
+          const description = product.Description || product.description || product.productName || product['Product Name'] || 'Product';
+          const orderCode = product.OrderCode || product.orderCode || '';
+          const imageUrl = product.Image_URL || product.imageUrl || 'assets/no-image.png';
+          const rrpIncGst = product.RRP_INCGST || product.rrpIncGst || product.price || '0';
+          
+          return `
           <div class="review-product-card" style="display: flex; flex-direction: column; align-items: stretch;">
             <div style="display: flex; flex-direction: row; align-items: flex-start;">
               <div class="review-product-thumb-wrap">
-                <img class="review-product-thumb" src="${item.product.Image_URL || 'assets/no-image.png'}" alt="Product" onerror="this.src='assets/no-image.png';" onload="">
+                <img class="review-product-thumb" src="${imageUrl}" alt="Product" onerror="this.src='assets/no-image.png';" onload="">
                 <div class="review-qty-pill" data-room="${room}" data-idx="${idx}">
                   <button class="review-qty-btn${(item.quantity||1)===1?' delete':''}" data-action="decrement" title="${(item.quantity||1)===1?'Delete':'Decrease'}">
                     ${(item.quantity||1)===1?`<svg viewBox='0 0 64 64' width='64' height='64'><rect x='10' y='8' width='44' height='6' rx='3' fill='black'/><polygon points='7,18 57,18 52,58 12,58' fill='none' stroke='black' stroke-width='7'/></svg>`:'–'}
@@ -596,16 +602,17 @@ export class NavigationManager {
                 </div>
               </div>
               <div class="review-product-info">
-                <div class="review-product-title">${item.product.Description || ''}</div>
+                <div class="review-product-title">${description}</div>
                 <div class="review-product-meta">
-                  <span class="review-product-code">${item.product.OrderCode ? 'Code: ' + item.product.OrderCode : ''}</span>
-                  <span class="review-product-price">${item.product.RRP_INCGST ? '$' + Number(item.product.RRP_INCGST).toFixed(2) + ' ea' : ''}</span>
+                  <span class="review-product-code">${orderCode ? 'Code: ' + orderCode : ''}</span>
+                  <span class="review-product-price">${rrpIncGst ? '$' + Number(rrpIncGst).toFixed(2) + ' ea' : ''}</span>
                 </div>
                 <div class="review-product-notes">${item.notes ? 'Notes: ' + item.notes : ''}</div>
               </div>
             </div>
           </div>
-        `).join('')}
+          `;
+        }).join('')}
       </div>
     `).join('');
 
@@ -622,47 +629,9 @@ export class NavigationManager {
     }, {});
   }
 
-  renderRoomGroup(room, products) {
-    const productsHtml = products.map(item => this.renderProductCard(item)).join('');
-    
-    return `
-      <div class="review-room-group">
-        <div class="review-room-header">${room}</div>
-        ${productsHtml}
-      </div>
-    `;
-  }
+  // Removed unused renderRoomGroup method
 
-  renderProductCard(item) {
-    const product = item.product;
-    const price = Utils.formatPrice(product.RRP_INCGST);
-    const imageUrl = (product.Image_URL && product.Image_URL.trim()) ? product.Image_URL : 'assets/no-image.png';
-    
-    return `
-      <div class="review-product-card">
-        <div class="review-product-thumb-wrap">
-          <img src="${imageUrl}" 
-               alt="${product.Description}" 
-               class="review-product-thumb"
-               onerror="this.src='assets/no-image.png'; this.onerror=null;">
-        </div>
-        <div class="review-product-info">
-          <div class="review-product-title">${product.Description || 'Product'}</div>
-          <div class="review-product-meta">
-            <span class="review-product-code">${product.OrderCode || ''}</span>
-            <span class="review-product-price">${price}</span>
-          </div>
-          ${item.notes ? `<div class="review-product-notes">${Utils.sanitizeInput(item.notes)}</div>` : ''}
-        </div>
-        <div class="review-qty-pill">
-          <button class="review-qty-btn" data-action="decrease" data-id="${item.id}">-</button>
-          <span class="review-qty-value">${item.quantity}</span>
-          <button class="review-qty-btn" data-action="increase" data-id="${item.id}">+</button>
-          <button class="review-qty-btn delete" data-action="delete" data-id="${item.id}">×</button>
-        </div>
-      </div>
-    `;
-  }
+  // renderProductCard method removed - using inline HTML in renderReviewList for proper quantity controls
 
   setupOriginalQuantityControls(byRoom) {
     // Original quantity pill handlers
@@ -703,47 +672,7 @@ export class NavigationManager {
     });
   }
 
-  setupQuantityControls() {
-    document.querySelectorAll('.review-qty-btn').forEach(btn => {
-      btn.onclick = (e) => {
-        e.preventDefault();
-        
-        const action = btn.getAttribute('data-action');
-        const productId = btn.getAttribute('data-id');
-        
-        this.handleQuantityAction(action, productId);
-      };
-    });
-  }
-
-  handleQuantityAction(action, productId) {
-    const selectedProducts = StorageManager.getSelectedProducts();
-    const product = selectedProducts.find(p => p.id === productId);
-    
-    if (!product) return;
-
-    switch (action) {
-      case 'increase':
-        if (product.quantity < 10) {
-          StorageManager.updateProductQuantity(productId, product.quantity + 1);
-          this.renderReviewList();
-        }
-        break;
-      case 'decrease':
-        if (product.quantity > 1) {
-          StorageManager.updateProductQuantity(productId, product.quantity - 1);
-          this.renderReviewList();
-        }
-        break;
-      case 'delete':
-        if (confirm('Remove this product from selection?')) {
-          StorageManager.removeProductFromSelection(productId);
-          this.renderReviewList();
-          this.updateSelectionCount();
-        }
-        break;
-    }
-  }
+  // Removed unused setupQuantityControls and handleQuantityAction methods
 
   showPdfFormModal() {
     const modal = document.getElementById('pdf-email-modal');

@@ -1,11 +1,13 @@
 import { NavigationManager } from './navigation.js';
 import { showPdfFormScreen, ensurePdfSpinner } from './pdf-generator.js';
 import { StorageManager } from './storage.js';
+import { FileImportManager } from './file-import.js';
 
 // Main application class
 class SeimaScanner {
   constructor() {
     this.navigationManager = null;
+    this.fileImportManager = new FileImportManager();
   }
 
   async init() {
@@ -14,11 +16,16 @@ class SeimaScanner {
       this.navigationManager = new NavigationManager();
       await this.navigationManager.init();
 
+      // Initialize file import manager
+      this.fileImportManager.init();
+
       // Setup global event listeners
       this.setupGlobalEventListeners();
 
       // Make scanner controller globally available for compatibility
       window.scannerController = this.navigationManager.scannerController;
+      // Make navigation manager globally available for file import
+      window.navigationManager = this.navigationManager;
 
       console.log('Seima Scanner initialized successfully');
     } catch (error) {
