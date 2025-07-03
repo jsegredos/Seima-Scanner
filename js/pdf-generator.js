@@ -1,5 +1,162 @@
 import { CONFIG } from './config.js';
 
+// Samsung Browser Compatibility Utilities
+export function isSamsungBrowser() {
+  const userAgent = navigator.userAgent;
+  return /SamsungBrowser/i.test(userAgent) || /Samsung/i.test(userAgent);
+}
+
+export function isSamsungDevice() {
+  const userAgent = navigator.userAgent;
+  return /SM-|SCH-|SPH-|SGH-|GT-|Galaxy/i.test(userAgent) || /SamsungBrowser/i.test(userAgent);
+}
+
+function showSamsungDownloadHelp(blob, filename, fileType = 'PDF') {
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.7); z-index: 10000; display: flex; 
+    align-items: center; justify-content: center; padding: 20px;
+  `;
+  
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: white; border-radius: 8px; padding: 24px; max-width: 500px; 
+    width: 100%; max-height: 80vh; overflow-y: auto;
+  `;
+  
+  content.innerHTML = `
+    <h3 style="color: #dc2626; margin: 0 0 16px 0; display: flex; align-items: center;">
+      <span style="margin-right: 8px;">⚠️</span>
+      Samsung Device Download Issue
+    </h3>
+    <p style="margin: 0 0 16px 0; color: #374151;">
+      Your Samsung device may have difficulty downloading ${fileType} files. Here's how to fix it:
+    </p>
+    <ol style="margin: 0 0 20px 0; padding-left: 20px; color: #374151;">
+      <li style="margin-bottom: 8px;"><strong>Use Chrome Browser:</strong> Try opening this page in Chrome instead of Samsung Internet</li>
+      <li style="margin-bottom: 8px;"><strong>Check Downloads:</strong> Look in your Downloads folder - the file may have saved without notification</li>
+      <li style="margin-bottom: 8px;"><strong>Clear Cache:</strong> Go to Settings > Apps > Downloads > Storage > Clear Cache</li>
+      <li style="margin-bottom: 8px;"><strong>Try Again:</strong> Wait 10 seconds and try the download again</li>
+    </ol>
+    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+      <button id="samsung-help-close" style="
+        padding: 8px 16px; border: 1px solid #d1d5db; background: white; 
+        border-radius: 4px; cursor: pointer;
+      ">Close</button>
+      <button id="samsung-help-retry" style="
+        padding: 8px 16px; border: none; background: #2563eb; color: white; 
+        border-radius: 4px; cursor: pointer;
+      ">Try Download Again</button>
+    </div>
+  `;
+  
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+  
+  document.getElementById('samsung-help-close').onclick = () => {
+    document.body.removeChild(modal);
+  };
+  
+  document.getElementById('samsung-help-retry').onclick = () => {
+    document.body.removeChild(modal);
+    // Retry download after a delay
+    setTimeout(() => {
+      downloadWithFallback(blob, filename, fileType);
+    }, 1000);
+  };
+  
+  // Close on backdrop click
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+    }
+  };
+}
+
+export function downloadWithFallback(blob, filename, fileType = 'file') {
+  let downloadSuccessful = false;
+  
+  try {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    
+    // Listen for download events (may not work on all browsers)
+    const downloadTimeout = setTimeout(() => {
+      if (!downloadSuccessful && isSamsungDevice()) {
+        console.warn('Download may have failed on Samsung device');
+        showSamsungDownloadHelp(blob, filename, fileType);
+      }
+    }, 3000);
+    
+    link.click();
+    document.body.removeChild(link);
+    
+    // Samsung devices need longer timeout before URL cleanup
+    const cleanupDelay = isSamsungDevice() ? 10000 : 2000;
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      clearTimeout(downloadTimeout);
+    }, cleanupDelay);
+    
+    // Assume success for now
+    downloadSuccessful = true;
+    
+  } catch (error) {
+    console.error('Download failed:', error);
+    if (isSamsungDevice()) {
+      showSamsungDownloadHelp(blob, filename, fileType);
+    } else {
+      alert(`Failed to download ${filename}. Please try again or contact support.`);
+    }
+  }
+}
+
+function showBrowserCompatibilityWarning() {
+  if (isSamsungDevice()) {
+    const existingWarning = document.getElementById('samsung-browser-warning');
+    if (existingWarning) return; // Don't show multiple warnings
+    
+    const warning = document.createElement('div');
+    warning.id = 'samsung-browser-warning';
+    warning.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+      background: #fef3c7; border-bottom: 1px solid #f59e0b; padding: 12px;
+      text-align: center; font-size: 14px; color: #92400e;
+    `;
+    
+    warning.innerHTML = `
+      <span style="margin-right: 8px;">📱</span>
+      <strong>Samsung Device:</strong> For best results with PDF downloads, use Chrome browser instead of Samsung Internet.
+      <button onclick="this.parentElement.remove()" style="
+        margin-left: 12px; padding: 4px 8px; border: none; background: #f59e0b; 
+        color: white; border-radius: 3px; cursor: pointer; font-size: 12px;
+      ">Dismiss</button>
+    `;
+    
+    document.body.insertBefore(warning, document.body.firstChild);
+    
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+      if (warning.parentElement) {
+        warning.remove();
+      }
+    }, 10000);
+  }
+}
+
+// Show compatibility warning when page loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', showBrowserCompatibilityWarning);
+} else {
+  showBrowserCompatibilityWarning();
+}
+
 export function showPdfFormScreen(userDetails) {
   const spinner = document.getElementById('pdf-spinner');
   if (spinner) spinner.style.display = 'flex';
@@ -210,7 +367,19 @@ export function showPdfFormScreen(userDetails) {
             const min = String(now.getMinutes()).padStart(2, '0');
             const emailSafe = (userDetails.email || 'customer').replace(/[^a-zA-Z0-9@._-]/g, '_');
             const pdfFilename = `${emailSafe}-${dd}${mm}${yy}-${hh}${min}.pdf`;
-            doc.save(pdfFilename);
+            
+            // Enhanced PDF download with Samsung compatibility
+            try {
+              const pdfBlob = doc.output('blob');
+              downloadWithFallback(pdfBlob, pdfFilename, 'PDF');
+            } catch (error) {
+              console.error('PDF generation failed:', error);
+              if (isSamsungDevice()) {
+                showSamsungDownloadHelp(null, pdfFilename, 'PDF');
+              } else {
+                alert('Failed to generate PDF. Please try again or contact support.');
+              }
+            }
             // --- CSV EXPORT LOGIC ---
             if (userDetails.exportCsv) {
               // Keep spinner going
@@ -452,17 +621,8 @@ export function generateAndDownloadCsv(userDetails, csvFilename) {
   // Add customer details as first row (optional, or as header comment)
   // Use PapaParse to unparse
   const csv = window.Papa.unparse(csvData);
-  // Download CSV
+  // Download CSV with Samsung compatibility
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', csvFilename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-  }
+  downloadWithFallback(blob, csvFilename, 'CSV');
   if (spinner) spinner.style.display = 'none';
 } 

@@ -1,5 +1,5 @@
 import { NavigationManager } from './navigation.js';
-import { showPdfFormScreen, ensurePdfSpinner } from './pdf-generator.js';
+import { showPdfFormScreen, ensurePdfSpinner, isSamsungDevice } from './pdf-generator.js';
 import { StorageManager } from './storage.js';
 import { FileImportManager } from './file-import.js';
 
@@ -26,6 +26,11 @@ class SeimaScanner {
       window.scannerController = this.navigationManager.scannerController;
       // Make navigation manager globally available for file import
       window.navigationManager = this.navigationManager;
+
+      // Log Samsung device detection for debugging
+      if (isSamsungDevice()) {
+        console.log('Samsung device detected - enhanced download compatibility enabled');
+      }
 
       console.log('Seima Scanner initialized successfully');
     } catch (error) {
