@@ -136,9 +136,29 @@
             <button class="test-button" onclick="testSamsungTimeouts()">Test Extended Timeouts</button>
             <div id="samsung-test-result"></div>
         </div>
+        
+        <div class="test-section">
+            <h3>🧠 Advanced Browser Compatibility</h3>
+            <p>Test comprehensive browser compatibility monitoring:</p>
+            <button class="test-button" onclick="testBrowserCompatibility()">Run Compatibility Check</button>
+            <button class="test-button" onclick="testFeatureDetection()">Test Feature Detection</button>
+            <button class="test-button" onclick="testMemoryMonitoring()">Test Memory Monitoring</button>
+            <button class="test-button" onclick="testNetworkStatus()">Test Network Status</button>
+            <div id="compatibility-test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📧 Email Functionality</h3>
+            <p>Test EmailJS integration and email features:</p>
+            <button class="test-button" onclick="testEmailService()">Test Email Service</button>
+            <button class="test-button" onclick="testEmailModal()">Test Email Modal</button>
+            <button class="test-button" onclick="testMailtoFallback()">Test Mailto Fallback</button>
+            <button class="test-button" onclick="testEmailValidation()">Test Email Validation</button>
+            <div id="email-test-result"></div>
+        </div>
     </div>
 
-    <!-- Include the PDF generator functions -->
+    <!-- Include the PDF generator functions and new modules -->
     <script type="module">
         import { 
             isSamsungDevice, 
@@ -155,6 +175,10 @@
             showSamsungDownloadHelp
         } from './js/pdf-generator.js';
         
+        import { browserCompatibility } from './js/browser-compatibility.js';
+        import { emailService } from './js/email-service.js';
+        import { CONFIG } from './js/config.js';
+        
         // Make functions globally available for button onclick
         window.testFunctions = {
             isSamsungDevice,
@@ -168,7 +192,10 @@
             showFileSizeInfo,
             showDetailedErrorMessage,
             showProgressiveErrorHandler,
-            showSamsungDownloadHelp
+            showSamsungDownloadHelp,
+            browserCompatibility,
+            emailService,
+            CONFIG
         };
         
         // Load device info
@@ -409,6 +436,191 @@
                 Optimized for: ${isSamsungDevice() ? 'Samsung Browser compatibility' : 'Standard browsers'}
             `;
             showResult('samsung-test-result', result, isSamsungDevice() ? 'warning' : 'success');
+        }
+        
+        // Browser Compatibility Tests
+        function testBrowserCompatibility() {
+            const { browserCompatibility } = window.testFunctions;
+            const report = browserCompatibility.getCompatibilityReport();
+            
+            let result = `
+                <strong>Compatibility Report:</strong><br>
+                Score: ${report.score}/100<br>
+                Device: ${report.device.browser.name} ${report.device.browser.version}<br>
+                Platform: ${report.device.isDesktop ? 'Desktop' : report.device.isTablet ? 'Tablet' : 'Mobile'}<br>
+                Critical Issues: ${report.issues.filter(i => i.includes('not supported')).length}<br>
+                Recommendations: ${report.recommendations.length}
+            `;
+            
+            if (report.recommendations.length > 0) {
+                result += `<br><br><strong>Top Recommendations:</strong><br>`;
+                report.recommendations.slice(0, 3).forEach((rec, i) => {
+                    result += `${i + 1}. ${rec.message}<br>`;
+                });
+            }
+            
+            const scoreType = report.score >= 90 ? 'success' : report.score >= 70 ? 'warning' : 'error';
+            showResult('compatibility-test-result', result, scoreType);
+        }
+        
+        function testFeatureDetection() {
+            const { browserCompatibility } = window.testFunctions;
+            const features = browserCompatibility.features;
+            
+            const criticalFeatures = ['localStorage', 'fileReader', 'blob', 'createObjectURL'];
+            const supportedCritical = criticalFeatures.filter(f => features[f]).length;
+            
+            let result = `
+                <strong>Feature Detection Results:</strong><br>
+                Critical Features: ${supportedCritical}/${criticalFeatures.length}<br>
+                Local Storage: ${features.localStorage ? '✅' : '❌'}<br>
+                File API: ${features.fileReader ? '✅' : '❌'}<br>
+                Blob Support: ${features.blob ? '✅' : '❌'}<br>
+                Object URLs: ${features.createObjectURL ? '✅' : '❌'}<br>
+                ES6 Modules: ${features.modules ? '✅' : '❌'}<br>
+                File System API: ${features.fileSystemAccess ? '✅' : '❌'}<br>
+                Camera Access: ${features.getUserMedia ? '✅' : '❌'}
+            `;
+            
+            const allCriticalSupported = supportedCritical === criticalFeatures.length;
+            showResult('compatibility-test-result', result, allCriticalSupported ? 'success' : 'error');
+        }
+        
+        function testMemoryMonitoring() {
+            const { browserCompatibility } = window.testFunctions;
+            const memory = browserCompatibility.memoryInfo;
+            
+            let result = `<strong>Memory Status:</strong><br>`;
+            
+            if (memory.jsHeapSizeLimit) {
+                const usedMB = (memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
+                const limitMB = (memory.jsHeapSizeLimit / 1024 / 1024).toFixed(1);
+                const usagePercent = ((memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100).toFixed(1);
+                
+                result += `
+                    Memory Usage: ${usedMB} MB / ${limitMB} MB (${usagePercent}%)<br>
+                    Memory Pressure: ${memory.memoryPressure}<br>
+                    Estimated Max File Size: ${(memory.estimatedMaxFileSize / 1024 / 1024).toFixed(1)} MB<br>
+                    Max Blob Size: ${(memory.maxBlobSize / 1024 / 1024).toFixed(1)} MB
+                `;
+                
+                const pressureType = memory.memoryPressure === 'high' ? 'error' : 
+                                   memory.memoryPressure === 'medium' ? 'warning' : 'success';
+                showResult('compatibility-test-result', result, pressureType);
+            } else {
+                result += 'Memory API not available (non-Chrome browser)';
+                showResult('compatibility-test-result', result, 'warning');
+            }
+        }
+        
+        function testNetworkStatus() {
+            const { browserCompatibility } = window.testFunctions;
+            const network = browserCompatibility.networkStatus;
+            
+            let result = `
+                <strong>Network Status:</strong><br>
+                Online: ${network.isOnline ? '✅ Connected' : '❌ Offline'}<br>
+                Connection Type: ${network.connectionType || 'Unknown'}<br>
+                Effective Type: ${network.effectiveType || 'Unknown'}<br>
+            `;
+            
+            if (network.downlink) {
+                result += `Download Speed: ${network.downlink} Mbps<br>`;
+            }
+            if (network.rtt) {
+                result += `Round Trip Time: ${network.rtt} ms<br>`;
+            }
+            
+            const networkType = !network.isOnline ? 'error' : 'success';
+            showResult('compatibility-test-result', result, networkType);
+        }
+        
+        // Email Functionality Tests
+        function testEmailService() {
+            const { emailService, CONFIG } = window.testFunctions;
+            
+            let result = `<strong>Email Service Status:</strong><br>`;
+            
+            if (emailService.isInitialized) {
+                result += `
+                    ✅ EmailJS Initialized<br>
+                    Service ID: ${CONFIG.EMAIL.SERVICE_ID}<br>
+                    Template ID: ${CONFIG.EMAIL.TEMPLATE_ID}<br>
+                    Max Attachment: ${(CONFIG.EMAIL.MAX_ATTACHMENT_SIZE / 1024 / 1024).toFixed(1)} MB
+                `;
+                showResult('email-test-result', result, 'success');
+            } else {
+                result += `
+                    ⚠️ EmailJS Not Configured<br>
+                    Using mailto fallback only<br>
+                    Configure EmailJS credentials in config.js
+                `;
+                showResult('email-test-result', result, 'warning');
+            }
+        }
+        
+        function testEmailModal() {
+            const { emailService } = window.testFunctions;
+            
+            const testUserDetails = {
+                name: 'Test Customer',
+                email: 'test@example.com',
+                project: 'Test Project',
+                address: '123 Test Street',
+                telephone: '0400 000 000'
+            };
+            
+            emailService.showEmailModal(testUserDetails, () => {
+                showResult('email-test-result', '✅ Email modal displayed and confirmed', 'success');
+            }, () => {
+                showResult('email-test-result', '✅ Email modal displayed and cancelled', 'warning');
+            });
+        }
+        
+        function testMailtoFallback() {
+            const { emailService } = window.testFunctions;
+            
+            const testUserDetails = {
+                name: 'Test Customer',
+                email: 'test@example.com',
+                project: 'Fallback Test'
+            };
+            
+            const testBlob = new Blob(['Test PDF content'], { type: 'application/pdf' });
+            
+            try {
+                const result = emailService.sendMailtoFallback(testUserDetails, testBlob);
+                showResult('email-test-result', `✅ Mailto fallback triggered: ${result.message}`, 'success');
+            } catch (error) {
+                showResult('email-test-result', `❌ Mailto fallback failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function testEmailValidation() {
+            const { emailService } = window.testFunctions;
+            
+            const testCases = [
+                { email: 'valid@example.com', name: 'Valid Email', expected: true },
+                { email: 'invalid-email', name: 'Invalid Email', expected: false },
+                { email: '', name: 'Empty Email', expected: false },
+                { email: 'test@domain', name: 'Incomplete Domain', expected: false }
+            ];
+            
+            let result = '<strong>Email Validation Tests:</strong><br>';
+            let passCount = 0;
+            
+            testCases.forEach(test => {
+                const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(test.email);
+                const passed = isValid === test.expected;
+                if (passed) passCount++;
+                
+                result += `${test.name}: ${passed ? '✅' : '❌'} (${test.email || 'empty'})<br>`;
+            });
+            
+            result += `<br>Tests Passed: ${passCount}/${testCases.length}`;
+            
+            const allPassed = passCount === testCases.length;
+            showResult('email-test-result', result, allPassed ? 'success' : 'error');
         }
     </script>
 </body>

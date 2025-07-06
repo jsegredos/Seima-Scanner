@@ -137,6 +137,32 @@ if (document.readyState === 'loading') {
 export function showPdfFormScreen(userDetails) {
   const spinner = document.getElementById('pdf-spinner');
   if (spinner) spinner.style.display = 'flex';
+  
+  // Reset image optimization stats for new PDF generation
+  resetImageOptimizationStats();
+  
+      // Show processing notification
+    const processingNotification = document.createElement('div');
+    processingNotification.id = 'pdf-processing-notification';
+    processingNotification.style.cssText = `
+      position: fixed; top: 20px; right: 20px; z-index: 10001;
+      background: #dbeafe; border: 1px solid #3b82f6; border-radius: 6px;
+      padding: 16px; max-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    
+    const isEmailCompatible = userDetails.emailCompatible;
+    
+    processingNotification.innerHTML = `
+      <div style="display: flex; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 18px; margin-right: 8px;">${isEmailCompatible ? '📧' : '📄'}</span>
+        <strong style="color: #1e40af;">Creating your product selection files</strong>
+      </div>
+      <p style="margin: 0; color: #1e40af; font-size: 14px;">
+        ${isEmailCompatible ? 'Creating text-only PDF without images for optimal email delivery.' : 'This may take a moment.'}
+      </p>
+    `;
+    document.body.appendChild(processingNotification);
+  
   loadImageAsDataURL('assets/seima-logo.png', function(logoDataUrl, logoNaturalW, logoNaturalH) {
     // Before PDF export, ensure window.seimaLogoImg is loaded
     function ensureSeimaLogoLoaded(cb) {
@@ -186,6 +212,12 @@ export function showPdfFormScreen(userDetails) {
     const pageHeight = doc.internal.pageSize.getHeight();
     // --- COVER PAGE ---
     loadImageAsDataURL('assets/seima-logo.png', function(coverLogoDataUrl, coverLogoNaturalW, coverLogoNaturalH) {
+      
+      // Debug: Track cover logo size
+      if (coverLogoDataUrl) {
+        console.log(`🔍 Debug - Cover logo size: ${(coverLogoDataUrl.length / 1024).toFixed(1)} KB (${coverLogoNaturalW}x${coverLogoNaturalH})`);
+      }
+      
       const coverLogoH = 60;
       const coverLogoW = coverLogoNaturalW && coverLogoNaturalH ? (coverLogoH * coverLogoNaturalW / coverLogoNaturalH) : 180;
       const coverLogoX = (pageWidth - coverLogoW) / 2;
@@ -249,6 +281,12 @@ export function showPdfFormScreen(userDetails) {
       doc.addPage();
       // Now load the white logo for product pages
       loadImageAsDataURL('assets/seima-logo-white.png', function(logoDataUrl, logoNaturalW, logoNaturalH) {
+        
+        // Debug: Track product page logo size
+        if (logoDataUrl) {
+          console.log(`🔍 Debug - Product page logo size: ${(logoDataUrl.length / 1024).toFixed(1)} KB (${logoNaturalW}x${logoNaturalH})`);
+        }
+        
         // Margins and layout
         const leftMargin = 32;
         const rightMargin = 32;
@@ -264,43 +302,106 @@ export function showPdfFormScreen(userDetails) {
         const colW = [imgW, imgW, 60, priceX-descX, 60, 60];
         // Table headings (no Product/Diagram, Total at far right)
         const headers = ['Code', 'Description', 'Price ea', 'Qty', 'Total'];
+        // Reset image optimization stats for this PDF generation
+        resetImageOptimizationStats();
+        
         // Insert drawImage function definition before drawNextRow
         const drawImage = (doc, imgUrl, x, y, maxW, maxH, cb) => {
-          if (!imgUrl) { if (cb) cb(); return; }
-          let proxiedUrl = imgUrl;
-          if (!imgUrl.startsWith('data:') && !imgUrl.startsWith('assets/')) {
-            proxiedUrl = 'https://corsproxy.io/?' + encodeURIComponent(imgUrl);
+          if (!imgUrl) { 
+            if (cb) cb(); 
+            return; 
           }
-          const img = new window.Image();
-          img.crossOrigin = 'Anonymous';
-          let finished = false;
-          const timeout = setTimeout(() => {
-            if (!finished) {
-              finished = true;
+          
+          // Track image optimization attempt
+          imageOptimizationStats.totalImages++;
+          
+          // For email compatibility, skip images entirely if requested
+          if (userDetails.emailCompatible) {
+            console.log(`📧 Email mode: Skipping image for smaller file size: ${imgUrl}`);
+            imageOptimizationStats.failedImages++;
+            if (cb) cb();
+            return;
+          }
+          
+          // Optimize the image for PDF use with reasonable quality
+          optimizeImageForPDF(imgUrl, 400, 0.7) // 400px max, 70% quality for technical detail
+            .then(optimizedUrl => {
+              if (!optimizedUrl || optimizedUrl === 'assets/no-image.png') { 
+                console.log(`⏭️ Skipping failed image: ${imgUrl}`);
+                imageOptimizationStats.failedImages++;
+                if (cb) cb(); 
+                return; 
+              }
+              
+              // If it's a data URL (base64), use it directly
+              if (optimizedUrl.startsWith('data:')) {
+                try {
+                  // Check base64 size - allow reasonable sizes for technical images
+                  const base64Data = optimizedUrl.split(',')[1];
+                  const sizeInBytes = base64Data ? (base64Data.length * 0.75) : 0;
+                  const sizeInKB = Math.round(sizeInBytes / 1024);
+                  
+                  if (sizeInBytes > 1048576) { // 1MB limit per image (very generous)
+                    console.warn(`🚫 Image too large: ${sizeInKB} KB, skipping: ${imgUrl}`);
+                    imageOptimizationStats.failedImages++;
+                    if (cb) cb();
+                    return;
+                  }
+                  
+                  const img = new window.Image();
+                  img.onload = function() {
+                    try {
+                      // Use reasonable dimensions for technical diagrams
+                      const pdfMaxW = Math.min(maxW, 120); // Larger display size
+                      const pdfMaxH = Math.min(maxH, 120);
+                      doc.addImage(optimizedUrl, 'JPEG', x, y, pdfMaxW, pdfMaxH);
+                      console.log(`✅ Added technical image to PDF: ${imgUrl} (${pdfMaxW}x${pdfMaxH}, ${sizeInKB} KB)`);
+                      imageOptimizationStats.optimizedImages++;
+                    } catch (e) {
+                      console.warn('Failed to add optimized image to PDF:', e);
+                      imageOptimizationStats.failedImages++;
+                    }
+                    if (cb) cb();
+                  };
+                  img.onerror = function() {
+                    console.warn('Failed to load optimized data URL');
+                    imageOptimizationStats.failedImages++;
+                    if (cb) cb();
+                  };
+                  img.src = optimizedUrl;
+                } catch (e) {
+                  console.warn('Failed to create image from data URL:', e);
+                  imageOptimizationStats.failedImages++;
+                  if (cb) cb();
+                }
+              } else {
+                // For other URLs, skip them to avoid CORS issues
+                console.log(`⏭️ Skipping non-data URL to reduce file size: ${imgUrl}`);
+                imageOptimizationStats.failedImages++;
+                if (cb) cb();
+              }
+            })
+            .catch(error => {
+              console.warn('Image optimization failed:', error);
+              imageOptimizationStats.failedImages++;
               if (cb) cb();
-            }
-          }, 10000);
-          img.onload = function() {
-            if (finished) return;
-            finished = true;
-            clearTimeout(timeout);
-            try { doc.addImage(img, 'JPEG', x, y, maxW, maxH); } catch (e) {}
-            if (cb) cb();
-          };
-          img.onerror = function() {
-            if (finished) return;
-            finished = true;
-            clearTimeout(timeout);
-            if (cb) cb();
-          };
-          img.src = proxiedUrl;
+            });
         };
         // Restore rowsToDraw definition and initialization before drawNextRow
         let rowsToDraw = [];
         const roomNames = Object.keys(byRoom);
         roomNames.forEach((room, rIdx) => {
           const items = byRoom[room];
+          if (!items || !Array.isArray(items)) {
+            console.warn('⚠️ Skipping invalid room items:', room, items);
+            return;
+          }
           items.forEach((item, iIdx) => {
+            // Add null checking to prevent invalid items from being added
+            if (!item) {
+              console.warn('⚠️ Skipping null item in room:', room, 'at index:', iIdx);
+              return;
+            }
             rowsToDraw.push({
               item,
               room,
@@ -311,6 +412,27 @@ export function showPdfFormScreen(userDetails) {
             });
           });
         });
+        
+        // Debug: Track product data size
+        const totalTextLength = rowsToDraw.reduce((sum, row) => {
+          // Add null checking for row and row.item
+          if (!row || !row.item) {
+            console.warn('⚠️ Skipping null row in data analysis:', row);
+            return sum;
+          }
+          const description = String(row.item.Description || '');
+          const longDescription = String(row.item.LongDescription || '');
+          const notes = String(row.item.Notes || '');
+          const orderCode = String(row.item.OrderCode || '');
+          return sum + description.length + longDescription.length + notes.length + orderCode.length;
+        }, 0);
+        
+        console.log(`🔍 Debug - Product data analysis:
+          - Total products: ${rowsToDraw ? rowsToDraw.length : 0}
+          - Total text characters: ${totalTextLength}
+          - Average text per product: ${rowsToDraw && rowsToDraw.length > 0 ? Math.round(totalTextLength / rowsToDraw.length) : 0} chars
+          - Estimated text size: ${(totalTextLength / 1024).toFixed(1)} KB`);
+        
         // Draw all rows (images async)
         let rowIdx = 0;
         let pageRow = 0;
@@ -321,7 +443,15 @@ export function showPdfFormScreen(userDetails) {
         const rowHeight = Math.floor((pageHeight-80) / maxRowsPerPage); // less top/bottom margin
         let currentY = footerHeight + 8;
         function drawNextRow() {
+          // Add comprehensive null checking at the start of drawNextRow
+          if (!rowsToDraw || !Array.isArray(rowsToDraw)) {
+            console.error('❌ Critical error: rowsToDraw is not a valid array:', rowsToDraw);
+            showDetailedErrorMessage(new Error('Invalid product data structure'), 'generating PDF', 'unknown.pdf');
+            return;
+          }
+          
           if (rowIdx >= rowsToDraw.length) {
+            console.log(`✅ Finished processing all ${rowsToDraw.length} products, finalizing PDF...`);
             const pageCount = doc.internal.getNumberOfPages() - 1; // exclude cover
             for (let i = 2; i <= pageCount + 1; i++) { // start from 2 (first product page)
               doc.setPage(i);
@@ -342,33 +472,119 @@ export function showPdfFormScreen(userDetails) {
             const yy = String(now.getFullYear()).slice(-2);
             const hh = String(now.getHours()).padStart(2, '0');
             const min = String(now.getMinutes()).padStart(2, '0');
-            const emailSafe = (userDetails.email || 'customer').replace(/[^a-zA-Z0-9@._-]/g, '_');
-            const pdfFilename = `${emailSafe}-${dd}${mm}${yy}-${hh}${min}.pdf`;
+            const projectName = userDetails.project.replace(/[^a-zA-Z0-9\s]/g, '');
+            const pdfFilename = `${projectName}-${dd}${mm}${yy}.${hh}${min}.pdf`;
+            
+            // Remove processing notification
+            const processingNotification = document.getElementById('pdf-processing-notification');
+            if (processingNotification) {
+              processingNotification.remove();
+            }
+            
+            // Show image optimization summary
+            showImageOptimizationSummary(userDetails.emailCompatible);
             
             // Enhanced PDF download with Samsung compatibility and optimization
             try {
-              const pdfBlob = doc.output('blob');
+              // Configure jsPDF for smaller file size
+              const pdfOptions = {
+                compress: true,
+                precision: 2,
+                userUnit: 1.0
+              };
+              
+              // Debug: Get PDF without compression first
+              const uncompressedBlob = doc.output('blob');
+              console.log(`🔍 Debug - Uncompressed PDF size: ${(uncompressedBlob.size / 1024 / 1024).toFixed(2)} MB`);
+              
+              const pdfBlob = doc.output('blob', pdfOptions);
+              console.log(`🔍 Debug - Compressed PDF size: ${(pdfBlob.size / 1024 / 1024).toFixed(2)} MB`);
+              
+              // Debug: Analyze PDF structure - with proper null checks
+              const pdfString = doc.output('string');
+              console.log(`🔍 Debug - PDF string length: ${pdfString ? pdfString.length : 0} characters`);
+              
+              // Count different types of content with null safety
+              const imageMatches = pdfString ? pdfString.match(/\/Type\s*\/XObject/g) : null;
+              const textMatches = pdfString ? pdfString.match(/Tj\s/g) : null;
+              const linkMatches = pdfString ? pdfString.match(/\/A\s*<</g) : null;
+              
+              // Enhanced debugging for PDF size investigation
+              console.log(`🔍 Debug - Content analysis:
+                - Images in PDF: ${imageMatches ? imageMatches.length : 0}
+                - Text elements: ${textMatches ? textMatches.length : 0}
+                - Links in PDF: ${linkMatches ? linkMatches.length : 0}
+                - PDF pages: ${doc.internal.getNumberOfPages()}
+                - Logo data size: ${logoDataUrl ? (logoDataUrl.length / 1024).toFixed(1) + 'KB' : 'N/A'}
+                - PDF string size: ${pdfString ? (pdfString.length / 1024 / 1024).toFixed(2) : 0}MB`);
+              
+              // Check for large embedded images with null safety
+              const base64Images = pdfString ? pdfString.match(/\/Filter\s*\/DCTDecode[\s\S]*?stream[\s\S]*?endstream/g) : null;
+              if (base64Images && base64Images.length > 0) {
+                console.log(`🔍 Debug - Found ${base64Images.length} embedded images`);
+                base64Images.forEach((img, idx) => {
+                  console.log(`  Image ${idx}: ${img ? (img.length / 1024).toFixed(1) : 0}KB`);
+                });
+              }
+              
+              // Store PDF size for later reference
+              userDetails.pdfSize = pdfBlob.size;
               
               // Show file size information and optimization details
               const fileInfo = showFileSizeInfo(pdfBlob, pdfFilename);
               
+              // Enhanced logging for size analysis
+              console.log(`📊 PDF Analysis:
+                - Final size: ${(pdfBlob.size / 1024 / 1024).toFixed(2)} MB
+                - Products included: ${rowsToDraw ? rowsToDraw.length : 0}
+                - Images included: ${imageOptimizationStats.optimizedImages} (technical quality)
+                - Images skipped: ${imageOptimizationStats.failedImages}
+                - Email compatible mode: ${userDetails.emailCompatible || false}`);
+              
+              // Check if file is too large for email and offer regeneration
+              if (userDetails.sendEmail && pdfBlob.size > 15 * 1024 * 1024) {
+                console.warn(`❌ PDF too large for email (${(pdfBlob.size / 1024 / 1024).toFixed(1)}MB), offering email-compatible version`);
+                showEmailCompatibleOption(userDetails, pdfFilename);
+                return;
+              }
+              
               // Apply optimization if needed
               const optimizedBlob = createOptimizedBlob(pdfBlob, fileInfo.settings);
               
-              downloadWithFallback(optimizedBlob, pdfFilename, 'PDF');
+              // Check if user wants to email the PDF
+              if (userDetails.sendEmail && userDetails.email) {
+                // Generate CSV if requested
+                let csvBlob = null;
+                if (userDetails.exportCsv) {
+                  const csvFilename = pdfFilename.replace(/\.pdf$/, '.csv');
+                  csvBlob = generateCsvBlob(userDetails, csvFilename);
+                }
+                
+                // Trigger email sending
+                window.dispatchEvent(new CustomEvent('sendEmail', {
+                  detail: {
+                    userDetails: userDetails,
+                    pdfBlob: optimizedBlob,
+                    csvBlob: csvBlob
+                  }
+                }));
+              } else {
+                // Standard download
+                downloadWithFallback(optimizedBlob, pdfFilename, 'PDF');
+              }
             } catch (error) {
               console.error('PDF generation failed:', error);
               showDetailedErrorMessage(error, 'generating PDF', pdfFilename);
+              
+              // Remove processing notification on error
+              const processingNotification = document.getElementById('pdf-processing-notification');
+              if (processingNotification) {
+                processingNotification.remove();
+              }
             }
             // --- CSV EXPORT LOGIC ---
-            if (userDetails.exportCsv) {
-              // Keep spinner going
-              setTimeout(() => {
-                generateAndDownloadCsv(userDetails, pdfFilename.replace(/\.pdf$/, '.csv'));
-              }, 100); // let PDF download start first
-            } else {
-              if (spinner) spinner.style.display = 'none';
-            }
+            // CSV is now handled via email attachment only, no separate download
+            if (spinner) spinner.style.display = 'none';
             return;
           }
           // New page if needed
@@ -379,6 +595,15 @@ export function showPdfFormScreen(userDetails) {
             pageRow = 0;
           }
           const row = rowsToDraw[rowIdx];
+          
+          // Critical fix: Skip null or invalid rows
+          if (!row || !row.item) {
+            console.warn(`⚠️  Skipping invalid row at index ${rowIdx}:`, row);
+            rowIdx++;
+            drawNextRow();
+            return;
+          }
+          
           // Calculate y for this row
           const y = currentY + (rowHeight * pageRow);
           // Room header (always above first product in each room, on every page)
@@ -430,6 +655,7 @@ export function showPdfFormScreen(userDetails) {
               let descLines = doc.splitTextToSize(String(row.item.Description || ''), descColWidth);
               doc.text(descLines, Number(colX[2])+5, descY);
               descY += descLines.length * 12;
+              
               // Long description
               if (row.item.LongDescription) {
                 doc.setFontSize(9);
@@ -438,6 +664,7 @@ export function showPdfFormScreen(userDetails) {
                 doc.text(longDescLines, Number(colX[2])+5, descY);
                 descY += longDescLines.length * 11;
               }
+              
               // Notes below long description, with padding
               if (row.item.Notes) {
                 doc.setFont('helvetica', 'italic');
@@ -516,11 +743,40 @@ export function loadImageAsDataURL(src, cb) {
   img.crossOrigin = 'Anonymous';
   img.onload = function() {
     const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    cb(canvas.toDataURL('image/png'), img.width, img.height);
+    
+    // Optimize logo size for PDF usage
+    const maxWidth = 400;
+    const maxHeight = 150;
+    
+    let newWidth = img.width;
+    let newHeight = img.height;
+    
+    // Scale down if too large
+    if (newWidth > maxWidth || newHeight > maxHeight) {
+      const widthRatio = maxWidth / newWidth;
+      const heightRatio = maxHeight / newHeight;
+      const scale = Math.min(widthRatio, heightRatio);
+      
+      newWidth = Math.round(newWidth * scale);
+      newHeight = Math.round(newHeight * scale);
+    }
+    
+    canvas.width = newWidth;
+    canvas.height = newHeight;
+    
+    // Enable smoothing for better quality
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
+    ctx.drawImage(img, 0, 0, newWidth, newHeight);
+    
+    // Use PNG to preserve transparency (logos need transparent backgrounds)
+    const optimizedDataUrl = canvas.toDataURL('image/png');
+    
+    console.log(`🖼️  Logo optimized: ${img.width}x${img.height} -> ${newWidth}x${newHeight} (${(optimizedDataUrl.length / 1024).toFixed(1)}KB)`);
+    
+    cb(optimizedDataUrl, newWidth, newHeight);
   };
   img.src = src;
 }
@@ -552,9 +808,7 @@ export function ensurePdfSpinner() {
 }
 
 // --- CSV GENERATION AND DOWNLOAD ---
-export function generateAndDownloadCsv(userDetails, csvFilename) {
-  const spinner = document.getElementById('pdf-spinner');
-  
+export function generateCsvBlob(userDetails, csvFilename) {
   // Use same logic as PDF generation to handle both storage formats
   const storedSelection = JSON.parse(localStorage.getItem('selection') || '[]');
   const selectedProducts = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.SELECTED_PRODUCTS) || '[]');
@@ -575,37 +829,113 @@ export function generateAndDownloadCsv(userDetails, csvFilename) {
   }
   
   if (!selection.length) {
-    if (spinner) spinner.style.display = 'none';
-    return;
+    return null;
   }
-  // Prepare CSV data
+  
+  // Prepare CSV data with enhanced formatting
   const csvData = selection.map(item => {
     const priceStr = (item.RRP_INCGST || '').toString().replace(/,/g, '');
     const priceNum = parseFloat(priceStr);
     const total = (!isNaN(priceNum) ? (priceNum * (item.Quantity || 1)).toFixed(2) : '');
     const excludePrice = userDetails.excludePrice;
+    
     return {
-      Code: item.OrderCode || '',
-      Description: item.Description || '',
+      Code: sanitizeCSVField(item.OrderCode || ''),
+      Description: sanitizeCSVField(item.Description || ''),
       Quantity: item.Quantity || 1,
       'Price ea inc GST': excludePrice ? '0.00' : (item.RRP_INCGST || ''),
       'Price Total inc GST': excludePrice ? '0.00' : total,
-      Notes: item.Notes || '',
-      Room: item.Room,
-      'Image URL': item.Image_URL || '',
-      'Diagram URL': item.Diagram_URL || '',
-      'Datasheet URL': item.Datasheet_URL || '',
-      'Website URL': item.Website_URL || ''
+      Notes: sanitizeCSVField(item.Notes || ''),
+      Room: sanitizeCSVField(item.Room || ''),
+      'Image URL': sanitizeCSVField(item.Image_URL || ''),
+      'Diagram URL': sanitizeCSVField(item.Diagram_URL || ''),
+      'Datasheet URL': sanitizeCSVField(item.Datasheet_URL || ''),
+      'Website URL': sanitizeCSVField(item.Website_URL || '')
     };
   });
-  // Add customer details as first row (optional, or as header comment)
-  // Use PapaParse to unparse
-  const csv = window.Papa.unparse(csvData);
+  
+  // Use PapaParse with EmailJS-optimized configuration
+  const csvString = window.Papa.unparse(csvData, {
+    quotes: true,        // Always quote fields to prevent corruption
+    quoteChar: '"',      // Use double quotes
+    delimiter: ',',      // Use comma delimiter
+    header: true,        // Include headers
+    newline: '\r\n',     // Use Windows line endings for better email compatibility
+    skipEmptyLines: false,
+    escapeChar: '"',     // Escape quotes with double quotes
+    transform: {
+      // Clean up any problematic characters
+      value: function(value, field) {
+        if (typeof value === 'string') {
+          // Remove null bytes and control characters that can corrupt CSV
+          return value.replace(/\0/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+        }
+        return value;
+      }
+    }
+  });
+  
+  console.log('📊 Enhanced CSV generated:', {
+    length: csvString.length,
+    preview: csvString.substring(0, 200)
+  });
+  
+  // For EmailJS: Return base64-encoded data
+  if (userDetails.sendEmail) {
+    try {
+      const base64Data = btoa(unescape(encodeURIComponent(csvString)));
+      console.log('📧 CSV converted to base64 for EmailJS (length:', base64Data.length, ')');
+      
+      // Test decode to verify integrity
+      const decoded = decodeURIComponent(escape(atob(base64Data)));
+      console.log('✅ Base64 decode test successful (first 200 chars):', decoded.substring(0, 200));
+      
+      return {
+        name: csvFilename,
+        data: base64Data,
+        contentType: 'text/csv',
+        originalSize: csvString.length,
+        base64Size: base64Data.length
+      };
+    } catch (error) {
+      console.error('❌ CSV base64 encoding failed:', error);
+      // Fallback to blob
+      return new Blob([csvString], { type: 'text/csv' });
+    }
+  } else {
+    // For downloads: Return standard blob
+    return new Blob([csvString], { type: 'text/csv' });
+  }
+}
+
+// Helper function to sanitize CSV fields and prevent corruption
+function sanitizeCSVField(field) {
+  if (typeof field !== 'string') {
+    field = String(field);
+  }
+  
+  // Remove problematic characters and normalize line breaks
+  field = field
+    .replace(/\0/g, '')                    // Remove null bytes
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '') // Remove control characters
+    .replace(/\r?\n|\r/g, ' ')             // Replace line breaks with spaces
+    .trim();                               // Remove leading/trailing whitespace
+  
+  return field;
+}
+
+export function generateAndDownloadCsv(userDetails, csvFilename) {
+  const spinner = document.getElementById('pdf-spinner');
+  
+  const csvBlob = generateCsvBlob(userDetails, csvFilename);
+  if (!csvBlob) {
+    if (spinner) spinner.style.display = 'none';
+    return;
+  }
   // Download CSV with enhanced error handling
   try {
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const fileInfo = showFileSizeInfo(blob, csvFilename);
-    downloadWithFallback(blob, csvFilename, 'CSV');
+    const fileInfo = showFileSizeInfo(csvBlob, csvFilename);
+    downloadWithFallback(csvBlob, csvFilename, 'CSV');
   } catch (error) {
     console.error('CSV generation failed:', error);
     showDetailedErrorMessage(error, 'generating CSV', csvFilename);
@@ -869,54 +1199,112 @@ function attemptStandardDownload(blob, filename) {
 }
 
 // File Optimization Features
-export function optimizeImageForPDF(imageUrl, maxWidth = 300, quality = 0.8) {
+export function optimizeImageForPDF(imageUrl, maxWidth = 400, quality = 0.9) {
   return new Promise((resolve) => {
-    if (!imageUrl || imageUrl === 'assets/no-image.png') {
-      resolve(imageUrl);
-      return;
+    // CORS proxy services for image loading (updated for reliability)
+    const proxies = [
+      'https://api.codetabs.com/v1/proxy?quest=',
+      'https://corsproxy.io/?',
+      // Removed problematic proxies: allorigins.win (QUIC errors) and thingproxy (502 errors)
+    ];
+    
+    let proxyIndex = 0;
+    
+    function tryLoadImage() {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      
+      img.onload = function() {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Reasonable compression for technical images
+          let width = Math.min(maxWidth, 400);  // Max 400px width for good detail
+          let height = Math.min(maxWidth, 400); // Max 400px height
+          
+          // Maintain aspect ratio for technical accuracy
+          if (img.width > img.height) {
+            height = Math.round((width * img.height) / img.width);
+          } else {
+            width = Math.round((height * img.width) / img.height);
+          }
+          
+          // Ensure minimum readable size for technical diagrams
+          if (img.width > 100 || img.height > 100) {
+            width = Math.max(width, 200);  // Minimum 200px for readability
+            height = Math.max(height, 200);
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Enable smoothing for better image quality
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
+          // Draw and compress image with reasonable quality
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert with quality suitable for technical images
+          const reasonableQuality = Math.max(quality, 0.6); // Minimum 60% quality for technical details
+          const optimizedDataUrl = canvas.toDataURL('image/jpeg', reasonableQuality);
+          
+          // Check if data URL is reasonable size (under 500KB for technical images)
+          const sizeInBytes = optimizedDataUrl.length * 0.75;
+          if (sizeInBytes > 512000) { // ~500KB limit
+            console.warn(`📊 Image large but acceptable for technical detail: ${(sizeInBytes/1024).toFixed(0)} KB - ${imageUrl}`);
+            // Still use it - technical images need detail
+          }
+          
+          console.log(`✅ Technical image optimized: ${img.width}x${img.height} -> ${width}x${height} (${Math.round(reasonableQuality*100)}% quality, ${(sizeInBytes/1024).toFixed(0)} KB)`);
+          resolve(optimizedDataUrl);
+          
+        } catch (error) {
+          console.warn('Image optimization failed:', error);
+          resolve('assets/no-image.png');
+        }
+      };
+      
+      img.onerror = function() {
+        console.warn(`❌ Failed to load image with proxy ${proxyIndex}: ${imageUrl}`);
+        
+        // Try next proxy
+        proxyIndex++;
+        if (proxyIndex < proxies.length) {
+          setTimeout(() => {
+            tryLoadImage();
+          }, 200);
+        } else {
+          console.warn('All proxies failed, using placeholder');
+          resolve('assets/no-image.png');
+        }
+      };
+      
+      // Reasonable timeout for quality images (reduced for failed proxies)
+      setTimeout(() => {
+        console.warn(`⏰ Timeout with proxy ${proxyIndex}: ${imageUrl}`);
+        
+        proxyIndex++;
+        if (proxyIndex < proxies.length) {
+          tryLoadImage();
+        } else {
+          console.warn('All proxies timed out, using placeholder');
+          resolve('assets/no-image.png');
+        }
+      }, 3000); // 3 second timeout - faster fallback for failing proxies
+      
+      // Set the image source with current proxy
+      let proxiedUrl = imageUrl;
+      if (proxyIndex < proxies.length) {
+        proxiedUrl = proxies[proxyIndex] + encodeURIComponent(imageUrl);
+      }
+      
+      console.log(`🔄 Loading technical image ${proxyIndex}: ${proxiedUrl}`);
+      img.src = proxiedUrl;
     }
     
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    
-    img.onload = function() {
-      try {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Calculate optimized dimensions
-        let { width, height } = calculateOptimizedDimensions(img.width, img.height, maxWidth);
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Draw and compress image
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Convert to optimized data URL
-        const optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        
-        console.log(`Image optimized: ${img.width}x${img.height} -> ${width}x${height}`);
-        resolve(optimizedDataUrl);
-        
-      } catch (error) {
-        console.warn('Image optimization failed:', error);
-        resolve(imageUrl); // Fallback to original
-      }
-    };
-    
-    img.onerror = function() {
-      console.warn('Failed to load image for optimization:', imageUrl);
-      resolve('assets/no-image.png'); // Fallback to placeholder
-    };
-    
-    // Add timeout for image loading
-    setTimeout(() => {
-      console.warn('Image loading timeout:', imageUrl);
-      resolve('assets/no-image.png');
-    }, 10000);
-    
-    img.src = imageUrl;
+    tryLoadImage();
   });
 }
 
@@ -950,30 +1338,38 @@ export function compressPDFBlob(pdfBlob, compressionLevel = 'medium') {
 }
 
 export function getOptimizedFileSettings(fileSize) {
-  // Automatically determine optimization level based on file size
-  if (fileSize > 5 * 1024 * 1024) { // > 5MB
+  // Automatically determine optimization level based on file size - updated for technical images
+  if (fileSize > 20 * 1024 * 1024) { // > 20MB
     return {
       compressionLevel: 'high',
       imageQuality: 0.6,
-      imageMaxWidth: 200,
-      removeImages: false,
-      message: 'High compression applied due to large file size'
-    };
-  } else if (fileSize > 2 * 1024 * 1024) { // > 2MB
-    return {
-      compressionLevel: 'medium',
-      imageQuality: 0.8,
       imageMaxWidth: 300,
       removeImages: false,
-      message: 'Medium compression applied to optimize file size'
+      message: 'High compression applied - file very large with technical images'
+    };
+  } else if (fileSize > 15 * 1024 * 1024) { // > 15MB
+    return {
+      compressionLevel: 'medium',
+      imageQuality: 0.7,
+      imageMaxWidth: 400,
+      removeImages: false,
+      message: 'Medium compression applied for technical image optimization'
+    };
+  } else if (fileSize > 10 * 1024 * 1024) { // > 10MB
+    return {
+      compressionLevel: 'low',
+      imageQuality: 0.75,
+      imageMaxWidth: 450,
+      removeImages: false,
+      message: 'Light compression applied to maintain technical image quality'
     };
   } else {
     return {
-      compressionLevel: 'low',
-      imageQuality: 0.9,
-      imageMaxWidth: 400,
+      compressionLevel: 'minimal',
+      imageQuality: 0.8,
+      imageMaxWidth: 500,
       removeImages: false,
-      message: 'Minimal compression - file size is optimal'
+      message: 'Minimal compression - good size for technical documentation'
     };
   }
 }
@@ -997,8 +1393,39 @@ export function showFileSizeInfo(blob, filename) {
   console.log(`Optimization: ${settings.message}`);
   
   // Show size warning for large files
-  if (blob.size > 5 * 1024 * 1024) {
-    console.warn(`Large file detected (${sizeInMB} MB) - download may be slow on mobile devices`);
+  if (blob.size > 15 * 1024 * 1024) {
+    console.warn(`Large file detected (${sizeInMB} MB) - exceeds typical email limit, may need email-compatible version`);
+    
+    // Show user-friendly notification
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed; top: 20px; right: 20px; z-index: 10001;
+      background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px;
+      padding: 16px; max-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    notification.innerHTML = `
+      <div style="display: flex; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 18px; margin-right: 8px;">📁</span>
+        <strong style="color: #92400e;">Large Technical PDF</strong>
+      </div>
+      <p style="margin: 0; color: #a16207; font-size: 14px;">
+        PDF is ${sizeInMB} MB with quality technical images. May exceed some email limits.
+      </p>
+      <button onclick="this.parentElement.remove()" style="
+        margin-top: 8px; padding: 4px 8px; border: none; background: #f59e0b;
+        color: white; border-radius: 3px; cursor: pointer; font-size: 12px;
+      ">OK</button>
+    `;
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 8 seconds
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.remove();
+      }
+    }, 8000);
+  } else if (blob.size > 3 * 1024 * 1024) {
+    console.log(`Medium file size (${sizeInMB} MB) - images compressed for better email compatibility`);
   }
   
   return {
@@ -1309,4 +1736,683 @@ export function showProgressiveErrorHandler(operation, retryCount = 0) {
       }
     }
   };
-} 
+}
+
+// Add image optimization status tracking
+let imageOptimizationStats = {
+  totalImages: 0,
+  optimizedImages: 0,
+  failedImages: 0,
+  totalSavings: 0
+};
+
+export function resetImageOptimizationStats() {
+  imageOptimizationStats = {
+    totalImages: 0,
+    optimizedImages: 0,
+    failedImages: 0,
+    totalSavings: 0
+  };
+}
+
+export function getImageOptimizationStats() {
+  return { ...imageOptimizationStats };
+}
+
+export function showImageOptimizationSummary(isEmailCompatible = false) {
+  const stats = imageOptimizationStats;
+  if (stats.totalImages > 0) {
+    console.log(`🖼️ Image Optimization Summary:`);
+    console.log(`   Total images: ${stats.totalImages}`);
+    console.log(`   Optimized: ${stats.optimizedImages}`);
+    console.log(`   Failed: ${stats.failedImages}`);
+    console.log(`   Success rate: ${((stats.optimizedImages / stats.totalImages) * 100).toFixed(1)}%`);
+    console.log(`   Email compatible mode: ${isEmailCompatible}`);
+    
+    // No UI notification - just console logging for debugging
+  }
+}
+
+export function showEmailCompatibleOption(userDetails, originalFilename) {
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.8); z-index: 10001; display: flex; 
+    align-items: center; justify-content: center; padding: 20px;
+  `;
+  
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: white; border-radius: 8px; padding: 30px; max-width: 500px; 
+    width: 100%; max-height: 80vh; overflow-y: auto;
+  `;
+  
+  content.innerHTML = `
+    <h3 style="color: #2563eb; margin: 0 0 20px 0; display: flex; align-items: center;">
+      <span style="margin-right: 8px;">📧</span>
+      Email-Compatible Version Available
+    </h3>
+    <p style="margin: 0 0 16px 0; color: #374151;">
+      Your PDF is large (${(userDetails.pdfSize / 1024 / 1024).toFixed(1)} MB). 
+      We can create a smaller, email-friendly version with optimized images.
+    </p>
+    
+    <div style="background: #f3f4f6; padding: 16px; border-radius: 6px; margin: 16px 0;">
+      <h4 style="margin: 0 0 12px 0; color: #1f2937;">Email-Compatible Features:</h4>
+      <ul style="margin: 0; padding-left: 20px; color: #4b5563; font-size: 14px;">
+        <li>Reduced image quality for smaller file size</li>
+        <li>Optimized for email attachment limits</li>
+        <li>Faster email delivery</li>
+        <li>Better compatibility across email clients</li>
+      </ul>
+    </div>
+    
+    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+      <button id="email-regular-version" style="
+        padding: 10px 20px; border: 1px solid #d1d5db; background: white; 
+        border-radius: 4px; cursor: pointer; font-weight: bold;
+      ">Send Current Version</button>
+      <button id="email-optimized-version" style="
+        padding: 10px 20px; border: none; background: #2563eb; color: white; 
+        border-radius: 4px; cursor: pointer; font-weight: bold;
+      ">Create Email Version</button>
+    </div>
+  `;
+  
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+  
+  // Event handlers
+  document.getElementById('email-regular-version').onclick = () => {
+    modal.remove();
+    // Continue with regular email sending
+    const event = new CustomEvent('sendEmailRegular', { detail: { userDetails, originalFilename } });
+    window.dispatchEvent(event);
+  };
+  
+  document.getElementById('email-optimized-version').onclick = () => {
+    modal.remove();
+    // Create email-optimized version
+    userDetails.emailCompatible = true;
+    showPdfFormScreen(userDetails);
+  };
+}
+
+// Test function for CSV generation and EmailJS compatibility
+export function testCsvGeneration(userDetails = null, showModal = true) {
+  console.log('🧪 Testing Enhanced CSV Generation...');
+  
+  // Use test data if no userDetails provided
+  const testUserDetails = userDetails || {
+    name: 'Test User',
+    email: 'test@example.com',
+    sendEmail: true,
+    exportCsv: true,
+    excludePrice: false
+  };
+  
+  const testFilename = 'test-csv-' + Date.now() + '.csv';
+  
+  try {
+    // Test the enhanced CSV generation
+    const csvResult = generateCsvBlob(testUserDetails, testFilename);
+    
+    if (!csvResult) {
+      console.warn('⚠️ No CSV data generated (empty selection?)');
+      return null;
+    }
+    
+    console.log('✅ CSV Generation Test Results:', {
+      format: csvResult.data ? 'Enhanced (Base64)' : 'Legacy (Blob)',
+      filename: csvResult.name || 'blob',
+      contentType: csvResult.contentType || csvResult.type,
+      originalSize: csvResult.originalSize || csvResult.size,
+      base64Size: csvResult.base64Size || 'N/A'
+    });
+    
+    // Test base64 decoding if available
+    if (csvResult.data) {
+      try {
+        const decoded = decodeURIComponent(escape(atob(csvResult.data)));
+        console.log('📋 Base64 Decode Test - First 300 chars:');
+        console.log(decoded.substring(0, 300));
+        
+        // Count rows
+        const rows = decoded.split('\r\n').filter(row => row.trim());
+        console.log(`📊 CSV contains ${rows.length} rows (including header)`);
+        
+        if (showModal) {
+          showCsvTestModal(csvResult, decoded, rows.length);
+        }
+        
+      } catch (e) {
+        console.error('❌ Base64 decode failed:', e);
+      }
+    }
+    
+    return csvResult;
+    
+  } catch (error) {
+    console.error('❌ CSV generation test failed:', error);
+    return null;
+  }
+}
+
+// Show a modal with CSV test results
+function showCsvTestModal(csvResult, csvContent, rowCount) {
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.8); z-index: 10001; display: flex; 
+    align-items: center; justify-content: center; padding: 20px;
+  `;
+  
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: white; border-radius: 8px; padding: 30px; max-width: 700px; 
+    width: 100%; max-height: 80vh; overflow-y: auto;
+  `;
+  
+  content.innerHTML = `
+    <h3 style="color: #059669; margin: 0 0 20px 0; display: flex; align-items: center;">
+      <span style="margin-right: 8px;">🧪</span>
+      CSV Generation Test Results
+    </h3>
+    
+    <div style="background: #ecfdf5; padding: 16px; border-radius: 6px; margin: 16px 0;">
+      <h4 style="margin: 0 0 12px 0; color: #047857;">Generation Summary</h4>
+      <ul style="margin: 0; padding-left: 20px; color: #065f46; font-size: 14px;">
+        <li><strong>Format:</strong> Enhanced (Base64 encoded for EmailJS)</li>
+        <li><strong>Filename:</strong> ${csvResult.name}</li>
+        <li><strong>Rows:</strong> ${rowCount} (including header)</li>
+        <li><strong>Original Size:</strong> ${(csvResult.originalSize / 1024).toFixed(2)} KB</li>
+        <li><strong>Base64 Size:</strong> ${(csvResult.base64Size / 1024).toFixed(2)} KB</li>
+      </ul>
+    </div>
+    
+    <div style="background: #f3f4f6; padding: 16px; border-radius: 6px; margin: 16px 0;">
+      <h4 style="margin: 0 0 12px 0; color: #1f2937;">CSV Content Preview</h4>
+      <textarea readonly style="
+        width: 100%; height: 200px; font-family: monospace; font-size: 11px;
+        border: 1px solid #d1d5db; border-radius: 4px; padding: 8px;
+        background: white; resize: vertical;
+      ">${csvContent.substring(0, 1000)}${csvContent.length > 1000 ? '\n... (content truncated)' : ''}</textarea>
+    </div>
+    
+    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+      <button id="csv-test-close" style="
+        padding: 10px 20px; border: 1px solid #d1d5db; background: white; 
+        border-radius: 4px; cursor: pointer; font-weight: bold;
+      ">Close</button>
+      <button id="csv-download-test" style="
+        padding: 10px 20px; border: none; background: #059669; color: white; 
+        border-radius: 4px; cursor: pointer; font-weight: bold;
+      ">Download Test CSV</button>
+    </div>
+  `;
+  
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+  
+  // Event handlers
+  document.getElementById('csv-test-close').onclick = () => modal.remove();
+  
+  document.getElementById('csv-download-test').onclick = () => {
+    // Create a test download
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    downloadWithFallback(blob, csvResult.name, 'CSV');
+    modal.remove();
+  };
+}
+
+// --- CSV GENERATION FOR EMAILJS (RAW STRING) ---
+
+// Fixed CSV generation - NO base64 encoding for EmailJS
+export function generateCsvForEmailJS(userDetails, csvFilename) {
+  const storedSelection = JSON.parse(localStorage.getItem('selection') || '[]');
+  const selectedProducts = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.SELECTED_PRODUCTS) || '[]');
+  
+  let selection = [];
+  if (selectedProducts.length > 0) {
+    selection = selectedProducts.map(item => ({
+      ...item.product,
+      Room: item.room,
+      Notes: item.notes,
+      Quantity: item.quantity,
+      Timestamp: new Date(item.timestamp).toISOString()
+    }));
+  } else {
+    selection = storedSelection;
+  }
+  
+  if (!selection.length) {
+    return null;
+  }
+  
+  // Prepare CSV data - clean strings only
+  const csvData = selection.map(item => {
+    const priceStr = (item.RRP_INCGST || '').toString().replace(/,/g, '');
+    const priceNum = parseFloat(priceStr);
+    const total = (!isNaN(priceNum) ? (priceNum * (item.Quantity || 1)).toFixed(2) : '');
+    const excludePrice = userDetails.excludePrice;
+    
+    return {
+      Code: cleanString(item.OrderCode || ''),
+      Description: cleanString(item.Description || ''),
+      Quantity: item.Quantity || 1,
+      'Price ea inc GST': excludePrice ? '0.00' : (item.RRP_INCGST || ''),
+      'Price Total inc GST': excludePrice ? '0.00' : total,
+      Notes: cleanString(item.Notes || ''),
+      Room: cleanString(item.Room || ''),
+      'Image URL': cleanString(item.Image_URL || ''),
+      'Diagram URL': cleanString(item.Diagram_URL || ''),
+      'Datasheet URL': cleanString(item.Datasheet_URL || ''),
+      'Website URL': cleanString(item.Website_URL || '')
+    };
+  });
+  
+  // Generate clean CSV string - NO base64 encoding
+  const csvString = generateCleanCSVString(csvData);
+  
+  console.log('📊 Clean CSV generated:', {
+    length: csvString.length,
+    preview: csvString.substring(0, 200)
+  });
+  
+  // Return RAW string for EmailJS - let EmailJS handle encoding
+  return {
+    name: csvFilename,
+    data: csvString,  // RAW string, NOT base64
+    contentType: 'text/csv'
+  };
+}
+
+// Clean string function to remove problematic characters
+function cleanString(str) {
+  if (typeof str !== 'string') {
+    str = String(str);
+  }
+  
+  // Remove non-printable ASCII characters that cause corruption
+  return str
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control characters
+    .replace(/[\u0080-\uFFFF]/g, '') // Remove non-ASCII characters
+    .replace(/"/g, '""') // Escape quotes properly
+    .trim();
+}
+
+// Generate CSV with strict ASCII compliance
+function generateCleanCSVString(data) {
+  if (!data || data.length === 0) {
+    return '';
+  }
+  
+  const headers = Object.keys(data[0]);
+  
+  // Create header row - clean headers
+  const headerRow = headers.map(header => {
+    const cleaned = cleanString(header);
+    return `"${cleaned}"`;
+  }).join(',');
+  
+  // Create data rows - clean all values
+  const dataRows = data.map(row => {
+    return headers.map(header => {
+      const value = row[header];
+      const cleaned = cleanString(String(value || ''));
+      return `"${cleaned}"`;
+    }).join(',');
+  });
+  
+  // Use \n instead of \r\n for better compatibility
+  const csvString = [headerRow, ...dataRows].join('\n');
+  
+  console.log('📊 CSV string stats:', {
+    totalLength: csvString.length,
+    headerLength: headerRow.length,
+    dataRows: dataRows.length,
+    hasControlChars: /[\x00-\x1F\x7F]/.test(csvString),
+    hasNonAscii: /[\u0080-\uFFFF]/.test(csvString)
+  });
+  
+  return csvString;
+}
+
+// Alternative: Use simple format without quotes if still having issues
+export function generateSimpleCsvForEmailJS(userDetails, csvFilename) {
+  const storedSelection = JSON.parse(localStorage.getItem('selection') || '[]');
+  const selectedProducts = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.SELECTED_PRODUCTS) || '[]');
+  
+  let selection = [];
+  if (selectedProducts.length > 0) {
+    selection = selectedProducts.map(item => ({
+      ...item.product,
+      Room: item.room,
+      Notes: item.notes,
+      Quantity: item.quantity
+    }));
+  } else {
+    selection = storedSelection;
+  }
+  
+  if (!selection.length) {
+    return null;
+  }
+  
+  // Ultra-simple CSV format - NO NEWLINES, use pipe separator
+  let csvContent = 'Code|Description|Quantity|Room|Notes ';
+  
+  // Data rows - NO newlines, use double space as row separator
+  selection.forEach(item => {
+    const code = cleanFieldForCSV(item.OrderCode || '');
+    const desc = cleanFieldForCSV(item.Description || '');
+    const qty = item.Quantity || 1;
+    const room = cleanFieldForCSV(item.Room || '');
+    const notes = cleanFieldForCSV(item.Notes || '');
+    
+    csvContent += `${code}|${desc}|${qty}|${room}|${notes}  `;
+  });
+  
+  // Final cleanup - remove any remaining control characters
+  csvContent = csvContent.replace(/[\x00-\x1F\x7F-\xFF]/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  console.log('📊 Simple CSV generated:', {
+    length: csvContent.length,
+    preview: csvContent.substring(0, 200),
+    hasControlChars: /[\x00-\x1F\x7F]/.test(csvContent),
+    hasNonAscii: /[\u0080-\uFFFF]/.test(csvContent),
+    dataRows: selection.length
+  });
+  
+  return {
+    name: csvFilename,
+    data: csvContent,
+    contentType: 'text/plain'  // Plain text for maximum compatibility
+  };
+}
+
+// Ultra-aggressive field cleaning for CSV
+function cleanFieldForCSV(field) {
+  if (!field) return '';
+  
+  // Convert to string and clean aggressively
+  let cleaned = String(field)
+    .replace(/[\x00-\x1F\x7F-\xFF]/g, ' ')    // Remove ALL control chars and non-ASCII
+    .replace(/[|,\r\n\t]/g, ' ')              // Replace separators with spaces
+    .replace(/\s+/g, ' ')                     // Normalize whitespace
+    .trim();                                  // Remove leading/trailing spaces
+  
+  // Limit length to prevent issues
+  if (cleaned.length > 50) {
+    cleaned = cleaned.substring(0, 50) + '...';
+  }
+  
+  return cleaned;
+}
+
+// Test function to debug CSV encoding
+export function testCsvEncoding(userDetails, csvFilename) {
+  console.log('🧪 Testing CSV encoding methods...');
+  
+  // Test method 1: Clean CSV
+  const cleanCsv = generateCsvForEmailJS(userDetails, csvFilename);
+  if (cleanCsv) {
+    console.log('✅ Clean CSV method:', {
+      name: cleanCsv.name,
+      length: cleanCsv.data.length,
+      preview: cleanCsv.data.substring(0, 150),
+      hasControlChars: /[\x00-\x1F\x7F]/.test(cleanCsv.data),
+      hasNonAscii: /[\u0080-\uFFFF]/.test(cleanCsv.data)
+    });
+  }
+  
+  // Test method 2: Simple CSV
+  const simpleCsv = generateSimpleCsvForEmailJS(userDetails, csvFilename);
+  if (simpleCsv) {
+    console.log('✅ Simple CSV method:', {
+      name: simpleCsv.name,
+      length: simpleCsv.data.length,
+      preview: simpleCsv.data.substring(0, 150),
+      hasControlChars: /[\x00-\x1F\x7F]/.test(simpleCsv.data),
+      hasNonAscii: /[\u0080-\uFFFF]/.test(simpleCsv.data)
+    });
+  }
+  
+  return cleanCsv || simpleCsv;
+}
+
+// Test function to verify CSV generation works correctly
+export function testEmailCSVGeneration() {
+  console.log('🧪 Testing Email CSV Generation...');
+  
+  // Create test user details
+  const testUserDetails = {
+    name: 'Test User',
+    email: 'test@example.com',
+    project: 'Test Project',
+    address: '123 Test Street',
+    excludePrice: false
+  };
+  
+  try {
+    // Test the new email CSV generation
+    const csvFilename = 'test-email-output.csv';
+    const emailCsvData = generateCsvForEmailJS(testUserDetails, csvFilename);
+    
+    if (emailCsvData) {
+      console.log('✅ Email CSV Generation Test Results:', {
+        filename: emailCsvData.name,
+        contentType: emailCsvData.contentType,
+        dataLength: emailCsvData.data.length,
+        dataType: typeof emailCsvData.data,
+        hasControlChars: /[\x00-\x1F\x7F]/.test(emailCsvData.data),
+        hasNonAscii: /[\u0080-\uFFFF]/.test(emailCsvData.data),
+        preview: emailCsvData.data.substring(0, 300)
+      });
+      
+      // Test the simple CSV generation too
+      const simpleCsvData = generateSimpleCsvForEmailJS(testUserDetails, csvFilename);
+      if (simpleCsvData) {
+        console.log('✅ Simple CSV Generation Test Results:', {
+          filename: simpleCsvData.name,
+          contentType: simpleCsvData.contentType,
+          dataLength: simpleCsvData.data.length,
+          dataType: typeof simpleCsvData.data,
+          hasControlChars: /[\x00-\x1F\x7F]/.test(simpleCsvData.data),
+          hasNonAscii: /[\u0080-\uFFFF]/.test(simpleCsvData.data),
+          preview: simpleCsvData.data.substring(0, 300)
+        });
+      }
+      
+      console.log('🎉 Email CSV generation test completed successfully!');
+      console.log('📧 Ready to test email sending with clean CSV data.');
+      
+      return {
+        success: true,
+        emailCsv: emailCsvData,
+        simpleCsv: simpleCsvData
+      };
+    } else {
+      console.warn('⚠️  No CSV data generated - make sure you have products selected');
+      return { success: false, error: 'No CSV data generated' };
+    }
+  } catch (error) {
+    console.error('❌ Email CSV generation test failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Make test function globally available for console testing
+window.testEmailCSVGeneration = testEmailCSVGeneration;
+
+// FINAL FIX: Ultra-clean CSV with zero control characters
+export function generateUltraCleanCsv(userDetails, csvFilename) {
+  const storedSelection = JSON.parse(localStorage.getItem('selection') || '[]');
+  const selectedProducts = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.SELECTED_PRODUCTS) || '[]');
+  
+  let selection = [];
+  if (selectedProducts.length > 0) {
+    selection = selectedProducts.map(item => ({
+      ...item.product,
+      Room: item.room,
+      Notes: item.notes,
+      Quantity: item.quantity
+    }));
+  } else {
+    selection = storedSelection;
+  }
+  
+  if (!selection.length) {
+    return null;
+  }
+  
+  // Create CSV rows using ONLY spaces - NO control characters whatsoever
+  let csvText = '';
+  
+  // Header (single line, no \n)
+  csvText += 'Code,Description,Quantity,Room,Notes';
+  
+  // Data rows (append with space separator instead of \n)
+  selection.forEach(item => {
+    // Clean ALL strings to remove ANY control characters
+    const code = cleanForEmail(item.OrderCode || '');
+    const desc = cleanForEmail(item.Description || '');
+    const qty = item.Quantity || 1;
+    const room = cleanForEmail(item.Room || '');
+    const notes = cleanForEmail(item.Notes || '');
+    
+    // Use pipe separator instead of newline to avoid control chars
+    csvText += ` | ${code},${desc},${qty},${room},${notes}`;
+  });
+  
+  console.log('🧹 Ultra-clean CSV created:', {
+    length: csvText.length,
+    preview: csvText.substring(0, 200),
+    hasControlChars: /[\x00-\x1F\x7F-\x9F]/.test(csvText),
+    hasNewlines: /[\r\n]/.test(csvText),
+    hasNonAscii: /[^\x00-\x7F]/.test(csvText)
+  });
+  
+  return {
+    name: csvFilename,
+    data: csvText,
+    contentType: 'text/plain'
+  };
+}
+
+// Even more aggressive cleaning function
+function cleanForEmail(str) {
+  if (typeof str !== 'string') {
+    str = String(str);
+  }
+  
+  return str
+    // Remove ALL control characters (0-31, 127-159)
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
+    // Remove ALL non-ASCII characters 
+    .replace(/[^\x20-\x7E]/g, '')
+    // Remove commas to prevent CSV parsing issues
+    .replace(/,/g, ' ')
+    // Remove quotes
+    .replace(/"/g, '')
+    // Remove pipes (we're using them as separators)
+    .replace(/\|/g, '')
+    // Collapse multiple spaces
+    .replace(/\s+/g, ' ')
+    // Trim
+    .trim();
+}
+
+// Alternative: Send as JSON string instead of CSV
+export function generateJsonForEmail(userDetails, filename) {
+  const storedSelection = JSON.parse(localStorage.getItem('selection') || '[]');
+  const selectedProducts = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.SELECTED_PRODUCTS) || '[]');
+  
+  let selection = [];
+  if (selectedProducts.length > 0) {
+    selection = selectedProducts.map(item => ({
+      ...item.product,
+      Room: item.room,
+      Notes: item.notes,
+      Quantity: item.quantity
+    }));
+  } else {
+    selection = storedSelection;
+  }
+  
+  if (!selection.length) {
+    return null;
+  }
+  
+  // Create clean JSON data
+  const cleanData = selection.map(item => ({
+    Code: cleanForEmail(item.OrderCode || ''),
+    Description: cleanForEmail(item.Description || ''),
+    Quantity: item.Quantity || 1,
+    Room: cleanForEmail(item.Room || ''),
+    Notes: cleanForEmail(item.Notes || '')
+  }));
+  
+  // Convert to JSON string (no control characters in JSON)
+  const jsonString = JSON.stringify(cleanData, null, 2);
+  
+  console.log('📊 JSON data created:', {
+    length: jsonString.length,
+    preview: jsonString.substring(0, 200),
+    hasControlChars: /[\x00-\x1F\x7F-\x9F]/.test(jsonString)
+  });
+  
+  return {
+    name: filename.replace('.csv', '.json'),
+    data: jsonString,
+    contentType: 'application/json'
+  };
+}
+
+// Simplest possible format: Space-separated values
+export function generateSpaceSeparatedData(userDetails, filename) {
+  const storedSelection = JSON.parse(localStorage.getItem('selection') || '[]');
+  const selectedProducts = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.SELECTED_PRODUCTS) || '[]');
+  
+  let selection = [];
+  if (selectedProducts.length > 0) {
+    selection = selectedProducts.map(item => ({
+      ...item.product,
+      Room: item.room,
+      Notes: item.notes,
+      Quantity: item.quantity
+    }));
+  } else {
+    selection = storedSelection;
+  }
+  
+  if (!selection.length) {
+    return null;
+  }
+  
+  // Create space-separated data (absolutely no control characters)
+  let dataText = 'SEIMA_PRODUCT_SELECTION ';
+  
+  selection.forEach((item, index) => {
+    const code = cleanForEmail(item.OrderCode || '');
+    const desc = cleanForEmail(item.Description || '');
+    const qty = item.Quantity || 1;
+    const room = cleanForEmail(item.Room || '');
+    
+    dataText += `ITEM${index + 1} CODE:${code} DESC:${desc} QTY:${qty} ROOM:${room} `;
+  });
+  
+  console.log('📊 Space-separated data:', {
+    length: dataText.length,
+    preview: dataText.substring(0, 200),
+    hasControlChars: /[\x00-\x1F\x7F-\x9F]/.test(dataText)
+  });
+  
+  return {
+    name: filename.replace('.csv', '.txt'),
+    data: dataText,
+    contentType: 'text/plain'
+  };
+}
+
+// Alternative: Use simple format without quotes if still having issues

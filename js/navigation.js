@@ -537,7 +537,7 @@ export class NavigationManager {
   setupReviewScreenHandlers() {
     const backBtn = document.getElementById('back-to-scanner');
     const addMoreBtn = document.getElementById('add-more-btn');
-    const sendPdfBtn = document.getElementById('send-pdf-btn');
+    const quickPdfBtn = document.getElementById('quick-pdf-btn');
 
     if (backBtn) {
       backBtn.onclick = () => this.showScannerScreen();
@@ -547,8 +547,8 @@ export class NavigationManager {
       addMoreBtn.onclick = () => this.showScannerScreen();
     }
 
-    if (sendPdfBtn) {
-      sendPdfBtn.onclick = () => this.showPdfFormModal();
+    if (quickPdfBtn) {
+      quickPdfBtn.onclick = () => this.showPdfFormModal();
     }
   }
 
@@ -710,8 +710,15 @@ export class NavigationManager {
       email: formData.get('user-email'),
       telephone: formData.get('user-telephone'),
       excludePrice: formData.get('exclude-price') === 'on',
-      exportCsv: formData.get('export-csv') === 'on'
+      exportCsv: formData.get('export-csv') === 'on',
+      sendEmail: true // Always true since we're in the email flow
     };
+
+    // Validate email address is provided
+    if (!userDetails.email) {
+      alert('Please enter an email address.');
+      return;
+    }
 
     // Show PDF generation (handled by separate PDF module)
     window.dispatchEvent(new CustomEvent('generatePdf', { detail: userDetails }));
