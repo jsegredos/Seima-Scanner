@@ -321,14 +321,34 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Hardware acceleration for mobile performance */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 
 #scanner-video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 18px;
+  /* Hardware acceleration for mobile performance */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Reduce canvas scaling artifacts for scanner viewport */
+#scanner-viewport {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+#scanner-viewport canvas {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 
@@ -1343,10 +1363,14 @@ body {
     height: 100% !important;
     min-height: 240px;
     max-height: 60vh;
-    object-fit: cover;
+    object-fit: contain;
     border-radius: 18px !important;
     background: #222;
     display: block;
+    /* Hardware acceleration for mobile performance */
+    transform: translateZ(0) !important;
+    backface-visibility: hidden !important;
+    perspective: 1000px !important;
   }
   #scanner-overlay {
     border-radius: 18px;

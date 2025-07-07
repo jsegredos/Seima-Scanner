@@ -1,14 +1,21 @@
 import { CONFIG } from './config.js';
 import { dataLayer } from './modules.js';
 
-// Scanner functionality
+// Optimized Scanner functionality for mobile performance
 export class ScannerController {
   constructor() {
     this.isScanning = false;
-    this.scannerEngine = 'quagga'; // Use Quagga as default like the original
+    this.scannerEngine = 'quagga';
     this.onScanCallback = null;
     this.lastScannedCode = null;
     this.scanTimeout = null;
+    this.scanDebounceTimeout = null;
+    this.performanceMonitor = {
+      startTime: null,
+      frameCount: 0,
+      fps: 0
+    };
+    this.performanceCheckInterval = null;
   }
 
   setOnScanCallback(callback) {
@@ -24,26 +31,26 @@ export class ScannerController {
   async startScanning() {
     if (this.isScanning) return;
 
-    // Check if the scanner viewport element exists
     const viewport = document.getElementById('scanner-viewport');
     if (!viewport) {
-      // Silently return if not on scanner screen - this is normal
       return;
     }
 
     try {
-      // Check for camera support first like the original
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera access not supported');
       }
       
-      // Request camera permission
-      await navigator.mediaDevices.getUserMedia({ video: true });
+      // Request camera permission with mobile-optimized constraints
+      await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "environment" }
+      });
       
       this.isScanning = true;
       this.lastScannedCode = null;
+      this.performanceMonitor.startTime = Date.now();
+      this.performanceMonitor.frameCount = 0;
       
-      // Use Quagga by default like the original
       this.initializeQuagga();
     } catch (error) {
       console.error('Failed to start scanner:', error);
@@ -62,42 +69,68 @@ export class ScannerController {
         window.Quagga.stop();
       }
     } catch (e) {
-      // Suppress Quagga stop errors (e.g., if not initialized)
+      // Suppress Quagga stop errors
     }
     
     if (this.scanTimeout) {
       clearTimeout(this.scanTimeout);
       this.scanTimeout = null;
     }
+
+    if (this.scanDebounceTimeout) {
+      clearTimeout(this.scanDebounceTimeout);
+      this.scanDebounceTimeout = null;
+    }
+
+    if (this.performanceCheckInterval) {
+      clearInterval(this.performanceCheckInterval);
+      this.performanceCheckInterval = null;
+    }
   }
 
-
-
   initializeQuagga() {
-    // Double-check that the viewport element exists
     const viewport = document.getElementById('scanner-viewport');
     if (!viewport) {
-      // Silently return if not on scanner screen - this is normal
       return;
     }
 
-    // Device detection for mobile like the original
+    // Mobile detection and optimized constraints
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isLowEndDevice = this.detectLowEndDevice();
+    
     let constraints;
+    let frequency;
+    let numWorkers;
     
     if (isMobile) {
+      if (isLowEndDevice) {
+        // Ultra-conservative settings for low-end devices
+        constraints = {
+          width: { min: 320, ideal: 320, max: 480 },
+          height: { min: 240, ideal: 240, max: 360 },
+          facingMode: "environment"
+        };
+        frequency = 2; // Only 2 scans per second
+        numWorkers = 1; // Single worker thread
+      } else {
+        // Standard mobile settings
+        constraints = {
+          width: { min: 320, ideal: 480, max: 640 },
+          height: { min: 240, ideal: 360, max: 480 },
+          facingMode: "environment"
+        };
+        frequency = 3; // 3 scans per second
+        numWorkers = 1; // Single worker for mobile
+      }
+    } else {
+      // Desktop settings
       constraints = {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        width: { min: 640, ideal: 800, max: 1280 },
+        height: { min: 480, ideal: 600, max: 720 },
         facingMode: "environment"
       };
-    } else {
-      constraints = {
-        width: { min: 640, ideal: 1920 },
-        height: { min: 480, ideal: 1080 },
-        facingMode: "environment",
-        aspectRatio: { ideal: 1.7777777778 }
-      };
+      frequency = 5;
+      numWorkers = Math.min(navigator.hardwareConcurrency || 2, 2);
     }
 
     window.Quagga.init({
@@ -108,64 +141,194 @@ export class ScannerController {
         constraints: constraints,
       },
       locator: {
-        patchSize: "medium",
-        halfSample: false
+        patchSize: isLowEndDevice ? "small" : "medium",
+        halfSample: true
       },
-      numOfWorkers: navigator.hardwareConcurrency || 4,
-      frequency: 10,
+      numOfWorkers: numWorkers,
+      frequency: frequency,
       decoder: {
-        readers: ["ean_reader"]
+        readers: ["ean_reader", "ean_8_reader"] // Add EAN-8 support
       },
-      locate: true
+      locate: false, // Disable localization for performance
+      debug: false // Ensure debug is off
     }, (err) => {
       if (err) {
+        console.error('Quagga initialization error:', err);
         this.showCameraError();
         return;
       }
+      
+      // Start performance monitoring
+      this.startPerformanceMonitoring();
     });
 
-    // Handle successful scans
+    // Handle successful scans with debouncing
     window.Quagga.onDetected((result) => {
-      this.handleScanResult(result);
+      this.handleScanResultDebounced(result);
     });
+
+    // Monitor processing performance
+    window.Quagga.onProcessed((result) => {
+      this.updatePerformanceMetrics();
+    });
+  }
+
+  detectLowEndDevice() {
+    // Simple heuristics to detect low-end devices
+    const memory = navigator.deviceMemory || 4; // Default to 4GB if unknown
+    const cores = navigator.hardwareConcurrency || 4;
+    const userAgent = navigator.userAgent.toLowerCase();
+    
+    // Consider it low-end if:
+    // - Less than 3GB RAM
+    // - Less than 4 CPU cores
+    // - Older Android versions
+    return memory < 3 || 
+           cores < 4 || 
+           userAgent.includes('android 6') ||
+           userAgent.includes('android 7') ||
+           userAgent.includes('android 8');
+  }
+
+  handleScanResultDebounced(result) {
+    const code = result.codeResult.code;
+    
+    // Prevent duplicate scans within 1 second
+    if (this.lastScannedCode === code) {
+      return;
+    }
+    
+    // Clear any existing debounce timeout
+    if (this.scanDebounceTimeout) {
+      clearTimeout(this.scanDebounceTimeout);
+    }
+    
+    // Debounce the scan result
+    this.scanDebounceTimeout = setTimeout(() => {
+      this.handleScanResult(result);
+    }, 100); // 100ms debounce
   }
 
   handleScanResult(result) {
     const code = result.codeResult.code;
     
+    // Validate barcode format (basic check)
+    if (!this.isValidBarcode(code)) {
+      return;
+    }
+    
+    this.lastScannedCode = code;
     this.stopScanning();
     this.provideHapticFeedback();
     
-    // Find product by barcode and call callback
     if (this.onScanCallback) {
-      this.onScanCallback(code, null); // Let the callback handle product lookup
+      this.onScanCallback(code, null);
     }
+  }
+
+  isValidBarcode(code) {
+    // Basic validation for EAN-13 and EAN-8
+    return /^\d{8}$|^\d{12,13}$/.test(code);
+  }
+
+  startPerformanceMonitoring() {
+    this.performanceMonitor.startTime = Date.now();
+    this.performanceMonitor.frameCount = 0;
+    
+    // Check performance every 5 seconds
+    this.performanceCheckInterval = setInterval(() => {
+      this.checkPerformance();
+    }, 5000);
+  }
+
+  updatePerformanceMetrics() {
+    this.performanceMonitor.frameCount++;
+    
+    const elapsed = (Date.now() - this.performanceMonitor.startTime) / 1000;
+    if (elapsed > 0) {
+      this.performanceMonitor.fps = this.performanceMonitor.frameCount / elapsed;
+    }
+  }
+
+  checkPerformance() {
+    const fps = this.performanceMonitor.fps;
+    
+    // If FPS is too low, reduce scanning frequency
+    if (fps < 1 && this.isScanning) {
+      console.warn('Low scanner performance detected, reducing frequency');
+      this.adjustForLowPerformance();
+    }
+  }
+
+  adjustForLowPerformance() {
+    // Restart scanner with ultra-conservative settings
+    this.stopScanning();
+    
+    setTimeout(() => {
+      // Override constraints for emergency performance mode
+      const viewport = document.getElementById('scanner-viewport');
+      if (viewport && !this.isScanning) {
+        window.Quagga.init({
+          inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: "#scanner-viewport",
+            constraints: {
+              width: { min: 320, ideal: 320, max: 320 },
+              height: { min: 240, ideal: 240, max: 240 },
+              facingMode: "environment"
+            },
+          },
+          locator: {
+            patchSize: "small",
+            halfSample: true
+          },
+          numOfWorkers: 1,
+          frequency: 1, // Very conservative
+          decoder: {
+            readers: ["ean_reader"]
+          },
+          locate: false,
+          debug: false
+        }, (err) => {
+          if (!err) {
+            this.isScanning = true;
+            window.Quagga.onDetected((result) => {
+              this.handleScanResultDebounced(result);
+            });
+          }
+        });
+      }
+    }, 1000);
   }
 
   provideHapticFeedback() {
     if (navigator.vibrate) {
-      navigator.vibrate(100);
+      navigator.vibrate(50); // Shorter vibration for better performance
     }
   }
 
   playScanSound() {
-    try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.value = 800;
-      oscillator.type = 'sine';
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.1);
-    } catch (error) {
-      // Ignore audio errors
+    // Only play sound if AudioContext is available and performant
+    if (this.performanceMonitor.fps > 2) {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+      } catch (error) {
+        // Ignore audio errors
+      }
     }
   }
 
@@ -185,9 +348,16 @@ export class ScannerController {
 
   setManualBarcode(code) {
     if (code) {
-      this.handleScanResult(code);
+      this.handleScanResult({ codeResult: { code } });
     }
   }
 
-
+  // Cleanup method
+  destroy() {
+    this.stopScanning();
+    
+    if (this.performanceCheckInterval) {
+      clearInterval(this.performanceCheckInterval);
+    }
+  }
 } 
