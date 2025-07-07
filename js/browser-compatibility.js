@@ -551,4 +551,9 @@ export class BrowserCompatibilityManager {
 }
 
 // Export singleton instance
-export const browserCompatibility = new BrowserCompatibilityManager(); 
+export const browserCompatibility = new BrowserCompatibilityManager();
+
+// Export convenience function for backward compatibility
+export function isSamsungDevice() {
+  return browserCompatibility.deviceInfo.isSamsung;
+} 

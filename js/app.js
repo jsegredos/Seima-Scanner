@@ -1,5 +1,6 @@
 import { NavigationManager } from './navigation.js';
 import { moduleCoordinator, emailService, pdfGenerator, CONFIG } from './modules.js';
+import { showPdfFormScreen, ensurePdfSpinner, downloadWithFallback } from './pdf-generator.js';
 import { StorageManager } from './storage.js';
 import { FileImportManager } from './file-import.js';
 import { browserCompatibility, isSamsungDevice } from './browser-compatibility.js';
