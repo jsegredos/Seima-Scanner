@@ -115,6 +115,12 @@ export class DataLayer {
         this.searchIndex.set(product.OrderCode.toLowerCase().replace(/[-\s]/g, ''), index);
       }
       
+      // Index by barcode (this is what scanners will find!)
+      if (product.BARCODE && product.BARCODE.trim()) {
+        this.searchIndex.set(product.BARCODE.toLowerCase(), index);
+        this.searchIndex.set(product.BARCODE.toLowerCase().replace(/[-\s]/g, ''), index);
+      }
+      
       // Index by description keywords
       if (product.Description) {
         const words = product.Description.toLowerCase().split(/\s+/);
@@ -132,17 +138,27 @@ export class DataLayer {
       }
     });
     
-    console.log(`✅ Search index built with ${this.searchIndex.size} entries`);
+    // Count barcodes indexed for debugging
+    const barcodeCount = this.products.filter(p => p.BARCODE && p.BARCODE.trim()).length;
+    console.log(`✅ Search index built with ${this.searchIndex.size} entries (${barcodeCount} barcodes indexed)`);
   }
 
   // Product search methods
-  findProductByCode(orderCode) {
-    if (!orderCode) return null;
+  findProductByCode(code) {
+    if (!code) return null;
     
-    const cleanCode = orderCode.toLowerCase().trim();
+    // Search by OrderCode or BARCODE
+    const cleanCode = code.toLowerCase().trim();
     const index = this.searchIndex.get(cleanCode) || this.searchIndex.get(cleanCode.replace(/[-\s]/g, ''));
     
-    return typeof index === 'number' ? this.products[index] : null;
+    const product = typeof index === 'number' ? this.products[index] : null;
+    
+    // Debug logging for barcode scanning
+    if (code.length > 8) { // Likely a barcode
+      console.log(`🔍 Barcode search for "${code}": ${product ? 'FOUND' : 'NOT FOUND'} ${product ? `(${product.OrderCode} - ${product.Description})` : ''}`);
+    }
+    
+    return product;
   }
 
   searchProducts(query, limit = 10) {
@@ -157,14 +173,15 @@ export class DataLayer {
       results.add(directMatch);
     }
     
-    // Search in descriptions
+    // Search in descriptions, order codes, and barcodes
     this.products.forEach(product => {
       if (results.size >= limit) return;
       
       const description = (product.Description || '').toLowerCase();
       const orderCode = (product.OrderCode || '').toLowerCase();
+      const barcode = (product.BARCODE || '').toLowerCase();
       
-      if (description.includes(queryLower) || orderCode.includes(queryLower)) {
+      if (description.includes(queryLower) || orderCode.includes(queryLower) || barcode.includes(queryLower)) {
         results.add(product);
       }
     });
