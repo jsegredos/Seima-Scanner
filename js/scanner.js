@@ -74,6 +74,13 @@ export class ScannerController {
 
 
   initializeQuagga() {
+    // Double-check that the viewport element exists
+    const viewport = document.getElementById('scanner-viewport');
+    if (!viewport) {
+      console.error('Scanner viewport element not found during Quagga initialization');
+      return;
+    }
+
     // Device detection for mobile like the original
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     let constraints;

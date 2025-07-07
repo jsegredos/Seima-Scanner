@@ -164,13 +164,15 @@ export class NavigationManager {
       // Setup event handlers
       this.setupScannerScreenHandlers();
       
-      // Start scanning
-      try {
-        await this.scannerController.startScanning();
-      } catch (error) {
-        console.error('Failed to start scanner:', error);
-        this.showScanFeedback('Scanner initialization failed. Please refresh the page.');
-      }
+      // Start scanning after a small delay to ensure DOM is ready
+      setTimeout(async () => {
+        try {
+          await this.scannerController.startScanning();
+        } catch (error) {
+          console.error('Failed to start scanner:', error);
+          this.showScanFeedback('Scanner initialization failed. Please refresh the page.');
+        }
+      }, 100);
       
       this.updateSelectionCount();
     } catch (error) {
@@ -202,7 +204,9 @@ export class NavigationManager {
       engineToggle.onchange = () => {
         this.scannerController.setScannerEngine(engineToggle.value);
         this.scannerController.stopScanning();
-        this.scannerController.startScanning();
+        setTimeout(() => {
+          this.scannerController.startScanning();
+        }, 100);
       };
     }
 
@@ -231,7 +235,9 @@ export class NavigationManager {
     });
 
     input.addEventListener('blur', () => {
-      this.scannerController.startScanning();
+      setTimeout(() => {
+        this.scannerController.startScanning();
+      }, 100);
     });
 
     input.addEventListener('input', () => {
@@ -255,7 +261,9 @@ export class NavigationManager {
       
       dropdown.classList.remove('visible');
       input.value = '';
-      this.scannerController.startScanning();
+      setTimeout(() => {
+        this.scannerController.startScanning();
+      }, 100);
     };
 
     // Hide dropdown when clicking outside
