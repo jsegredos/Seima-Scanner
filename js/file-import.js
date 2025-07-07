@@ -1,6 +1,5 @@
-import { CONFIG } from './config.js';
 import { StorageManager } from './storage.js';
-import { productCatalog } from './product-catalog.js';
+import { CONFIG, dataLayer } from './modules.js';
 import { Utils } from './utils.js';
 
 export class FileImportManager {
@@ -439,7 +438,7 @@ export class FileImportManager {
   }
 
   async findProductInCatalog(productCode, productName) {
-    const catalog = productCatalog.getCatalog();
+    const catalog = dataLayer.getAllProducts();
     
     if (productCode) {
       // Convert both to strings for comparison to handle number vs string issues

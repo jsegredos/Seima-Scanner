@@ -1,5 +1,5 @@
 import { CONFIG } from './config.js';
-import { productCatalog } from './product-catalog.js';
+import { dataLayer } from './modules.js';
 
 // Scanner functionality
 export class ScannerController {

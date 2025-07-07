@@ -1,11 +1,8 @@
 import { NavigationManager } from './navigation.js';
-import { showPdfFormScreen, ensurePdfSpinner, isSamsungDevice, downloadWithFallback } from './pdf-generator.js';
+import { moduleCoordinator, emailService, pdfGenerator, CONFIG } from './modules.js';
 import { StorageManager } from './storage.js';
 import { FileImportManager } from './file-import.js';
-import { browserCompatibility } from './browser-compatibility.js';
-import { emailService } from './email-service.js';
-import { sendEmailWithCSV } from './email-service-simple.js';
-import { CONFIG } from './config.js';
+import { browserCompatibility, isSamsungDevice } from './browser-compatibility.js';
 
 // Main application class
 class SeimaScanner {

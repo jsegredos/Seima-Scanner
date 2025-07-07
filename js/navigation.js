@@ -1,6 +1,5 @@
-import { CONFIG } from './config.js';
 import { StorageManager } from './storage.js';
-import { productCatalog } from './product-catalog.js';
+import { CONFIG, dataLayer } from './modules.js';
 import { ScannerController } from './scanner.js';
 import { Utils } from './utils.js';
 
@@ -15,7 +14,7 @@ export class NavigationManager {
 
   setupScannerCallback() {
     this.scannerController.setOnScanCallback((code) => {
-      if (!productCatalog.isLoaded) {
+      if (!dataLayer.isLoaded) {
         this.showScanFeedback('Product data loading, please wait...');
         return;
       }
@@ -24,7 +23,7 @@ export class NavigationManager {
       this.showScanFeedback(`Detected: ${code}`);
       
       // Find product by barcode
-      const product = productCatalog.findProductByBarcode(code);
+      const product = dataLayer.findProductByCode(code);
       
       if (product) {
         this.showProductDetailsScreen(product, { scannedCode: code });
@@ -43,7 +42,7 @@ export class NavigationManager {
   async init() {
     // Load product catalog
     try {
-      await productCatalog.ensureLoaded();
+      await dataLayer.init();
     } catch (error) {
       console.error('Failed to load product catalog:', error);
     }
@@ -268,14 +267,14 @@ export class NavigationManager {
   }
 
   performProductSearch(query, dropdown, matches) {
-    if (!productCatalog.isLoaded) {
+    if (!dataLayer.isLoaded) {
       dropdown.innerHTML = '<li>Loading catalog...</li>';
       dropdown.classList.add('visible');
       return;
     }
 
     matches.length = 0;
-    matches.push(...productCatalog.searchProducts(query));
+    matches.push(...dataLayer.searchProducts(query));
 
     if (matches.length === 0) {
       dropdown.innerHTML = '<li>No products found</li>';
@@ -430,7 +429,7 @@ export class NavigationManager {
       let variants = [];
       
       if (productName) {
-        variants = productCatalog.getCatalog().filter(p => {
+        variants = dataLayer.getAllProducts().filter(p => {
           let pName = p.ProductName || p['Product Name'] || '';
           if (typeof pName === 'string') pName = pName.trim();
           return pName && pName === productName;
