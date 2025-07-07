@@ -205,7 +205,9 @@ export class NavigationManager {
         this.scannerController.setScannerEngine(engineToggle.value);
         this.scannerController.stopScanning();
         setTimeout(() => {
-          this.scannerController.startScanning();
+          if (this.currentScreen === 'scanner') {
+            this.scannerController.startScanning();
+          }
         }, 100);
       };
     }
@@ -236,7 +238,9 @@ export class NavigationManager {
 
     input.addEventListener('blur', () => {
       setTimeout(() => {
-        this.scannerController.startScanning();
+        if (this.currentScreen === 'scanner') {
+          this.scannerController.startScanning();
+        }
       }, 100);
     });
 
@@ -262,7 +266,9 @@ export class NavigationManager {
       dropdown.classList.remove('visible');
       input.value = '';
       setTimeout(() => {
-        this.scannerController.startScanning();
+        if (this.currentScreen === 'scanner') {
+          this.scannerController.startScanning();
+        }
       }, 100);
     };
 

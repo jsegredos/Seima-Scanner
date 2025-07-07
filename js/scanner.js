@@ -27,7 +27,7 @@ export class ScannerController {
     // Check if the scanner viewport element exists
     const viewport = document.getElementById('scanner-viewport');
     if (!viewport) {
-      console.error('Scanner viewport element not found');
+      // Silently return if not on scanner screen - this is normal
       return;
     }
 
@@ -77,7 +77,7 @@ export class ScannerController {
     // Double-check that the viewport element exists
     const viewport = document.getElementById('scanner-viewport');
     if (!viewport) {
-      console.error('Scanner viewport element not found during Quagga initialization');
+      // Silently return if not on scanner screen - this is normal
       return;
     }
 
