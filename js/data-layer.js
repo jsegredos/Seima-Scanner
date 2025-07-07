@@ -4,7 +4,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { storageManager } from './storage.js';
+import { StorageManager } from './storage.js';
 
 export class DataLayer {
   constructor() {

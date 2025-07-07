@@ -9,7 +9,7 @@ import { emailService } from './email-unified.js';
 import { pdfGenerator } from './pdf-unified.js';
 import { pdfCore } from './pdf-core.js';
 import { pdfLayouts } from './pdf-layouts.js';
-import { storageManager } from './storage.js';
+import { StorageManager } from './storage.js';
 import * as utils from './utils.js';
 
 export class ModuleCoordinator {
@@ -20,7 +20,7 @@ export class ModuleCoordinator {
       pdfGenerator,
       pdfCore,
       pdfLayouts,
-      storageManager,
+      StorageManager,
       utils
     };
     this.isInitialized = false;
@@ -185,7 +185,7 @@ export { dataLayer } from './data-layer.js';
 export { emailService } from './email-unified.js';
 export { pdfGenerator } from './pdf-unified.js';
 export { CONFIG } from './config.js';
-export { storageManager } from './storage.js';
+export { StorageManager } from './storage.js';
 export * from './utils.js';
 
 // Initialize immediately when imported

@@ -6,7 +6,7 @@
 import { pdfCore } from './pdf-core.js';
 import { pdfLayouts } from './pdf-layouts.js';
 import { CONFIG } from './config.js';
-import { storageManager } from './storage.js';
+import { StorageManager } from './storage.js';
 
 export class UnifiedPDFGenerator {
   constructor() {
