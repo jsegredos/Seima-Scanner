@@ -1,1 +1,1 @@
-1.4.0 - PDF email, CSV download
+1.4.1 - scanner improvements

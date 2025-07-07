@@ -209,7 +209,7 @@ class SeimaScanner {
     try {
       console.log('📧 Using RESTORED original working EmailJS approach...');
       // RESTORED: Use original working base64 template variable approach
-      sendEmailWithCSV(userDetails, pdfBlob);
+      await emailService.sendEmailWithPDF(userDetails, pdfBlob);
     } catch (error) {
       console.error('Email sending error:', error);
       // The solution has its own error handling, but we'll log here too
