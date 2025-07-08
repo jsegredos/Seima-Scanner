@@ -1,1 +1,1 @@
-1.4.2 - barcode scanning fix and hybrid scanner improvements
+1.5.0 - PDF color updates and Seima staff contact functionality
