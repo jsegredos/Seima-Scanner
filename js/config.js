@@ -139,10 +139,10 @@ export const EMAIL_TEMPLATE_CONFIG = {
     <head>
       <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; }
-        .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
+        .header { background: #8B7355; color: white; padding: 20px; text-align: center; }
         .content { padding: 20px; }
         .summary { background: #f8fafc; padding: 15px; border-radius: 6px; margin: 15px 0; }
-        .footer { background: #f1f5f9; padding: 15px; text-align: center; font-size: 12px; }
+        .footer { background: #6B6B6B; padding: 15px; text-align: center; font-size: 12px; color: white; }
       </style>
     </head>
     <body>
