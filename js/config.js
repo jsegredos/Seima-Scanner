@@ -101,7 +101,46 @@ export const CONFIG = {
     // Samsung-specific settings
     SAMSUNG_OPTIMIZATIONS: true,
     EXTENDED_TIMEOUTS_FOR_SAMSUNG: true
-  }
+  },
+
+  // Version changelog data
+  CHANGELOG: [
+    {
+      version: "1.6.0",
+      date: "2025-07-08",
+      title: "Interactive Changelog & Version Management",
+      changes: [
+        "Added clickable version number with changelog popup",
+        "Implemented structured changelog data management",
+        "Version display now shows only number (no description)",
+        "Added responsive changelog modal with version history",
+        "Enhanced version tracking and display system"
+      ]
+    },
+    {
+      version: "1.5.0",
+      date: "2025-07-08",
+      title: "Seima Contact & PDF Enhancements",
+      changes: [
+        "Added Seima staff contact functionality with form validation",
+        "Updated PDF header color to brown (#8B7355)",
+        "Updated PDF footer color to dark gray (#6B6B6B)",
+        "Staff contact details displayed on PDF title page",
+        "Email BCC functionality for staff member",
+        "Enhanced PDF title page text format"
+      ]
+    },
+    {
+      version: "1.4.2",
+      date: "2025-07-07", 
+      title: "Barcode Scanning Fixes",
+      changes: [
+        "Fixed barcode scanning with BARCODE field search support",
+        "Improved hybrid scanner performance",
+        "Enhanced iOS scanner optimizations"
+      ]
+    }
+  ]
 };
 
 // EmailJS Template Configuration

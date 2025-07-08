@@ -143,10 +143,74 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script type="module" src="js/app.js"></script>
   <script nomodule src="app.js"></script>
-  <div id="version-info" style="position:fixed;bottom:10px;left:0;right:0;text-align:center;font-size:0.98rem;color:#888;z-index:10;pointer-events:none;">Ver: <span id="version-number">1.0.0</span></div>
+  <div id="version-info" style="position:fixed;bottom:10px;left:0;right:0;text-align:center;font-size:0.98rem;color:#888;z-index:10;cursor:pointer;" onclick="showChangelogModal()">Ver: <span id="version-number">1.0.0</span></div>
+  
+  <!-- Changelog Modal -->
+  <div id="changelog-modal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+      <h3 style="margin: 0 0 20px 0; color: #333; display: flex; justify-content: space-between; align-items: center;">
+        Changelog
+        <button onclick="closeChangelogModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #888;">&times;</button>
+      </h3>
+      
+      <div id="changelog-content">
+        <!-- Changelog content will be populated by JavaScript -->
+      </div>
+    </div>
+  </div>
+
   <script>
     fetch('version.txt').then(r => r.text()).then(v => {
       document.getElementById('version-number').textContent = v.trim();
+    });
+
+    async function showChangelogModal() {
+      try {
+        const { CONFIG } = await import('./js/config.js');
+        const modal = document.getElementById('changelog-modal');
+        const content = document.getElementById('changelog-content');
+        
+        if (!CONFIG.CHANGELOG) {
+          content.innerHTML = '<p>No changelog available.</p>';
+          modal.style.display = 'flex';
+          return;
+        }
+
+        let html = '';
+        CONFIG.CHANGELOG.forEach(entry => {
+          html += `
+            <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0; color: #8B7355;">v${entry.version}</h4>
+                <span style="font-size: 14px; color: #666;">${entry.date}</span>
+              </div>
+              <h5 style="margin: 5px 0; color: #333;">${entry.title}</h5>
+              <ul style="margin: 10px 0; padding-left: 20px;">
+                ${entry.changes.map(change => `<li style="margin: 5px 0; color: #555;">${change}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+        });
+        
+        content.innerHTML = html;
+        modal.style.display = 'flex';
+      } catch (error) {
+        console.error('Error loading changelog:', error);
+        document.getElementById('changelog-content').innerHTML = '<p style="color: #999;">Error loading changelog.</p>';
+        document.getElementById('changelog-modal').style.display = 'flex';
+      }
+    }
+
+    function closeChangelogModal() {
+      document.getElementById('changelog-modal').style.display = 'none';
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener('click', (e) => {
+      const modal = document.getElementById('changelog-modal');
+      if (e.target === modal) {
+        closeChangelogModal();
+      }
     });
   </script>
 </body>
