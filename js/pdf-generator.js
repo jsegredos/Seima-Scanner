@@ -250,10 +250,6 @@ export function showPdfFormScreen(userDetails) {
           y += 28;
         }
       });
-      // Thank you/info message at bottom above footer
-      const infoMsg = 'Thank you for selecting Seima products. If you would like additional information';
-      const infoMsg2 = 'please call or email your Seima representative, or email info@seima.com.au';
-      
       // Get staff contact details from storage
       let staffContact = null;
       try {
@@ -267,20 +263,35 @@ export function showPdfFormScreen(userDetails) {
       doc.setFontSize(12);
       doc.setTextColor('#222');
       
-      // Adjust message positioning based on whether staff contact is available
-      let messageY = pageHeight - 60;
-      if (staffContact && staffContact.name && staffContact.mobile) {
-        messageY = pageHeight - 76; // Move up to make room for staff contact
+      // Updated message format as requested
+      if (staffContact && staffContact.name && staffContact.mobile && staffContact.email) {
+        // Use new format with Seima contact details
+        const contactMsg1 = `For further information please contact ${staffContact.name} on ${staffContact.mobile}`;
+        const contactMsg2 = `or email: ${staffContact.email}`;
+        const thankYouMsg = 'Thank you for selecting Seima products.';
+        const websiteMsg = 'www.seima.com.au';
         
-        doc.text(infoMsg, pageWidth/2, messageY, { align: 'center' });
-        doc.text(infoMsg2, pageWidth/2, messageY + 16, { align: 'center' });
+        let messageY = pageHeight - 92; // Start higher to fit all lines
         
-        // Add staff contact information
-        const staffMsg = `Feel free to contact ${staffContact.name} on ${staffContact.mobile} for further information`;
+        doc.setFontSize(11);
+        doc.setTextColor('#222');
+        doc.text(contactMsg1, pageWidth/2, messageY, { align: 'center' });
+        doc.text(contactMsg2, pageWidth/2, messageY + 14, { align: 'center' });
+        
+        doc.text('', pageWidth/2, messageY + 28, { align: 'center' }); // Empty line
+        
+        doc.setFontSize(12);
+        doc.text(thankYouMsg, pageWidth/2, messageY + 42, { align: 'center' });
+        
         doc.setFontSize(11);
         doc.setTextColor('#444');
-        doc.text(staffMsg, pageWidth/2, pageHeight-44, { align: 'center' });
+        doc.text(websiteMsg, pageWidth/2, messageY + 56, { align: 'center' });
       } else {
+        // Fallback to original message if no staff contact
+        const infoMsg = 'Thank you for selecting Seima products. If you would like additional information';
+        const infoMsg2 = 'please call or email your Seima representative, or email info@seima.com.au';
+        
+        let messageY = pageHeight - 60;
         doc.text(infoMsg, pageWidth/2, messageY, { align: 'center' });
         doc.text(infoMsg2, pageWidth/2, messageY + 16, { align: 'center' });
       }

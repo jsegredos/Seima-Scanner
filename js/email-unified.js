@@ -88,6 +88,12 @@ export class UnifiedEmailService {
         pdf_filename: this.generateFileName(userDetails, 'pdf')
       };
 
+      // Add BCC to Seima staff member if contact details exist
+      if (userDetails.staffContact && userDetails.staffContact.email) {
+        templateParams.bcc_email = userDetails.staffContact.email;
+        console.log(`📧 Adding BCC to Seima staff: ${userDetails.staffContact.email}`);
+      }
+
       const result = await emailjs.send(
         CONFIG.EMAIL.SERVICE_ID,
         CONFIG.EMAIL.TEMPLATE_ID,
@@ -163,6 +169,12 @@ export class UnifiedEmailService {
         total_products: this.getProductCount(),
         total_rooms: this.getRoomCount()
       };
+
+      // Add BCC to Seima staff member if contact details exist
+      if (userDetails.staffContact && userDetails.staffContact.email) {
+        templateParams.bcc_email = userDetails.staffContact.email;
+        console.log(`📧 Adding BCC to Seima staff (notification email): ${userDetails.staffContact.email}`);
+      }
 
       const result = await emailjs.send(
         CONFIG.EMAIL.SERVICE_ID,
