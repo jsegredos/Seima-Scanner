@@ -253,14 +253,40 @@ export function showPdfFormScreen(userDetails) {
       // Thank you/info message at bottom above footer
       const infoMsg = 'Thank you for selecting Seima products. If you would like additional information';
       const infoMsg2 = 'please call or email your Seima representative, or email info@seima.com.au';
+      
+      // Get staff contact details from storage
+      let staffContact = null;
+      try {
+        const data = localStorage.getItem('staffContactDetails');
+        staffContact = data ? JSON.parse(data) : null;
+      } catch (error) {
+        console.warn('Error getting staff contact details:', error);
+      }
+      
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(12);
       doc.setTextColor('#222');
-      doc.text(infoMsg, pageWidth/2, pageHeight-60, { align: 'center' });
-      doc.text(infoMsg2, pageWidth/2, pageHeight-44, { align: 'center' });
+      
+      // Adjust message positioning based on whether staff contact is available
+      let messageY = pageHeight - 60;
+      if (staffContact && staffContact.name && staffContact.mobile) {
+        messageY = pageHeight - 76; // Move up to make room for staff contact
+        
+        doc.text(infoMsg, pageWidth/2, messageY, { align: 'center' });
+        doc.text(infoMsg2, pageWidth/2, messageY + 16, { align: 'center' });
+        
+        // Add staff contact information
+        const staffMsg = `Feel free to contact ${staffContact.name} on ${staffContact.mobile} for further information`;
+        doc.setFontSize(11);
+        doc.setTextColor('#444');
+        doc.text(staffMsg, pageWidth/2, pageHeight-44, { align: 'center' });
+      } else {
+        doc.text(infoMsg, pageWidth/2, messageY, { align: 'center' });
+        doc.text(infoMsg2, pageWidth/2, messageY + 16, { align: 'center' });
+      }
       // Footer bar with timestamp and www.seima.com.au
       const footerHeight = 28;
-      doc.setFillColor('#888');
+      doc.setFillColor('#6B6B6B');
       doc.rect(0, pageHeight-footerHeight, pageWidth, footerHeight, 'F');
       doc.setTextColor('#fff');
       doc.setFontSize(11);
@@ -458,7 +484,7 @@ export function showPdfFormScreen(userDetails) {
               drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH, userDetails.excludePrice);
               currentY = footerHeight + 8;
               // Footer bar (reduced height and font size)
-              doc.setFillColor('#888');
+              doc.setFillColor('#6B6B6B');
               doc.rect(0, pageHeight-footerHeight, pageWidth, footerHeight, 'F');
               doc.setTextColor('#fff');
               doc.setFontSize(11);
@@ -712,7 +738,7 @@ export function showPdfFormScreen(userDetails) {
 
 export function drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH, excludePrice) {
   const headerHeight = footerHeight + 5.7;
-  doc.setFillColor('#222');
+  doc.setFillColor('#8B7355');
   doc.rect(0, 0, pageWidth, headerHeight, 'F');
   if (logoDataUrl && logoNaturalW && logoNaturalH) {
     const logoH = headerHeight * 0.55;

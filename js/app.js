@@ -208,8 +208,24 @@ class SeimaScanner {
   async handleEmailRequest(userDetails, pdfBlob, csvBlob = null) {
     try {
       console.log('📧 Using RESTORED original working EmailJS approach...');
+      
+      // Get staff contact details for CC functionality
+      let staffContact = null;
+      try {
+        const data = localStorage.getItem('staffContactDetails');
+        staffContact = data ? JSON.parse(data) : null;
+      } catch (error) {
+        console.warn('Error getting staff contact details for email CC:', error);
+      }
+      
+      // Add staff contact to userDetails if available
+      const enhancedUserDetails = {
+        ...userDetails,
+        staffContact: staffContact
+      };
+      
       // RESTORED: Use original working base64 template variable approach
-      await emailService.sendEmailWithPDF(userDetails, pdfBlob);
+      await emailService.sendEmailWithPDF(enhancedUserDetails, pdfBlob);
     } catch (error) {
       console.error('Email sending error:', error);
       // The solution has its own error handling, but we'll log here too

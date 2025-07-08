@@ -21,6 +21,7 @@
     <button id="view-selection-btn" class="primary-btn" style="margin-top: 18px;">View Selection</button>
     <button id="clear-selection-btn" class="clear-selection-btn">Clear Selection</button>
     <button id="import-file-btn" class="primary-btn" style="margin-top: 50px; background: #059669; border-color: #059669;">Import File</button>
+    <button id="seima-contact-btn" class="primary-btn" style="margin-top: 18px; background: #8B7355; border-color: #8B7355;">Seima Contact</button>
   </div>
   <div id="clear-selection-modal" class="modal" style="display:none;">
     <div class="modal-content">
@@ -95,6 +96,39 @@
       </div>
     </div>
   </div>
+
+  <!-- Seima Contact Modal -->
+  <div id="seima-contact-modal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 500px;">
+      <h3 style="margin: 0 0 20px 0; color: #333;">Seima Staff Contact Details</h3>
+      <p style="margin-bottom: 20px; color: #666;">Enter your contact details to be included in the PDF and receive a copy of the email.</p>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">Name *</label>
+        <input type="text" id="staff-name" placeholder="Enter your full name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">Mobile Number *</label>
+        <input type="tel" id="staff-mobile" placeholder="Enter your mobile number" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">Email Address *</label>
+        <input type="email" id="staff-email" placeholder="Enter your email address" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+      </div>
+      
+      <div id="staff-details-status" style="display: none; margin-bottom: 15px; padding: 10px; border-radius: 4px;">
+        <!-- Status message will be shown here -->
+      </div>
+      
+      <div style="display: flex; gap: 16px; justify-content: flex-end;">
+        <button id="staff-contact-cancel-btn" class="secondary-btn">Cancel</button>
+        <button id="staff-contact-save-btn" class="primary-btn">Save Contact Details</button>
+      </div>
+    </div>
+  </div>
+
   <div id="pdf-spinner" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:rgba(255,255,255,0.7);align-items:center;justify-content:center;">
     <div style="border:6px solid #e0e0e0;border-top:6px solid #2563eb;border-radius:50%;width:54px;height:54px;animation:spin 1s linear infinite;"></div>
   </div>

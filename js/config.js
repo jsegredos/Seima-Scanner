@@ -33,7 +33,8 @@ export const CONFIG = {
     SELECTED_PRODUCTS: 'selectedProducts',
     PRODUCT_CATALOG: 'productCatalog',
     USER_PREFERENCES: 'userPreferences',
-    ROOM_ASSIGNMENTS: 'roomAssignments'
+    ROOM_ASSIGNMENTS: 'roomAssignments',
+    STAFF_CONTACT: 'staffContactDetails'
   },
   
   UI: {

@@ -81,4 +81,24 @@ export class StorageManager {
   static getSelectionCount() {
     return this.getSelectedProducts().length;
   }
+
+  static getStaffContactDetails() {
+    try {
+      const data = localStorage.getItem(CONFIG.STORAGE_KEYS.STAFF_CONTACT);
+      return data ? JSON.parse(data) : null;
+    } catch (error) {
+      console.error('Error getting staff contact details:', error);
+      return null;
+    }
+  }
+
+  static setStaffContactDetails(contactDetails) {
+    try {
+      localStorage.setItem(CONFIG.STORAGE_KEYS.STAFF_CONTACT, JSON.stringify(contactDetails));
+      return true;
+    } catch (error) {
+      console.error('Error saving staff contact details:', error);
+      return false;
+    }
+  }
 } 

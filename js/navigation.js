@@ -56,6 +56,7 @@ export class NavigationManager {
     const startBtn = document.getElementById('start-btn');
     const viewSelectionBtn = document.getElementById('view-selection-btn');
     const clearSelectionBtn = document.getElementById('clear-selection-btn');
+    const seimaContactBtn = document.getElementById('seima-contact-btn');
 
     if (startBtn) {
       startBtn.onclick = () => this.showRoomSelection();
@@ -68,6 +69,13 @@ export class NavigationManager {
     if (clearSelectionBtn) {
       clearSelectionBtn.onclick = () => this.showClearConfirmModal();
     }
+
+    if (seimaContactBtn) {
+      seimaContactBtn.onclick = () => this.showSeimaContactModal();
+    }
+
+    // Setup Seima contact modal handlers
+    this.setupSeimaContactModal();
 
     // Load version
     this.loadVersion();
@@ -799,5 +807,112 @@ export class NavigationManager {
     if (countElement) {
       countElement.textContent = StorageManager.getSelectionCount().toString();
     }
+  }
+
+  setupSeimaContactModal() {
+    const modal = document.getElementById('seima-contact-modal');
+    if (!modal) return;
+
+    const cancelBtn = document.getElementById('staff-contact-cancel-btn');
+    const saveBtn = document.getElementById('staff-contact-save-btn');
+    
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
+        modal.style.display = 'none';
+      };
+    }
+    
+    if (saveBtn) {
+      saveBtn.onclick = () => this.handleSeimaContactSave();
+    }
+
+    // Load existing contact details if available
+    this.loadSeimaContactDetails();
+  }
+
+  showSeimaContactModal() {
+    const modal = document.getElementById('seima-contact-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      // Load current contact details
+      this.loadSeimaContactDetails();
+    }
+  }
+
+  loadSeimaContactDetails() {
+    const staffContact = StorageManager.getStaffContactDetails();
+    
+    const nameInput = document.getElementById('staff-name');
+    const mobileInput = document.getElementById('staff-mobile');
+    const emailInput = document.getElementById('staff-email');
+    
+    if (staffContact) {
+      if (nameInput) nameInput.value = staffContact.name || '';
+      if (mobileInput) mobileInput.value = staffContact.mobile || '';
+      if (emailInput) emailInput.value = staffContact.email || '';
+    }
+  }
+
+  handleSeimaContactSave() {
+    const nameInput = document.getElementById('staff-name');
+    const mobileInput = document.getElementById('staff-mobile');
+    const emailInput = document.getElementById('staff-email');
+    const statusDiv = document.getElementById('staff-details-status');
+    
+    if (!nameInput || !mobileInput || !emailInput) return;
+
+    const name = nameInput.value.trim();
+    const mobile = mobileInput.value.trim();
+    const email = emailInput.value.trim();
+
+    // Validate required fields
+    if (!name || !mobile || !email) {
+      this.showStaffContactStatus('Please fill in all required fields.', 'error');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      this.showStaffContactStatus('Please enter a valid email address.', 'error');
+      return;
+    }
+
+    // Save contact details
+    const contactDetails = { name, mobile, email };
+    StorageManager.setStaffContactDetails(contactDetails);
+
+    this.showStaffContactStatus('Contact details saved successfully!', 'success');
+    
+    // Close modal after 1.5 seconds
+    setTimeout(() => {
+      const modal = document.getElementById('seima-contact-modal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }, 1500);
+  }
+
+  showStaffContactStatus(message, type) {
+    const statusDiv = document.getElementById('staff-details-status');
+    if (!statusDiv) return;
+
+    statusDiv.style.display = 'block';
+    statusDiv.textContent = message;
+    
+    if (type === 'success') {
+      statusDiv.style.background = '#d1fae5';
+      statusDiv.style.border = '1px solid #10b981';
+      statusDiv.style.color = '#065f46';
+    } else if (type === 'error') {
+      statusDiv.style.background = '#fee2e2';
+      statusDiv.style.border = '1px solid #ef4444';
+      statusDiv.style.color = '#991b1b';
+    }
+
+    // Hide status after 5 seconds
+    setTimeout(() => {
+      statusDiv.style.display = 'none';
+    }, 5000);
   }
 } 
