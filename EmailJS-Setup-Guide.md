@@ -63,6 +63,28 @@ The Seima Scanner now includes advanced email functionality that allows users to
 {{csv_filename}}      - CSV filename (optional)
 ```
 
+### ⚠️ Important: Configure BCC Functionality
+
+**The application automatically sends a BCC copy to the Seima staff contact when configured. You MUST configure this in EmailJS:**
+
+1. In your EmailJS template, go to **Settings** tab
+2. Add these fields to the template:
+
+   **To Email:** `{{to_email}}`
+   **BCC Email:** `{{bcc_email}}` ← **This is crucial for BCC functionality**
+   **Subject:** `{{subject}}`
+   **Reply To:** Your preferred reply email
+
+3. **Test the BCC functionality:**
+   - Add a Seima contact via the home page "Seima Contact" button
+   - Send a test email to a customer
+   - Verify the Seima contact receives a BCC copy
+
+4. **If BCC doesn't work:**
+   - Check your EmailJS service supports BCC (Gmail and Outlook do)
+   - Verify the `{{bcc_email}}` parameter is in the **Settings** tab, not just the HTML
+   - Some EmailJS plans may have BCC limitations
+
 ### Template HTML
 ```html
 <!DOCTYPE html>
@@ -234,7 +256,59 @@ EMAIL: {
 - ✅ Success message displays
 - ✅ If email fails, mailto fallback opens
 
-## Step 6: Monitor Usage
+## Step 6: Test BCC Functionality
+
+**Important: Test that BCC copies are being sent to your Seima staff contact**
+
+### Quick BCC Test (Browser Console)
+1. Open browser Developer Tools (F12)
+2. Go to Console tab
+3. Type: `testEmailBcc()`
+4. Press Enter
+
+This will check if your Seima staff contact is configured correctly.
+
+### Full BCC Test
+1. **Set up Seima Contact:**
+   - Click "Seima Contact" button on home page
+   - Enter staff name, mobile, and email address
+   - Click "Save Contact Details"
+
+2. **Send test email:**
+   - Add some products to selection
+   - Go to Review → Email
+   - Enter a test customer email (you can use your own email)
+   - Send the email
+
+3. **Verify BCC works:**
+   - Customer should receive email with PDF attachment
+   - **Seima staff contact should receive identical BCC copy**
+   - Check spam/junk folders if BCC not received
+
+### BCC Troubleshooting
+
+**If BCC emails are not being received:**
+
+1. **Check EmailJS Template Settings:**
+   - Log into EmailJS dashboard
+   - Go to your template → Settings tab
+   - Verify "BCC Email" field is set to: `{{bcc_email}}`
+
+2. **Check Console Logs:**
+   - Open browser Developer Tools (F12)
+   - Look for BCC messages when sending email:
+   ```
+   📧 Adding BCC to Seima staff: staff@example.com
+   📧 BCC Configuration: {bcc_email: "staff@example.com", ...}
+   ```
+
+3. **Common Issues:**
+   - EmailJS service doesn't support BCC (switch to Gmail/Outlook service)
+   - BCC field not configured in EmailJS template settings
+   - Staff contact email address is invalid
+   - Emails going to spam/junk folder
+
+## Step 7: Monitor Usage
 
 ### EmailJS Dashboard
 - Monitor email sending stats

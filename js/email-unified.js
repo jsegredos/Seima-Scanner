@@ -92,6 +92,18 @@ export class UnifiedEmailService {
       if (userDetails.staffContact && userDetails.staffContact.email) {
         templateParams.bcc_email = userDetails.staffContact.email;
         console.log(`📧 Adding BCC to Seima staff: ${userDetails.staffContact.email}`);
+        console.log(`📧 BCC Configuration:`, {
+          bcc_email: templateParams.bcc_email,
+          customer_email: templateParams.to_email,
+          staff_name: userDetails.staffContact.name || 'Unknown'
+        });
+      } else {
+        console.log(`📧 No BCC: Seima staff contact not configured`);
+        if (!userDetails.staffContact) {
+          console.log(`   ℹ️ No staff contact details found. Set via "Seima Contact" button on home page.`);
+        } else if (!userDetails.staffContact.email) {
+          console.log(`   ℹ️ Staff contact exists but no email address provided.`);
+        }
       }
 
       const result = await emailjs.send(
@@ -174,6 +186,18 @@ export class UnifiedEmailService {
       if (userDetails.staffContact && userDetails.staffContact.email) {
         templateParams.bcc_email = userDetails.staffContact.email;
         console.log(`📧 Adding BCC to Seima staff (notification email): ${userDetails.staffContact.email}`);
+        console.log(`📧 BCC Configuration (notification):`, {
+          bcc_email: templateParams.bcc_email,
+          customer_email: templateParams.to_email,
+          staff_name: userDetails.staffContact.name || 'Unknown'
+        });
+      } else {
+        console.log(`📧 No BCC (notification): Seima staff contact not configured`);
+        if (!userDetails.staffContact) {
+          console.log(`   ℹ️ No staff contact details found. Set via "Seima Contact" button on home page.`);
+        } else if (!userDetails.staffContact.email) {
+          console.log(`   ℹ️ Staff contact exists but no email address provided.`);
+        }
       }
 
       const result = await emailjs.send(
@@ -321,12 +345,46 @@ Seima Team`;
     this.showNotification(message, 'success');
   }
 
+  showError(message) {
+    this.showNotification(message, 'error');
+  }
+
   showInfo(message) {
     this.showNotification(message, 'info');
   }
 
-  showError(message) {
-    this.showNotification(message, 'error');
+  // Debug and testing methods
+  testBccConfiguration() {
+    console.log('🧪 Testing BCC Configuration...');
+    
+    try {
+      const staffContact = JSON.parse(localStorage.getItem('staffContactDetails') || 'null');
+      
+      if (!staffContact) {
+        console.log('❌ No Seima staff contact configured');
+        console.log('   👉 Use "Seima Contact" button on home page to set up staff details');
+        return false;
+      }
+      
+      if (!staffContact.email) {
+        console.log('❌ Staff contact exists but no email address');
+        console.log('   👉 Update staff contact details with a valid email address');
+        return false;
+      }
+      
+      console.log('✅ BCC Configuration looks good:');
+      console.log(`   📧 Staff Email: ${staffContact.email}`);
+      console.log(`   👤 Staff Name: ${staffContact.name || 'Not provided'}`);
+      console.log(`   📱 Staff Mobile: ${staffContact.mobile || 'Not provided'}`);
+      console.log('');
+      console.log('⚠️  IMPORTANT: Make sure your EmailJS template has {{bcc_email}} configured in the Settings tab!');
+      console.log('   📚 See EmailJS-Setup-Guide.md for complete BCC setup instructions');
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error checking BCC configuration:', error);
+      return false;
+    }
   }
 
   showNotification(message, type = 'info') {
@@ -360,4 +418,7 @@ Seima Team`;
 }
 
 // Global instance
-export const emailService = new UnifiedEmailService(); 
+export const emailService = new UnifiedEmailService();
+
+// Expose test function globally for debugging
+window.testEmailBcc = () => emailService.testBccConfiguration(); 
