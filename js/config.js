@@ -54,7 +54,7 @@ export const CONFIG = {
   CATALOG_URL: 'pricelist-latest.csv',
   
   // Version information
-  VERSION: '1.7.0',
+  VERSION: '1.7.1',
   
   // Performance settings
   PERFORMANCE: {

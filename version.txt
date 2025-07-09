@@ -1,3 +1,4 @@
+1.7.1 - Beautiful HTML Emails & Enhanced Error Handling: Professional gold-themed email templates, improved download fallback, removed duplicate popups, migration-ready email system
 1.7.0 - Email CC to Seima. UI Layout & Color Updates. Removed 'Import File' button from home page, improved home page layout.
 1.6.0 - Interactive Changelog & Version Management: enhanced version tracking and display system  
 1.5.0 - Seima Contact & PDF Enhancements: Added Seima staff contact form, updated PDF header footer colour, enhanced PDF title page text format
