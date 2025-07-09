@@ -124,7 +124,7 @@ export const CONFIG = {
       changes: [
         "Added Seima staff contact functionality with form validation",
         "Updated PDF header color to brown (#8B7355)",
-        "Updated PDF footer color to dark gray (#6B6B6B)",
+        "Updated PDF footer color to light beige (#c8c4bc)",
         "Staff contact details displayed on PDF title page",
         "Email BCC functionality for staff member",
         "Enhanced PDF title page text format"
@@ -182,7 +182,7 @@ export const EMAIL_TEMPLATE_CONFIG = {
         .header { background: #8B7355; color: white; padding: 20px; text-align: center; }
         .content { padding: 20px; }
         .summary { background: #f8fafc; padding: 15px; border-radius: 6px; margin: 15px 0; }
-        .footer { background: #6B6B6B; padding: 15px; text-align: center; font-size: 12px; color: white; }
+        .footer { background: #c8c4bc; padding: 15px; text-align: center; font-size: 12px; color: white; }
       </style>
     </head>
     <body>
