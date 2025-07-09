@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Seima Logo Base64 Generator</title>
+    <style>
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f8f8fa;
+            color: #222;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.08);
+        }
+        h1 {
+            color: #2563eb;
+            margin-bottom: 24px;
+        }
+        .upload-area {
+            border: 2px dashed #e5e7eb;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin: 24px 0;
+            background: #f8fafc;
+        }
+        .upload-area.dragover {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .upload-btn {
+            background: #2563eb;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 16px 0;
+        }
+        .upload-btn:hover {
+            background: #1e40af;
+        }
+        .result-area {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 24px 0;
+            display: none;
+        }
+        .base64-output {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 12px 0;
+        }
+        .copy-btn {
+            background: #10b981;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .copy-btn:hover {
+            background: #059669;
+        }
+        .preview-img {
+            max-width: 200px;
+            margin: 16px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .instructions {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 24px 0;
+        }
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 24px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏠 Seima Logo Base64 Generator</h1>
+        <p>Convert your Seima logo to base64 format for embedding in email templates.</p>
+        
+        <div class="instructions">
+            <h3>📝 Instructions:</h3>
+            <ol>
+                <li>Upload your <code>seima-logo-white.png</code> file below</li>
+                <li>Copy the generated base64 code</li>
+                <li>Add it to your EmailJS template where indicated</li>
+                <li>The logo will appear in all your professional emails</li>
+            </ol>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <h3>Drop your logo here or click to select</h3>
+            <p>Supported formats: PNG, JPG, SVG (recommended: PNG with transparent background)</p>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Choose Logo File
+            </button>
+            <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+        </div>
+
+        <div class="result-area" id="resultArea">
+            <h3>✅ Logo Converted Successfully!</h3>
+            <p><strong>Preview:</strong></p>
+            <img id="previewImg" class="preview-img" alt="Logo Preview">
+            
+            <p><strong>Base64 Code (copy this):</strong></p>
+            <div class="base64-output" id="base64Output"></div>
+            <button class="copy-btn" onclick="copyToClipboard()">📋 Copy Base64 Code</button>
+            
+            <div class="warning">
+                <h4>⚠️ Next Steps:</h4>
+                <p>1. Copy the base64 code above</p>
+                <p>2. Go to your EmailJS template editor</p>
+                <p>3. In the CSS section, find the <code>.header::before</code> rule</p>
+                <p>4. Replace the <code>background: url('...')</code> with:</p>
+                <code>background: url('data:image/png;base64,YOUR_BASE64_CODE_HERE') center center no-repeat;</code>
+                <p>5. Save your template and test!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Drag and drop functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const resultArea = document.getElementById('resultArea');
+        const previewImg = document.getElementById('previewImg');
+        const base64Output = document.getElementById('base64Output');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                alert('Please select a valid image file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64 = e.target.result;
+                
+                // Show preview
+                previewImg.src = base64;
+                
+                // Show base64 code (without data:image prefix for easier copying)
+                const base64Code = base64.split(',')[1];
+                base64Output.textContent = base64Code;
+                
+                // Show result area
+                resultArea.style.display = 'block';
+                
+                // Scroll to result
+                resultArea.scrollIntoView({ behavior: 'smooth' });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function copyToClipboard() {
+            const base64Code = base64Output.textContent;
+            navigator.clipboard.writeText(base64Code).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                btn.style.background = '#059669';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#10b981';
+                }, 2000);
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = base64Code;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Base64 code copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html> 

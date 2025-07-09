@@ -94,45 +94,8 @@ export async function downloadWithFallback(blob, filename, fileType = 'file') {
   }
 }
 
-function showBrowserCompatibilityWarning() {
-  if (isSamsungDevice()) {
-    const existingWarning = document.getElementById('samsung-browser-warning');
-    if (existingWarning) return; // Don't show multiple warnings
-    
-    const warning = document.createElement('div');
-    warning.id = 'samsung-browser-warning';
-    warning.style.cssText = `
-      position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
-      background: #fef3c7; border-bottom: 1px solid #f59e0b; padding: 12px;
-      text-align: center; font-size: 14px; color: #92400e;
-    `;
-    
-    warning.innerHTML = `
-      <span style="margin-right: 8px;">📱</span>
-      <strong>Samsung Device:</strong> For best results with PDF downloads, use Chrome browser instead of Samsung Internet.
-      <button onclick="this.parentElement.remove()" style="
-        margin-left: 12px; padding: 4px 8px; border: none; background: #f59e0b; 
-        color: white; border-radius: 3px; cursor: pointer; font-size: 12px;
-      ">Dismiss</button>
-    `;
-    
-    document.body.insertBefore(warning, document.body.firstChild);
-    
-    // Auto-hide after 10 seconds
-    setTimeout(() => {
-      if (warning.parentElement) {
-        warning.remove();
-      }
-    }, 10000);
-  }
-}
-
-// Show compatibility warning when page loads
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', showBrowserCompatibilityWarning);
-} else {
-  showBrowserCompatibilityWarning();
-}
+// Samsung compatibility warning removed to prevent duplicate popups
+// The main Samsung detection popup is handled in app.js
 
 export function showPdfFormScreen(userDetails) {
   const spinner = document.getElementById('pdf-spinner');
