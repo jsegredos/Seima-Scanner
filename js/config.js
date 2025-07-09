@@ -103,56 +103,7 @@ export const CONFIG = {
     EXTENDED_TIMEOUTS_FOR_SAMSUNG: true
   },
 
-  // Version changelog data
-  CHANGELOG: [
-    {
-      version: "1.7.0",
-      date: "2025-07-09",
-      title: "UI Layout & Color Updates",
-      changes: [
-        "Updated PDF header color to warm gray (#a09484)",
-        "Repositioned 'Clear Selection' and 'Seima Contact' buttons to bottom of screen",
-        "Standardized secondary button sizes with 14pt font",
-        "Removed 'Import File' button from home page",
-        "Improved home page layout and visual hierarchy"
-      ]
-    },
-    {
-      version: "1.6.0",
-      date: "2025-07-08",
-      title: "Interactive Changelog & Version Management",
-      changes: [
-        "Added clickable version number with changelog popup",
-        "Implemented structured changelog data management",
-        "Version display now shows only number (no description)",
-        "Added responsive changelog modal with version history",
-        "Enhanced version tracking and display system"
-      ]
-    },
-    {
-      version: "1.5.0",
-      date: "2025-07-08",
-      title: "Seima Contact & PDF Enhancements",
-      changes: [
-        "Added Seima staff contact functionality with form validation",
-        "Updated PDF header color to warm gray (#a09484)",
-        "Updated PDF footer color to light beige (#c8c4bc)",
-        "Staff contact details displayed on PDF title page",
-        "Email BCC functionality for staff member",
-        "Enhanced PDF title page text format"
-      ]
-    },
-    {
-      version: "1.4.2",
-      date: "2025-07-07", 
-      title: "Barcode Scanning Fixes",
-      changes: [
-        "Fixed barcode scanning with BARCODE field search support",
-        "Improved hybrid scanner performance",
-        "Enhanced iOS scanner optimizations"
-      ]
-    }
-  ]
+
 };
 
 // EmailJS Template Configuration
@@ -194,7 +145,7 @@ export const EMAIL_TEMPLATE_CONFIG = {
         .header { background: #a09484; color: white; padding: 20px; text-align: center; }
         .content { padding: 20px; }
         .summary { background: #f8fafc; padding: 15px; border-radius: 6px; margin: 15px 0; }
-        .footer { background: #c8c4bc; padding: 15px; text-align: center; font-size: 12px; color: white; }
+        .footer { background: #c4c4bc; padding: 15px; text-align: center; font-size: 12px; color: white; }
       </style>
     </head>
     <body>

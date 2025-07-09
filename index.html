@@ -162,39 +162,57 @@
   </div>
 
   <script>
-    fetch('version.txt').then(r => r.text()).then(v => {
-      document.getElementById('version-number').textContent = v.trim();
+    // Load version from version.txt - parse new format
+    fetch('version.txt').then(r => r.text()).then(versionText => {
+      const lines = versionText.trim().split('\n');
+      if (lines.length > 0) {
+        // Get the latest version (first line) and extract just the version number
+        const latestLine = lines[0];
+        const versionMatch = latestLine.match(/^([^\s-]+)/);
+        if (versionMatch) {
+          document.getElementById('version-number').textContent = versionMatch[1];
+        }
+      }
     });
 
     async function showChangelogModal() {
       try {
-        const { CONFIG } = await import('./js/config.js');
         const modal = document.getElementById('changelog-modal');
         const content = document.getElementById('changelog-content');
         
-        if (!CONFIG.CHANGELOG) {
+        // Fetch and parse version.txt for changelog
+        const response = await fetch('version.txt');
+        const versionText = await response.text();
+        const lines = versionText.trim().split('\n');
+        
+        if (lines.length === 0) {
           content.innerHTML = '<p>No changelog available.</p>';
           modal.style.display = 'flex';
           return;
         }
 
         let html = '';
-        CONFIG.CHANGELOG.forEach(entry => {
-          html += `
-            <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h4 style="margin: 0; color: #a09484;">v${entry.version}</h4>
-                <span style="font-size: 14px; color: #666;">${entry.date}</span>
-              </div>
-              <h5 style="margin: 5px 0; color: #333;">${entry.title}</h5>
-              <ul style="margin: 10px 0; padding-left: 20px;">
-                ${entry.changes.map(change => `<li style="margin: 5px 0; color: #555;">${change}</li>`).join('')}
-              </ul>
-            </div>
-          `;
+        lines.forEach(line => {
+          if (line.trim()) {
+            // Parse format: "version - changelog_text"
+            const dashIndex = line.indexOf(' - ');
+            if (dashIndex > 0) {
+              const version = line.substring(0, dashIndex).trim();
+              const changelogText = line.substring(dashIndex + 3).trim();
+              
+              html += `
+                <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="margin: 0; color: #a09484;">v${version}</h4>
+                  </div>
+                  <p style="margin: 10px 0; color: #555; line-height: 1.5;">${changelogText}</p>
+                </div>
+              `;
+            }
+          }
         });
         
-        content.innerHTML = html;
+        content.innerHTML = html || '<p>No changelog available.</p>';
         modal.style.display = 'flex';
       } catch (error) {
         console.error('Error loading changelog:', error);

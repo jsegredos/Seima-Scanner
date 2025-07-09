@@ -84,10 +84,19 @@ export class NavigationManager {
   async loadVersion() {
     try {
       const response = await fetch('version.txt');
-      const version = await response.text();
-      const versionElement = document.getElementById('version-number');
-      if (versionElement) {
-        versionElement.textContent = version.trim();
+      const versionText = await response.text();
+      const lines = versionText.trim().split('\n');
+      
+      if (lines.length > 0) {
+        // Get the latest version (first line) and extract just the version number
+        const latestLine = lines[0];
+        const versionMatch = latestLine.match(/^([^\s-]+)/);
+        if (versionMatch) {
+          const versionElement = document.getElementById('version-number');
+          if (versionElement) {
+            versionElement.textContent = versionMatch[1];
+          }
+        }
       }
     } catch (error) {
       console.warn('Could not load version:', error);
