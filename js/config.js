@@ -54,7 +54,7 @@ export const CONFIG = {
   CATALOG_URL: 'pricelist-latest.csv',
   
   // Version information
-  VERSION: '1.3.0',
+  VERSION: '1.7.0',
   
   // Performance settings
   PERFORMANCE: {
@@ -106,6 +106,18 @@ export const CONFIG = {
   // Version changelog data
   CHANGELOG: [
     {
+      version: "1.7.0",
+      date: "2025-07-09",
+      title: "UI Layout & Color Updates",
+      changes: [
+        "Updated PDF header color to warm gray (#a09484)",
+        "Repositioned 'Clear Selection' and 'Seima Contact' buttons to bottom of screen",
+        "Standardized secondary button sizes with 14pt font",
+        "Removed 'Import File' button from home page",
+        "Improved home page layout and visual hierarchy"
+      ]
+    },
+    {
       version: "1.6.0",
       date: "2025-07-08",
       title: "Interactive Changelog & Version Management",
@@ -123,7 +135,7 @@ export const CONFIG = {
       title: "Seima Contact & PDF Enhancements",
       changes: [
         "Added Seima staff contact functionality with form validation",
-        "Updated PDF header color to brown (#8B7355)",
+        "Updated PDF header color to warm gray (#a09484)",
         "Updated PDF footer color to light beige (#c8c4bc)",
         "Staff contact details displayed on PDF title page",
         "Email BCC functionality for staff member",
@@ -179,7 +191,7 @@ export const EMAIL_TEMPLATE_CONFIG = {
     <head>
       <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; }
-        .header { background: #8B7355; color: white; padding: 20px; text-align: center; }
+        .header { background: #a09484; color: white; padding: 20px; text-align: center; }
         .content { padding: 20px; }
         .summary { background: #f8fafc; padding: 15px; border-radius: 6px; margin: 15px 0; }
         .footer { background: #c8c4bc; padding: 15px; text-align: center; font-size: 12px; color: white; }

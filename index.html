@@ -19,9 +19,11 @@
     <h1 class="tagline">Product Selector</h1>
     <button id="start-btn" class="primary-btn">Select Products</button>
     <button id="view-selection-btn" class="primary-btn" style="margin-top: 18px;">View Selection</button>
-    <button id="clear-selection-btn" class="clear-selection-btn">Clear Selection</button>
-    <button id="import-file-btn" class="primary-btn" style="margin-top: 50px; background: #059669; border-color: #059669;">Import File</button>
-    <button id="seima-contact-btn" class="primary-btn" style="margin-top: 18px; background: #8B7355; border-color: #8B7355;">Seima Contact</button>
+    
+    <div style="position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); text-align: center;">
+      <button id="clear-selection-btn" class="clear-selection-btn" style="font-size: 14pt; padding: 10px 20px; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;">Clear Selection</button>
+      <button id="seima-contact-btn" class="primary-btn" style="background: #a09484; border-color: #a09484; font-size: 14pt; padding: 10px 20px; display: block; margin-left: auto; margin-right: auto;">Seima Contact</button>
+    </div>
   </div>
   <div id="clear-selection-modal" class="modal" style="display:none;">
     <div class="modal-content">
@@ -181,7 +183,7 @@
           html += `
             <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h4 style="margin: 0; color: #8B7355;">v${entry.version}</h4>
+                <h4 style="margin: 0; color: #a09484;">v${entry.version}</h4>
                 <span style="font-size: 14px; color: #666;">${entry.date}</span>
               </div>
               <h5 style="margin: 5px 0; color: #333;">${entry.title}</h5>

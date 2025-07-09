@@ -749,7 +749,7 @@ export function showPdfFormScreen(userDetails) {
 
 export function drawPDFHeader(doc, pageWidth, colX, leftMargin, footerHeight, logoDataUrl, logoNaturalW, logoNaturalH, excludePrice) {
   const headerHeight = footerHeight + 5.7;
-  doc.setFillColor('#8B7355');
+  doc.setFillColor('#a09484');
   doc.rect(0, 0, pageWidth, headerHeight, 'F');
   if (logoDataUrl && logoNaturalW && logoNaturalH) {
     const logoH = headerHeight * 0.55;
