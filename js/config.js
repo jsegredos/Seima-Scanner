@@ -51,7 +51,7 @@ export const CONFIG = {
   },
   
   // Product catalog API configuration
-  CATALOG_URL: 'pricelist-latest.csv',
+  CATALOG_URL: 'pricelist.csv',
   
   // Version information
   VERSION: '1.7.1',

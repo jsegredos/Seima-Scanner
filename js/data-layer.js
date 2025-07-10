@@ -29,7 +29,7 @@ export class DataLayer {
     try {
       console.log('📦 Loading product catalog...');
       
-      const response = await fetch('pricelist-latest.csv');
+      const response = await fetch('pricelist.csv');
       if (!response.ok) {
         throw new Error(`Failed to load catalog: ${response.status}`);
       }
@@ -161,32 +161,64 @@ export class DataLayer {
     return product;
   }
 
-  searchProducts(query, limit = 10) {
+  searchProducts(query, limit = null) {
     if (!query || query.length < 2) return [];
     
     const queryLower = query.toLowerCase();
-    const results = new Set();
+    const resultsWithScore = [];
     
     // Direct code match (highest priority)
     const directMatch = this.findProductByCode(query);
     if (directMatch) {
-      results.add(directMatch);
+      resultsWithScore.push({ product: directMatch, score: 1000 });
     }
     
-    // Search in descriptions, order codes, and barcodes
+    // Search in descriptions, order codes, and barcodes with relevance scoring
     this.products.forEach(product => {
-      if (results.size >= limit) return;
-      
       const description = (product.Description || '').toLowerCase();
       const orderCode = (product.OrderCode || '').toLowerCase();
       const barcode = (product.BARCODE || '').toLowerCase();
       
+      let score = 0;
+      
+      // Check if any field contains the query
       if (description.includes(queryLower) || orderCode.includes(queryLower) || barcode.includes(queryLower)) {
-        results.add(product);
+        // Score based on match quality
+        if (description.startsWith(queryLower)) {
+          score += 100; // Description starts with query (highest relevance)
+        } else if (description.includes(` ${queryLower} `) || description.includes(`${queryLower} `)) {
+          score += 50; // Query appears as whole word in description
+        } else if (description.includes(queryLower)) {
+          score += 25; // Query appears anywhere in description
+        }
+        
+        if (orderCode.includes(queryLower)) {
+          score += 75; // Order code match
+        }
+        
+        if (barcode.includes(queryLower)) {
+          score += 75; // Barcode match
+        }
+        
+        // Boost score if query matches numbers in the description (like "900" in "Oros 900")
+        const queryAsNumber = queryLower.match(/\d+/);
+        if (queryAsNumber && description.includes(queryAsNumber[0])) {
+          score += 30;
+        }
+        
+        // Avoid duplicates from direct match
+        if (!directMatch || product.OrderCode !== directMatch.OrderCode) {
+          resultsWithScore.push({ product, score });
+        }
       }
     });
     
-    return Array.from(results).slice(0, limit);
+    // Sort by score (highest first) and return products
+    const sortedResults = resultsWithScore
+      .sort((a, b) => b.score - a.score)
+      .map(item => item.product);
+    
+    return limit ? sortedResults.slice(0, limit) : sortedResults;
   }
 
   getAllProducts() {

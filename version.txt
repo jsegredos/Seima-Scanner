@@ -1,3 +1,4 @@
+1.7.2 - Search now shows all results, improved relevance scoring, fixed missing products in dropdown
 1.7.1 - HTML Emails & download fallback, EmailJs has 500kb email limit which is problem, migration-ready email system
 1.7.0 - Email CC to Seima. UI Layout & Color Updates. Removed 'Import File' button from home page, improved home page layout.
 1.6.0 - Interactive Changelog & Version Management: enhanced version tracking and display system  
