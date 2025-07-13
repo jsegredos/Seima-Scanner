@@ -1,5 +1,6 @@
 import { StorageManager } from './storage.js';
-import { CONFIG, dataLayer } from './modules.js';
+import { CONFIG } from './config.js';
+import { DataService } from './data-service.js';
 import { ScannerController } from './scanner.js';
 import { Utils } from './utils.js';
 
@@ -9,12 +10,13 @@ export class NavigationManager {
     this.currentScreen = 'welcome';
     this.selectedRoom = null;
     this.scannerController = new ScannerController();
+    this.dataService = new DataService();
     this.setupScannerCallback();
   }
 
   setupScannerCallback() {
     this.scannerController.setOnScanCallback((code) => {
-      if (!dataLayer.isLoaded) {
+      if (!this.dataService.isLoaded) {
         this.showScanFeedback('Product data loading, please wait...');
         return;
       }
@@ -23,7 +25,7 @@ export class NavigationManager {
       this.showScanFeedback(`Detected: ${code}`);
       
       // Find product by barcode
-      const product = dataLayer.findProductByCode(code);
+      const product = this.dataService.findProductByCode(code);
       
       if (product) {
         this.showProductDetailsScreen(product, { scannedCode: code });
@@ -42,7 +44,7 @@ export class NavigationManager {
   async init() {
     // Load product catalog
     try {
-      await dataLayer.init();
+      await this.dataService.init();
     } catch (error) {
       console.error('Failed to load product catalog:', error);
     }
@@ -298,14 +300,14 @@ export class NavigationManager {
   }
 
   performProductSearch(query, dropdown, matches) {
-    if (!dataLayer.isLoaded) {
+    if (!this.dataService.isLoaded) {
       dropdown.innerHTML = '<li>Loading catalog...</li>';
       dropdown.classList.add('visible');
       return;
     }
 
     matches.length = 0;
-    matches.push(...dataLayer.searchProducts(query));
+    matches.push(...this.dataService.searchProducts(query));
 
     if (matches.length === 0) {
       dropdown.innerHTML = '<li>No products found</li>';
@@ -460,7 +462,7 @@ export class NavigationManager {
       let variants = [];
       
       if (productName) {
-        variants = dataLayer.getAllProducts().filter(p => {
+        variants = this.dataService.getAllProducts().filter(p => {
           let pName = p.ProductName || p['Product Name'] || '';
           if (typeof pName === 'string') pName = pName.trim();
           return pName && pName === productName;

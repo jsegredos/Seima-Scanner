@@ -1,5 +1,5 @@
 import { CONFIG } from './config.js';
-import { dataLayer } from './modules.js';
+import { DataService } from './data-service.js';
 
 export class HybridScannerController {
   constructor() {

@@ -1,5 +1,6 @@
 import { StorageManager } from './storage.js';
-import { CONFIG, dataLayer } from './modules.js';
+import { CONFIG } from './config.js';
+import { DataService } from './data-service.js';
 import { Utils } from './utils.js';
 
 export class FileImportManager {
@@ -8,10 +9,13 @@ export class FileImportManager {
     this.importMode = 'append';
     this.processedData = [];
     this.notFoundProducts = [];
+    this.dataService = new DataService();
   }
 
-  init() {
+  async init() {
     this.setupEventHandlers();
+    // Initialize data service for product catalog access
+    await this.dataService.init();
     console.log('FileImportManager initialized');
   }
 
@@ -438,7 +442,7 @@ export class FileImportManager {
   }
 
   async findProductInCatalog(productCode, productName) {
-    const catalog = dataLayer.getAllProducts();
+    const catalog = this.dataService.getAllProducts();
     
     if (productCode) {
       // Convert both to strings for comparison to handle number vs string issues

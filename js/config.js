@@ -64,17 +64,28 @@ export const CONFIG = {
     BARCODE_SCAN_INTERVAL: 100
   },
 
-  // EmailJS Configuration
-  // Note: These are your actual EmailJS credentials - configured and ready to use
+  // Email Configuration - Unified for Multiple Providers
   EMAIL: {
+    // Current Provider (emailjs | microsoftGraph)
+    PROVIDER: 'emailjs',
+    
+    // EmailJS Configuration (Current)
     PUBLIC_KEY: 'MHAEjvnc_xx8DIRCA',
     SERVICE_ID: 'service_rblizfg',
     TEMPLATE_ID: 'template_8st9fhk',
     
-    // Email settings
-    MAX_ATTACHMENT_SIZE: 15 * 1024 * 1024, // 15MB (for future email provider)
+    // Microsoft Graph Configuration (Future)
+    MICROSOFT_CLIENT_ID: null, // To be configured for Exchange 365 integration
+    MICROSOFT_TENANT_ID: null, // To be configured for Exchange 365 integration
+    
+    // Common Email Settings
+    FROM_EMAIL: 'noreply@seima.com.au',
+    FROM_NAME: 'Seima Team',
     RETRY_ATTEMPTS: 3,
     RETRY_DELAY: 2000, // milliseconds
+    
+    // Note: Removed MAX_ATTACHMENT_SIZE as we now always attempt to send
+    // and rely on actual provider errors rather than size-based fallback
     
     // BCC for record keeping
     BCC_EMAIL: 'jsegredos@gmail.com' // Company email for BCC copy
