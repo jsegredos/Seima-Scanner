@@ -9,8 +9,8 @@ import { CONFIG } from './config.js';
 export class EmailTemplateGenerator {
   constructor() {
     this.brandColors = {
-      primary: '#2563eb',
-      primaryDark: '#1e40af',
+      primary: '#a09484',
+      primaryDark: '#8b7a6e',
       background: '#f8f8fa',
       cardBackground: '#ffffff',
       textPrimary: '#222',
@@ -28,8 +28,8 @@ export class EmailTemplateGenerator {
   generateEmailHTML(userDetails, options = {}) {
     const {
       includeLogo = true,
-      includeAttachmentInfo = true,
-      includeFeaturesList = true,
+      includeAttachmentInfo = false,
+      includeFeaturesList = false,
       customMessage = null,
       theme = 'default'
     } = options;
@@ -42,7 +42,7 @@ export class EmailTemplateGenerator {
       <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Seima Product Selection - ${emailData.customerName}</title>
+          <title>SEIMA Product Selection - ${emailData.customerName}</title>
           ${this.generateEmailCSS(theme)}
       </head>
       <body>
@@ -160,27 +160,33 @@ export class EmailTemplateGenerator {
               content: '📋';
               margin-right: 8px;
           }
-          .summary-grid {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-              gap: 16px;
+          .summary-table {
+              display: table;
+              width: 100%;
+              border-collapse: separate;
+              border-spacing: 0;
           }
-          .summary-item {
-              display: flex;
-              justify-content: space-between;
-              padding: 8px 0;
+          .summary-row {
+              display: table-row;
               border-bottom: 1px solid ${this.brandColors.border};
           }
-          .summary-item:last-child {
+          .summary-row:last-child {
               border-bottom: none;
           }
           .summary-label {
+              display: table-cell;
               font-weight: 600;
               color: #374151;
+              padding: 10px 24px 10px 0;
+              width: 40%;
+              vertical-align: top;
           }
           .summary-value {
+              display: table-cell;
               color: ${this.brandColors.textMuted};
-              text-align: right;
+              padding: 10px 0;
+              width: 60%;
+              vertical-align: top;
           }
           .attachments-card {
               background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
@@ -278,25 +284,26 @@ export class EmailTemplateGenerator {
           }
           .footer {
               background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
-              color: #e5e7eb;
+              color: #ffffff;
               padding: 30px;
               text-align: center;
-          }
-          .footer-content {
-              margin-bottom: 20px;
           }
           .footer-links {
               margin: 16px 0;
           }
           .footer-link {
-              color: #93c5fd;
+              color: #ffffff;
               text-decoration: none;
               margin: 0 12px;
               font-weight: 500;
           }
+          .footer-link:hover {
+              color: #93c5fd;
+              text-decoration: underline;
+          }
           .footer-copyright {
               font-size: 14px;
-              opacity: 0.8;
+              color: #ffffff;
               margin-top: 16px;
               border-top: 1px solid #4b5563;
               padding-top: 16px;
@@ -323,8 +330,7 @@ export class EmailTemplateGenerator {
   generateHeader(emailData, includeLogo = true) {
     return `
       <div class="header">
-          <h1>🏠 Seima Product Selection</h1>
-          <p class="subtitle">Professional Bathroom & Kitchen Solutions</p>
+                        <h1>SEIMA Product Selection</h1>
       </div>
     `;
   }
@@ -334,7 +340,7 @@ export class EmailTemplateGenerator {
    */
   generateContent(emailData, customMessage = null) {
     const message = customMessage || `
-      Thank you for choosing Seima for your project. We're pleased to provide your personalized product selection, 
+      Thank you for choosing SEIMA for your project. We're pleased to provide your personalised product selection, 
       professionally formatted and ready for your review.
     `;
 
@@ -354,36 +360,36 @@ export class EmailTemplateGenerator {
       <div class="content">
           <div class="card summary-card">
               <h3 class="summary-title">Project Summary</h3>
-              <div class="summary-grid">
-                  <div class="summary-item">
+              <div class="summary-table">
+                  <div class="summary-row">
                       <span class="summary-label">Customer:</span>
                       <span class="summary-value">${emailData.customerName}</span>
                   </div>
-                  <div class="summary-item">
+                  <div class="summary-row">
                       <span class="summary-label">Email:</span>
                       <span class="summary-value">${emailData.customerEmail}</span>
                   </div>
-                  <div class="summary-item">
+                  <div class="summary-row">
                       <span class="summary-label">Project:</span>
                       <span class="summary-value">${emailData.customerProject || 'Not specified'}</span>
                   </div>
-                  <div class="summary-item">
+                  <div class="summary-row">
                       <span class="summary-label">Address:</span>
                       <span class="summary-value">${emailData.customerAddress || 'Not specified'}</span>
                   </div>
-                  <div class="summary-item">
+                  <div class="summary-row">
                       <span class="summary-label">Phone:</span>
                       <span class="summary-value">${emailData.customerPhone || 'Not provided'}</span>
                   </div>
-                  <div class="summary-item">
+                  <div class="summary-row">
                       <span class="summary-label">Total Products:</span>
                       <span class="summary-value">${emailData.totalProducts}</span>
                   </div>
-                  <div class="summary-item">
+                  <div class="summary-row">
                       <span class="summary-label">Rooms:</span>
                       <span class="summary-value">${emailData.totalRooms}</span>
                   </div>
-                  <div class="summary-item">
+                  <div class="summary-row">
                       <span class="summary-label">Generated:</span>
                       <span class="summary-value">${emailData.currentDate}</span>
                   </div>
@@ -430,7 +436,7 @@ export class EmailTemplateGenerator {
               <h4>Your selection includes:</h4>
               <ul>
                   <li>Professional product specifications and high-resolution images</li>
-                  <li>Room-by-room organization for easy project management</li>
+                  <li>Room-by-room organisation for easy project management</li>
                   <li>Current pricing information (where applicable)</li>
                   <li>Direct links to product datasheets and installation guides</li>
                   <li>Structured CSV data for seamless system integration</li>
@@ -446,23 +452,14 @@ export class EmailTemplateGenerator {
   generateContactSection() {
     return `
       <div class="content">
-          <div class="contact-section">
-              <h4 class="contact-title">Need Expert Assistance?</h4>
-              <p class="contact-info">Our technical team is ready to help with product specifications, installation guidance, or project consultation.</p>
-              <p class="contact-info">
-                  📧 <a href="mailto:info@seima.com.au" class="contact-link">info@seima.com.au</a><br>
-                  🌐 <a href="https://www.seima.com.au" class="contact-link">www.seima.com.au</a>
-              </p>
-          </div>
-          
           <p style="margin-top: 32px; color: #6b7280;">
-              This selection was generated using the Seima Product Scanner application. 
+              This selection was generated using the SEIMA Product Scanner application. 
               If you have any questions or need to make changes to your selection, please don't hesitate to contact our team.
           </p>
           
           <p style="margin-top: 24px; color: #374151;">
               Best regards,<br>
-              <strong>The Seima Team</strong>
+              <strong>The SEIMA Team</strong>
           </p>
       </div>
     `;
@@ -474,10 +471,6 @@ export class EmailTemplateGenerator {
   generateFooter(emailData) {
     return `
       <div class="footer">
-          <div class="footer-content">
-              <p style="margin: 0 0 8px 0; font-weight: 600;">Seima - Professional Bathroom & Kitchen Solutions</p>
-              <p style="margin: 0; font-size: 14px;">Quality products, expert support, trusted by professionals</p>
-          </div>
           <div class="footer-links">
               <a href="https://www.seima.com.au" class="footer-link">Website</a>
               <a href="https://www.seima.com.au/products" class="footer-link">Products</a>
@@ -485,7 +478,7 @@ export class EmailTemplateGenerator {
               <a href="mailto:info@seima.com.au" class="footer-link">Contact</a>
           </div>
           <div class="footer-copyright">
-              <p>© 2024 Seima. All rights reserved. | Generated by Seima Scanner v${emailData.appVersion}</p>
+              <p>© SEIMA. All rights reserved.</p>
           </div>
       </div>
     `;
@@ -499,7 +492,7 @@ export class EmailTemplateGenerator {
     
     return `Dear ${emailData.customerName},
 
-Thank you for choosing Seima for your project. Your product selection is attached.
+Thank you for choosing SEIMA for your project. Your product selection is attached.
 
 PROJECT SUMMARY:
 Customer: ${emailData.customerName}
@@ -549,6 +542,43 @@ The Seima Team
     return `${projectName}-${dd}${mm}${yy}.${hh}${min}.${extension}`;
   }
 }
+
+// Test function to verify the cleaned up email template
+export function testCleanedUpTemplate() {
+  console.log('🧪 Testing cleaned up email template...');
+  
+  const testUserDetails = {
+    name: 'cleaned',
+    email: 'jsegredos@gmail.com',
+    project: 'cleaned',
+    address: 'Seima Pty Ltd',
+    phone: '0418486702'
+  };
+  
+  try {
+    const generator = new EmailTemplateGenerator();
+    const htmlContent = generator.generateEmailHTML(testUserDetails);
+    
+    // Open in new window for preview
+    const previewWindow = window.open('', '_blank', 'width=800,height=600');
+    previewWindow.document.write(htmlContent);
+    previewWindow.document.close();
+    
+    console.log('✅ Cleaned up email template preview opened in new window');
+    console.log('🎨 Changes applied:');
+    console.log('   • Header: Removed house icon and subtitle, changed to gold/brown background');
+    console.log('   • Sections: Removed "Attached Documents" and "Your selection includes" sections');
+    console.log('   • Footer: Removed top two lines');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Template test failed:', error);
+    return false;
+  }
+}
+
+// Make test function globally available
+window.testCleanedUpTemplate = testCleanedUpTemplate;
 
 // Export instance
 export const emailTemplateGenerator = new EmailTemplateGenerator(); 

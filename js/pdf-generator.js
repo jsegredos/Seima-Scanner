@@ -1794,14 +1794,14 @@ export function showEmailCompatibleOption(userDetails, originalFilename) {
     </h3>
     <p style="margin: 0 0 16px 0; color: #374151;">
       Your PDF is large (${(userDetails.pdfSize / 1024 / 1024).toFixed(1)} MB). 
-      We can create a smaller, email-friendly version with optimized images.
+      We can create a smaller, email-friendly version with optimised images.
     </p>
     
     <div style="background: #f3f4f6; padding: 16px; border-radius: 6px; margin: 16px 0;">
       <h4 style="margin: 0 0 12px 0; color: #1f2937;">Email-Compatible Features:</h4>
       <ul style="margin: 0; padding-left: 20px; color: #4b5563; font-size: 14px;">
         <li>Reduced image quality for smaller file size</li>
-        <li>Optimized for email attachment limits</li>
+        <li>Optimised for email attachment limits</li>
         <li>Faster email delivery</li>
         <li>Better compatibility across email clients</li>
       </ul>
