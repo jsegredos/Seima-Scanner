@@ -88,6 +88,7 @@ export class DataLayer {
       product.LongDescription = product['Long Description'] || product['LongDescription'] || '';
       product.RRP_EXGST = product['RRP EX GST'] || product['RRP_EXGST'] || '';
       product.RRP_INCGST = product['RRP INC GST'] || product['RRP_INCGST'] || '';
+      product.BARCODE = (product['BARCODE'] || '').toString().trim();
       // Add more mappings as needed for other fields
       products.push(product);
     }
