@@ -1,3 +1,4 @@
+1.8.1 - Barcode lookup fix: ensure BARCODE field is always mapped as a trimmed string for reliable scanning.
 1.8.0 - Migrate product catalog to Google Sheets with hybrid caching and robust CSV parsing
 1.7.3 - CSV Email Attachment Fix: resolved issue where CSV files weren't being emailed due to special characters corrupting base64 encoding
 1.7.2 - Search now shows all results, improved relevance scoring, fixed missing products in dropdown
