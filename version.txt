@@ -1,3 +1,4 @@
+1.8.0 - Migrate product catalog to Google Sheets with hybrid caching and robust CSV parsing
 1.7.3 - CSV Email Attachment Fix: resolved issue where CSV files weren't being emailed due to special characters corrupting base64 encoding
 1.7.2 - Search now shows all results, improved relevance scoring, fixed missing products in dropdown
 1.7.1 - HTML Emails & download fallback, EmailJs has 500kb email limit which is problem, migration-ready email system

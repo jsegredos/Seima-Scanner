@@ -28,18 +28,35 @@ export class DataLayer {
   async loadProductCatalog() {
     try {
       console.log('📦 Loading product catalog...');
-      
-      const response = await fetch('pricelist.csv');
-      if (!response.ok) {
-        throw new Error(`Failed to load catalog: ${response.status}`);
+      // 1. Use cached data for instant load
+      let cached = localStorage.getItem('productCatalogCsv');
+      let products = [];
+      if (cached) {
+        products = this.parseCSV(cached);
+        this.products = products;
+        this.isLoaded = true;
+        // ... set products in memory/UI ...
       }
-      
-      const csvText = await response.text();
-      this.products = this.parseCSV(csvText);
-      this.isLoaded = true;
-      
-      console.log(`✅ Loaded ${this.products.length} products`);
-      return this.products;
+      // 2. Fetch latest in background
+      const url = CONFIG.CATALOG_URL + (CONFIG.CATALOG_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+      fetch(url)
+        .then(response => response.ok ? response.text() : Promise.reject('Failed to fetch catalog'))
+        .then(csvText => {
+          if (!cached || csvText !== cached) {
+            localStorage.setItem('productCatalogCsv', csvText);
+            const newProducts = this.parseCSV(csvText);
+            if (JSON.stringify(newProducts) !== JSON.stringify(products)) {
+              this.products = newProducts;
+              this.isLoaded = true;
+              window.location.reload();
+            }
+          }
+        })
+        .catch(err => console.warn('Background catalog update failed:', err));
+      if (!products.length) {
+        throw new Error('No product data available');
+      }
+      return products;
     } catch (error) {
       console.error('❌ Failed to load product catalog:', error);
       throw error;
@@ -47,32 +64,33 @@ export class DataLayer {
   }
 
   parseCSV(csvText) {
-    const lines = csvText.split('\n');
-    const headers = this.parseCSVLine(lines[0]);
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length === 0) return [];
+    // Parse header row and normalise header names
+    const headers = this.parseCSVLine(lines[0]).map(h => h.trim().replace(/"/g, ''));
+    // Find the index of the product code column (OrderCode or Order Code)
+    const orderCodeIdx = headers.findIndex(h => h === 'OrderCode' || h === 'Order Code');
+    if (orderCodeIdx === -1) return [];
     const products = [];
-
     for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      try {
-        const values = this.parseCSVLine(line);
-        if (values.length >= headers.length) {
-          const product = {};
-          headers.forEach((header, index) => {
-            product[header] = values[index] || '';
-          });
-          
-          // Only add products with valid order codes
-          if (product.OrderCode && product.OrderCode.trim()) {
-            products.push(product);
-          }
-        }
-      } catch (error) {
-        console.warn(`Skipping invalid CSV line ${i + 1}:`, error);
-      }
+      const values = this.parseCSVLine(lines[i]);
+      if (values.length <= orderCodeIdx) continue;
+      const orderCode = values[orderCodeIdx] ? values[orderCodeIdx].trim() : '';
+      if (!orderCode) continue; // skip if no valid product code
+      const product = {};
+      headers.forEach((header, index) => {
+        product[header] = values[index] || '';
+      });
+      // Field mapping for old/new columns
+      product.OrderCode = orderCode;
+      product['Product Name'] = product['Product Name'] || product['Parent Code'] || '';
+      product.Description = product['Description'] || '';
+      product.LongDescription = product['Long Description'] || product['LongDescription'] || '';
+      product.RRP_EXGST = product['RRP EX GST'] || product['RRP_EXGST'] || '';
+      product.RRP_INCGST = product['RRP INC GST'] || product['RRP_INCGST'] || '';
+      // Add more mappings as needed for other fields
+      products.push(product);
     }
-
     return products;
   }
 

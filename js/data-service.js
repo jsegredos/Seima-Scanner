@@ -45,31 +45,36 @@ export class DataService {
   async loadProductCatalog() {
     try {
       // Try loading from localStorage first
-      const cached = this.getProductCatalog();
-      if (cached && cached.length > 0) {
-        this.productCatalog = cached;
-        console.log(`📦 Loaded ${cached.length} products from cache`);
-        return;
+      let cached = localStorage.getItem('productCatalogCsv');
+      let products = [];
+      if (cached) {
+        products = this.parseCSV(cached);
+        this.productCatalog = products;
+        console.log(`📦 Loaded ${products.length} products from cache`);
       }
-
-      // Fetch from server
-      console.log('🌐 Fetching product catalog from server...');
-      const response = await fetch('pricelist.csv');
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // Fetch latest in background
+      const url = CONFIG.CATALOG_URL + (CONFIG.CATALOG_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+      fetch(url)
+        .then(response => response.ok ? response.text() : Promise.reject('Failed to fetch catalog'))
+        .then(csvText => {
+          if (!cached || csvText !== cached) {
+            localStorage.setItem('productCatalogCsv', csvText);
+            const newProducts = this.parseCSV(csvText);
+            if (JSON.stringify(newProducts) !== JSON.stringify(products)) {
+              this.productCatalog = newProducts;
+              window.location.reload();
+            }
+          }
+        })
+        .catch(err => console.warn('Background catalog update failed:', err));
+      if (!products.length) {
+        throw new Error('No product data available');
       }
-
-      const csvText = await response.text();
-      this.productCatalog = this.parseCSV(csvText);
-      
-      // Cache the loaded data
-      this.setProductCatalog(this.productCatalog);
-      console.log(`✅ Loaded ${this.productCatalog.length} products from server`);
-      
+      return products;
     } catch (error) {
       console.error('❌ Failed to load product catalog:', error);
-      // Use empty array as fallback
       this.productCatalog = [];
+      throw error;
     }
   }
 
@@ -79,21 +84,31 @@ export class DataService {
   parseCSV(csvText) {
     const lines = csvText.split('\n').filter(line => line.trim());
     if (lines.length === 0) return [];
-
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    // Parse header row and normalise header names
+    const headers = this.parseCSVLine(lines[0]).map(h => h.trim().replace(/"/g, ''));
+    // Find the index of the product code column (OrderCode or Order Code)
+    const orderCodeIdx = headers.findIndex(h => h === 'OrderCode' || h === 'Order Code');
+    if (orderCodeIdx === -1) return [];
     const products = [];
-
     for (let i = 1; i < lines.length; i++) {
       const values = this.parseCSVLine(lines[i]);
-      if (values.length >= headers.length) {
-        const product = {};
-        headers.forEach((header, index) => {
-          product[header] = values[index] || '';
-        });
-        products.push(product);
-      }
+      if (values.length <= orderCodeIdx) continue;
+      const orderCode = values[orderCodeIdx] ? values[orderCodeIdx].trim() : '';
+      if (!orderCode) continue; // skip if no valid product code
+      const product = {};
+      headers.forEach((header, index) => {
+        product[header] = values[index] || '';
+      });
+      // Field mapping for old/new columns
+      product.OrderCode = orderCode;
+      product['Product Name'] = product['Product Name'] || product['Parent Code'] || '';
+      product.Description = product['Description'] || '';
+      product.LongDescription = product['Long Description'] || product['LongDescription'] || '';
+      product.RRP_EXGST = product['RRP EX GST'] || product['RRP_EXGST'] || '';
+      product.RRP_INCGST = product['RRP INC GST'] || product['RRP_INCGST'] || '';
+      // Add more mappings as needed for other fields
+      products.push(product);
     }
-
     return products;
   }
 
