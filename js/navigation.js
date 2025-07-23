@@ -313,7 +313,7 @@ export class NavigationManager {
       dropdown.innerHTML = '<li>No products found</li>';
     } else {
       dropdown.innerHTML = matches
-        .map((p, i) => `<li data-idx="${i}">${p.Description}</li>`)
+        .map((p, i) => `<li data-idx="${i}">${p.OrderCode} - ${p.Description}</li>`)
         .join('');
     }
     
