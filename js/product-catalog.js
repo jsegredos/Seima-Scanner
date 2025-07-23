@@ -51,7 +51,7 @@ export class ProductCatalog {
       const product = {
         Description: row['Description'] || '',
         ProductName: (row['Product Name'] || '').trim(),
-        OrderCode: row['Order Code'] || row['OrderCode'] || '',
+        OrderCode: (row['Order Code'] || row['OrderCode'] || '').toString().trim(),
         LongDescription: row['Long Description'] || row['LongDescription'] || '',
         RRP_EXGST: (row['RRP EX GST'] || row['RRP_EXGST'] || '').toString().trim(),
         RRP_INCGST: (row['RRP INC GST'] || row['RRP_INCGST'] || '').toString().trim(),
@@ -59,7 +59,7 @@ export class ProductCatalog {
         Image_URL: row['Image_URL'] || row['Image URL'] || '',
         Diagram_URL: row['Diagram_URL'] || row['Diagram URL'] || '',
         Datasheet_URL: row['Datasheet_URL'] || row['Datasheet URL'] || '',
-        BARCODE: row['BARCODE'] || '',
+        BARCODE: (row['BARCODE'] || '').toString().trim(),
         Group: row['Group'] || '',
         ReleaseNote: row['Release Note'] || '',
         X_Dimension: row['X Dimension (mm)'] || '',

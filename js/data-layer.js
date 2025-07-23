@@ -136,8 +136,9 @@ export class DataLayer {
       
       // Index by barcode (this is what scanners will find!)
       if (product.BARCODE && product.BARCODE.trim()) {
-        this.searchIndex.set(product.BARCODE.toLowerCase(), index);
-        this.searchIndex.set(product.BARCODE.toLowerCase().replace(/[-\s]/g, ''), index);
+        // Store barcode as-is (case-sensitive) since barcodes are numeric
+        this.searchIndex.set(product.BARCODE, index);
+        this.searchIndex.set(product.BARCODE.replace(/[-\s]/g, ''), index);
       }
       
       // Index by description keywords
@@ -167,8 +168,18 @@ export class DataLayer {
     if (!code) return null;
     
     // Search by OrderCode or BARCODE
-    const cleanCode = code.toLowerCase().trim();
-    const index = this.searchIndex.get(cleanCode) || this.searchIndex.get(cleanCode.replace(/[-\s]/g, ''));
+    const cleanCode = code.trim();
+    let index = this.searchIndex.get(cleanCode);
+    
+    // If not found, try with spaces/hyphens removed
+    if (typeof index !== 'number') {
+      index = this.searchIndex.get(cleanCode.replace(/[-\s]/g, ''));
+    }
+    
+    // For barcodes, also try lowercase (fallback for some edge cases)
+    if (typeof index !== 'number' && code.length > 8) {
+      index = this.searchIndex.get(cleanCode.toLowerCase());
+    }
     
     const product = typeof index === 'number' ? this.products[index] : null;
     
