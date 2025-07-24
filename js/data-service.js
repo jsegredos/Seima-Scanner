@@ -191,6 +191,18 @@ export class DataService {
   }
 
   /**
+   * Find product by barcode
+   */
+  findProductByBarcode(barcode) {
+    if (!barcode) return null;
+    
+    const normalizedBarcode = barcode.toString().trim();
+    return this.productCatalog.find(product => 
+      product.BARCODE && product.BARCODE.toString().trim() === normalizedBarcode
+    ) || null;
+  }
+
+  /**
    * Get all selected products in unified format
    * Handles legacy format conversion automatically
    */

@@ -24,8 +24,8 @@ export class NavigationManager {
       // Show detected barcode in feedback
       this.showScanFeedback(`Detected: ${code}`);
       
-      // Find product by barcode
-      const product = this.dataService.findProductByCode(code);
+      // Find product by barcode (not order code)
+      const product = this.dataService.findProductByBarcode(code);
       
       if (product) {
         this.showProductDetailsScreen(product, { scannedCode: code });
