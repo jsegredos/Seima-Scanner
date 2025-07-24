@@ -1,3 +1,4 @@
+1.8.3 - Fix: barcode scanning now properly looks up products by barcode instead of order code.
 1.8.2 - Product search dropdown now shows order code prefix for better identification.
 1.8.1 - Barcode lookup fix: ensure BARCODE field is always mapped as a trimmed string for reliable scanning.
 1.8.0 - Migrate product catalog to Google Sheets with hybrid caching and robust CSV parsing
