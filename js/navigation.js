@@ -55,7 +55,7 @@ export class NavigationManager {
 
     // Initialize scanner early (after DOM is ready, in parallel with catalog load)
     // This ensures the BarcodeDetector polyfill is ready when needed
-    // Wait for polyfill scripts to load (they have defer attribute)
+    // Small delay to ensure DOM is fully ready
     setTimeout(() => {
       console.log('🚀 Initializing scanner...');
       this.scannerController.initialize().then(() => {
@@ -63,7 +63,7 @@ export class NavigationManager {
       }).catch(error => {
         console.error('❌ Scanner pre-initialization failed:', error);
       });
-    }, 1000);
+    }, 100);
   }
 
   setupWelcomeScreen() {

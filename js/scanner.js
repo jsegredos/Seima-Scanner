@@ -17,27 +17,25 @@ export class HybridScannerController {
 
   async initialize() {
     try {
-      // Wait for polyfill to be available (if needed)
+      // Check if BarcodeDetector is natively supported
       if (!('BarcodeDetector' in window)) {
-        console.log('Waiting for WebAssembly polyfill...');
+        console.log('Using WebAssembly polyfill for iOS/Safari');
+        
+        // Wait for polyfill to be loaded (max 5 seconds)
         let attempts = 0;
-        // Check for global barcodeDetectorPolyfill variable (added by CDN script)
-        while (!window.barcodeDetectorPolyfill && typeof window.barcodeDetectorPolyfill === 'undefined' && attempts < 50) {
+        while (!window.polyfillReady && attempts < 50) {
           await new Promise(resolve => setTimeout(resolve, 100));
           attempts++;
         }
         
-        console.log('Polyfill check after waiting:', {
-          hasBarcodeDetectorPolyfill: !!window.barcodeDetectorPolyfill,
-          type: typeof window.barcodeDetectorPolyfill,
-          windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes('barcode'))
-        });
-        
+        // Use the polyfill for browsers that don't support it (Safari/iOS)
         if (window.barcodeDetectorPolyfill && window.barcodeDetectorPolyfill.BarcodeDetectorPolyfill) {
-          console.log('Using WebAssembly polyfill for iOS/Safari');
           window.BarcodeDetector = window.barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
+          console.log('✅ Polyfill assigned to window.BarcodeDetector');
         } else {
-          throw new Error('BarcodeDetector polyfill not available after waiting. Check console for details.');
+          console.error('Polyfill not available after waiting. polyfillReady:', window.polyfillReady);
+          console.error('Available barcode keys:', Object.keys(window).filter(k => k.toLowerCase().includes('barcode')));
+          throw new Error('BarcodeDetector polyfill not loaded');
         }
       } else {
         console.log('Using native Barcode Detection API');
