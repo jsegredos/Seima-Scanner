@@ -183,15 +183,16 @@ export class NavigationManager {
       // Setup event handlers
       this.setupScannerScreenHandlers();
       
-      // Start scanning after a small delay to ensure DOM is ready
-      setTimeout(async () => {
+      // For iOS: Must call getUserMedia directly from user gesture, not from setTimeout
+      // We use requestAnimationFrame which is treated as same-frame execution
+      requestAnimationFrame(async () => {
         try {
           await this.scannerController.startScanning();
         } catch (error) {
           console.error('Failed to start scanner:', error);
-          this.showScanFeedback('Scanner initialization failed. Please refresh the page.');
+          this.showScanFeedback('Tap "Try Again" to enable camera access.');
         }
-      }, 100);
+      });
       
       this.updateSelectionCount();
     } catch (error) {

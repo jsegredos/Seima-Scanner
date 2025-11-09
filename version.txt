@@ -1,3 +1,4 @@
+1.8.6 - Enhanced camera activation on iOS with detailed logging and iOS-specific video attributes
 1.8.5 - Fixed scanner initialization on iOS with improved polyfill loading and defer attributes
 1.8.4 - Refactored barcode scanner with iOS polyfill support and improved mobile layout for iPhone safe areas
 1.8.3 - Fix: barcode scanning now properly looks up products by barcode instead of order code.
