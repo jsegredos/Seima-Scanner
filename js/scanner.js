@@ -17,22 +17,16 @@ export class HybridScannerController {
 
   async initialize() {
     try {
-      // Check if BarcodeDetector is natively supported FIRST
-      const hasNativeSupport = 'BarcodeDetector' in window;
+      // Wait for BarcodeDetector to be available (either native or polyfill)
+      await this.waitForBarcodeDetector();
+      
+      // Check which implementation we're using
+      const hasNativeSupport = 'BarcodeDetector' in window && window.BarcodeDetector.toString().includes('[native code]');
       
       if (hasNativeSupport) {
         console.log('✅ Using native Barcode Detection API');
       } else {
         console.log('📱 Using WebAssembly polyfill for iOS/Safari');
-        // Wait for polyfill to load
-        await this.waitForPolyfill();
-        
-        // Use the polyfill for browsers that don't support it (Safari/iOS)
-        if (window.barcodeDetectorPolyfill) {
-          window.BarcodeDetector = window.barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
-        } else {
-          throw new Error('Polyfill not loaded - please refresh the page');
-        }
       }
 
       // Create detector instance for EAN formats
@@ -50,18 +44,22 @@ export class HybridScannerController {
     }
   }
 
-  async waitForPolyfill(maxWaitTime = 5000) {
-    // Wait for polyfill to load (only called when native support doesn't exist)
+  async waitForBarcodeDetector(maxWaitTime = 10000) {
+    // Wait for BarcodeDetector to be available (native or polyfill)
     const startTime = Date.now();
-    while (!window.barcodeDetectorPolyfill && (Date.now() - startTime) < maxWaitTime) {
+    
+    while (!('BarcodeDetector' in window) && (Date.now() - startTime) < maxWaitTime) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    if (!window.barcodeDetectorPolyfill) {
-      console.warn('Polyfill did not load within timeout period');
-      return false;
+    if (!('BarcodeDetector' in window)) {
+      console.error('BarcodeDetector not available after waiting');
+      throw new Error('BarcodeDetector not available - polyfill may not have loaded');
     }
 
+    // Give it an extra moment to fully initialize
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
     return true;
   }
 
