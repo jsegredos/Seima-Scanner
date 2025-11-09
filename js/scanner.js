@@ -17,9 +17,20 @@ export class HybridScannerController {
 
   async initialize() {
     try {
+      // Wait for polyfill to be available
+      let attempts = 0;
+      while (!('BarcodeDetector' in window) && !window.barcodeDetectorPolyfill && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
       if (!('BarcodeDetector' in window)) {
         console.log('Using WebAssembly polyfill for iOS/Safari');
-        window.BarcodeDetector = window.barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
+        if (window.barcodeDetectorPolyfill) {
+          window.BarcodeDetector = window.barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
+        } else {
+          throw new Error('BarcodeDetector polyfill not available');
+        }
       } else {
         console.log('Using native Barcode Detection API');
       }
@@ -29,9 +40,11 @@ export class HybridScannerController {
       });
 
       this.detectorReady = true;
+      console.log('✅ Scanner initialized successfully');
     } catch (error) {
       console.error('Error initializing barcode detector:', error);
-      this.showCameraError('Failed to initialize barcode scanner');
+      this.detectorReady = false;
+      throw error;
     }
   }
 
@@ -43,19 +56,24 @@ export class HybridScannerController {
     if (this.isScanning) return;
 
     const viewport = document.getElementById('scanner-viewport');
-    if (!viewport) return;
-
-    // Initialize scanner engine if not done
-    if (!this.detectorReady) {
-      await this.initialize();
-    }
-
-    if (!this.detectorReady) {
-      this.showCameraError();
+    if (!viewport) {
+      console.error('Scanner viewport not found');
       return;
     }
 
     try {
+      // Initialize scanner engine if not done
+      if (!this.detectorReady) {
+        console.log('Initializing scanner...');
+        await this.initialize();
+      }
+
+      if (!this.detectorReady) {
+        console.error('Scanner not ready after initialization');
+        this.showCameraError();
+        return;
+      }
+
       this.isScanning = true;
       this.scanningRef = true;
       this.lastScannedCode = null;
@@ -63,6 +81,7 @@ export class HybridScannerController {
       await this.startDetectorScanning();
     } catch (error) {
       console.error('Failed to start scanner:', error);
+      console.error('Error details:', error.name, error.message);
       this.showCameraError();
       this.isScanning = false;
       this.scanningRef = false;
