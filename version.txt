@@ -1,3 +1,4 @@
+1.8.9 - Simplified scanner to match working MD implementation exactly - removed all extra complexity
 1.8.8 - Fixed home screen button positioning on iPhone with proper safe area handling
 1.8.7 - Added explicit Start Camera button for iOS - direct user gesture required for camera access
 1.8.6 - Enhanced camera activation on iOS with detailed logging and iOS-specific video attributes

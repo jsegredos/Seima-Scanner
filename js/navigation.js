@@ -183,8 +183,10 @@ export class NavigationManager {
       // Setup event handlers
       this.setupScannerScreenHandlers();
       
-      // Setup start camera button for iOS compatibility
-      this.setupStartCameraButton();
+      // Start scanning immediately
+      this.scannerController.startScanning().catch(error => {
+        console.error('Failed to start scanner:', error);
+      });
       
       this.updateSelectionCount();
     } catch (error) {
@@ -228,34 +230,6 @@ export class NavigationManager {
     this.setupProductSearch();
   }
 
-  setupStartCameraButton() {
-    const startCameraBtn = document.getElementById('start-camera-btn');
-    const startCameraPrompt = document.getElementById('start-camera-prompt');
-    
-    if (startCameraBtn) {
-      startCameraBtn.onclick = async () => {
-        console.log('🎯 Start Camera button clicked (direct user gesture)');
-        
-        // Hide the prompt
-        if (startCameraPrompt) {
-          startCameraPrompt.style.display = 'none';
-        }
-        
-        try {
-          await this.scannerController.startScanning();
-          console.log('✅ Camera started successfully from button');
-        } catch (error) {
-          console.error('❌ Failed to start camera from button:', error);
-          this.showScanFeedback('Camera access denied. Please check your browser settings.');
-          
-          // Show the prompt again with error
-          if (startCameraPrompt) {
-            startCameraPrompt.style.display = 'flex';
-          }
-        }
-      };
-    }
-  }
 
   setupProductSearch() {
     const input = document.getElementById('product-search-input');

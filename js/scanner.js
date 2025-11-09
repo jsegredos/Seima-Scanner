@@ -17,50 +17,22 @@ export class HybridScannerController {
 
   async initialize() {
     try {
-      // Wait for BarcodeDetector to be available (either native or polyfill)
-      await this.waitForBarcodeDetector();
-      
-      // Check which implementation we're using
-      const hasNativeSupport = 'BarcodeDetector' in window && window.BarcodeDetector.toString().includes('[native code]');
-      
-      if (hasNativeSupport) {
-        console.log('✅ Using native Barcode Detection API');
+      if (!('BarcodeDetector' in window)) {
+        console.log('Using WebAssembly polyfill for iOS/Safari');
+        window.BarcodeDetector = window.barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
       } else {
-        console.log('📱 Using WebAssembly polyfill for iOS/Safari');
+        console.log('Using native Barcode Detection API');
       }
 
-      // Create detector instance for EAN formats
       this.barcodeDetector = new window.BarcodeDetector({
-        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e']
+        formats: ['ean_13']
       });
 
       this.detectorReady = true;
-      this.scannerEngine = 'detector';
-      console.log('✅ BarcodeDetector initialized successfully');
     } catch (error) {
       console.error('Error initializing barcode detector:', error);
-      this.detectorReady = false;
-      throw error;
+      this.showCameraError('Failed to initialize barcode scanner');
     }
-  }
-
-  async waitForBarcodeDetector(maxWaitTime = 10000) {
-    // Wait for BarcodeDetector to be available (native or polyfill)
-    const startTime = Date.now();
-    
-    while (!('BarcodeDetector' in window) && (Date.now() - startTime) < maxWaitTime) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-    if (!('BarcodeDetector' in window)) {
-      console.error('BarcodeDetector not available after waiting');
-      throw new Error('BarcodeDetector not available - polyfill may not have loaded');
-    }
-
-    // Give it an extra moment to fully initialize
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    return true;
   }
 
   setOnScanCallback(callback) {
@@ -91,24 +63,7 @@ export class HybridScannerController {
       await this.startDetectorScanning();
     } catch (error) {
       console.error('Failed to start scanner:', error);
-      
-      // Provide user-friendly error messages
-      let errorMessage = error.message || 'Unknown error';
-      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-        errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.';
-      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-        errorMessage = 'No camera found on this device.';
-      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-        errorMessage = 'Camera is already in use by another application.';
-      } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
-        errorMessage = 'Camera constraints not supported. Trying with basic settings...';
-      } else if (error.name === 'NotSupportedError') {
-        errorMessage = 'Camera access not supported in this browser.';
-      } else if (error.name === 'SecurityError') {
-        errorMessage = 'Camera access blocked due to security settings.';
-      }
-      
-      this.showCameraError(errorMessage);
+      this.showCameraError();
       this.isScanning = false;
       this.scanningRef = false;
     }
@@ -117,71 +72,36 @@ export class HybridScannerController {
   async startDetectorScanning() {
     const viewport = document.getElementById('scanner-viewport');
     
-    console.log('📹 Starting camera setup...');
-    
-    // Create video element with iOS-specific attributes
+    // Create video element
     this.videoElement = document.createElement('video');
     this.videoElement.style.width = '100%';
     this.videoElement.style.height = '100%';
     this.videoElement.style.objectFit = 'cover';
-    this.videoElement.autoplay = true;
-    this.videoElement.muted = true;
-    this.videoElement.playsInline = true;
-    this.videoElement.setAttribute('playsinline', 'true');
-    this.videoElement.setAttribute('webkit-playsinline', 'true');
-    this.videoElement.setAttribute('x5-playsinline', 'true');
     
     viewport.innerHTML = '';
     viewport.appendChild(this.videoElement);
     
     try {
-      // Check if getUserMedia is available
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera API not available in this browser');
-      }
-      
-      console.log('📹 Requesting camera access...');
-      
-      // Request camera access with iOS-compatible constraints
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { ideal: 'environment' },
-          width: { min: 640, ideal: 1280, max: 1920 },
-          height: { min: 480, ideal: 720, max: 1080 }
-        },
-        audio: false
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       });
 
-      console.log('✅ Camera access granted');
-      
       this.streamRef = stream;
+      
       this.videoElement.srcObject = stream;
-      
-      // Wait for video to be ready and play
-      await new Promise((resolve, reject) => {
-        this.videoElement.onloadedmetadata = () => {
-          console.log('📹 Video metadata loaded');
-          resolve();
-        };
-        this.videoElement.onerror = (error) => {
-          console.error('Video element error:', error);
-          reject(error);
-        };
-        // Timeout after 5 seconds
-        setTimeout(() => reject(new Error('Video load timeout')), 5000);
-      });
-      
+      this.videoElement.setAttribute('playsinline', 'true');
       await this.videoElement.play();
-      console.log('✅ Video playing');
-      
-      // Start scanning loop
+
       this.scanBarcodes();
       
-    } catch (error) {
-      console.error('❌ Camera setup error:', error);
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      throw error;
+    } catch (err) {
+      console.error("Error starting scanner:", err);
+      this.showCameraError("Camera access denied or unavailable");
+      this.isScanning = false;
     }
   }
 
@@ -196,42 +116,31 @@ export class HybridScannerController {
       if (barcodes && barcodes.length > 0) {
         const barcode = barcodes[0];
         
-        // Process detected barcode
-        if (barcode.format === 'ean_13' || barcode.format === 'ean_8' || 
-            barcode.format === 'upc_a' || barcode.format === 'upc_e') {
+        if (barcode.format === 'ean_13') {
           const code = barcode.rawValue;
           
-          // Prevent duplicate scans
-          if (this.lastScannedCode !== code && this.isValidBarcode(code)) {
-            this.lastScannedCode = code;
-            
-            // Stop scanning immediately
-            this.stopScanning();
-            
-            // Provide feedback
-            this.provideHapticFeedback();
-            
-            // Trigger callback
-            if (this.onScanCallback) {
-              this.onScanCallback(code, null);
-            }
-            
-            return; // Exit after successful scan
+          this.stopScanning();
+          
+          if (navigator.vibrate) {
+            navigator.vibrate(200);
           }
+          
+          if (this.onScanCallback) {
+            this.onScanCallback(code, null);
+          }
+          
+          return;
         }
       }
       
-      // Continue scanning if still active
       if (this.scanningRef) {
-        // Scan every 100ms
-        this.scanTimeout = setTimeout(() => this.scanBarcodes(), 100);
+        setTimeout(() => this.scanBarcodes(), 100);
       }
       
     } catch (error) {
       console.error('Detection error:', error);
-      // Continue scanning despite errors
       if (this.scanningRef) {
-        this.scanTimeout = setTimeout(() => this.scanBarcodes(), 100);
+        setTimeout(() => this.scanBarcodes(), 100);
       }
     }
   }
@@ -274,16 +183,14 @@ export class HybridScannerController {
     }
   }
 
-  showCameraError(errorDetails = '') {
+  showCameraError() {
     const viewport = document.getElementById('scanner-viewport');
     if (viewport) {
-      const errorMsg = errorDetails ? `<p style="font-size: 0.9rem; color: #fca5a5; margin-top: 1rem;">${errorDetails}</p>` : '';
       viewport.innerHTML = `
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: white; text-align: center; padding: 20px;">
           <div style="font-size: 3rem; margin-bottom: 1rem;">📷</div>
           <h3>Camera Access Required</h3>
           <p>Please allow camera access to scan barcodes, or use manual entry below.</p>
-          ${errorMsg}
           <button onclick="window.scannerController.startScanning()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1e40af; color: white; border: none; border-radius: 8px; cursor: pointer;">Try Again</button>
         </div>
       `;
