@@ -21,16 +21,23 @@ export class HybridScannerController {
       if (!('BarcodeDetector' in window)) {
         console.log('Waiting for WebAssembly polyfill...');
         let attempts = 0;
-        while (!window.barcodeDetectorPolyfill && attempts < 50) {
+        // Check for global barcodeDetectorPolyfill variable (added by CDN script)
+        while (!window.barcodeDetectorPolyfill && typeof window.barcodeDetectorPolyfill === 'undefined' && attempts < 50) {
           await new Promise(resolve => setTimeout(resolve, 100));
           attempts++;
         }
         
-        if (window.barcodeDetectorPolyfill) {
+        console.log('Polyfill check after waiting:', {
+          hasBarcodeDetectorPolyfill: !!window.barcodeDetectorPolyfill,
+          type: typeof window.barcodeDetectorPolyfill,
+          windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes('barcode'))
+        });
+        
+        if (window.barcodeDetectorPolyfill && window.barcodeDetectorPolyfill.BarcodeDetectorPolyfill) {
           console.log('Using WebAssembly polyfill for iOS/Safari');
           window.BarcodeDetector = window.barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
         } else {
-          throw new Error('BarcodeDetector polyfill not available after waiting');
+          throw new Error('BarcodeDetector polyfill not available after waiting. Check console for details.');
         }
       } else {
         console.log('Using native Barcode Detection API');

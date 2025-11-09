@@ -1,3 +1,4 @@
+1.8.14 - Added diagnostic logging to debug polyfill loading issue on iOS
 1.8.13 - Fixed polyfill loading timing - wait for polyfill availability during early initialization
 1.8.12 - CRITICAL FIX: Initialize scanner on app startup to preserve iOS user gesture context for camera access
 1.8.11 - Added polyfill wait logic and detailed console logging for iOS debugging
