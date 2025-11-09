@@ -1,3 +1,4 @@
+1.8.12 - CRITICAL FIX: Initialize scanner on app startup to preserve iOS user gesture context for camera access
 1.8.11 - Added polyfill wait logic and detailed console logging for iOS debugging
 1.8.10 - Reverted home screen button layout to original design - fixed version number overlap
 1.8.9 - Simplified scanner to match working MD implementation exactly - removed all extra complexity

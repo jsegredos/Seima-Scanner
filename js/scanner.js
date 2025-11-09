@@ -17,24 +17,16 @@ export class HybridScannerController {
 
   async initialize() {
     try {
-      // Wait for polyfill to be available
-      let attempts = 0;
-      while (!('BarcodeDetector' in window) && !window.barcodeDetectorPolyfill && attempts < 50) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
-      
+      // Check if BarcodeDetector is natively supported
       if (!('BarcodeDetector' in window)) {
         console.log('Using WebAssembly polyfill for iOS/Safari');
-        if (window.barcodeDetectorPolyfill) {
-          window.BarcodeDetector = window.barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
-        } else {
-          throw new Error('BarcodeDetector polyfill not available');
-        }
+        // Use the polyfill for browsers that don't support it (Safari/iOS)
+        window.BarcodeDetector = window.barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
       } else {
         console.log('Using native Barcode Detection API');
       }
 
+      // Create detector instance for EAN-13
       this.barcodeDetector = new window.BarcodeDetector({
         formats: ['ean_13']
       });
