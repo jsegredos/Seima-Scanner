@@ -17,20 +17,22 @@ export class HybridScannerController {
 
   async initialize() {
     try {
-      // Wait for polyfill to load if needed
-      await this.waitForPolyfill();
+      // Check if BarcodeDetector is natively supported FIRST
+      const hasNativeSupport = 'BarcodeDetector' in window;
       
-      // Check if BarcodeDetector is natively supported
-      if (!('BarcodeDetector' in window)) {
+      if (hasNativeSupport) {
+        console.log('✅ Using native Barcode Detection API');
+      } else {
         console.log('📱 Using WebAssembly polyfill for iOS/Safari');
+        // Wait for polyfill to load
+        await this.waitForPolyfill();
+        
         // Use the polyfill for browsers that don't support it (Safari/iOS)
         if (window.barcodeDetectorPolyfill) {
           window.BarcodeDetector = window.barcodeDetectorPolyfill.BarcodeDetectorPolyfill;
         } else {
           throw new Error('Polyfill not loaded - please refresh the page');
         }
-      } else {
-        console.log('✅ Using native Barcode Detection API');
       }
 
       // Create detector instance for EAN formats
@@ -49,12 +51,7 @@ export class HybridScannerController {
   }
 
   async waitForPolyfill(maxWaitTime = 5000) {
-    // If native support exists, no need to wait
-    if ('BarcodeDetector' in window) {
-      return true;
-    }
-
-    // Wait for polyfill to load
+    // Wait for polyfill to load (only called when native support doesn't exist)
     const startTime = Date.now();
     while (!window.barcodeDetectorPolyfill && (Date.now() - startTime) < maxWaitTime) {
       await new Promise(resolve => setTimeout(resolve, 100));
