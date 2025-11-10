@@ -879,7 +879,8 @@ export class NavigationManager {
   setupReviewEditButtons() {
     const editButtons = document.querySelectorAll('.review-edit-btn');
     editButtons.forEach(button => {
-      button.onclick = (event) => {
+      // Use touchend for iOS compatibility
+      const handleEdit = (event) => {
         event.preventDefault();
         event.stopPropagation();
         const selectionId = button.getAttribute('data-id');
@@ -887,6 +888,9 @@ export class NavigationManager {
           this.handleEditSelection(selectionId);
         }
       };
+      
+      button.addEventListener('touchend', handleEdit, { passive: false });
+      button.addEventListener('click', handleEdit);
     });
   }
 

@@ -1,3 +1,4 @@
+2.0.1 - iOS Edit Button Fix: Added explicit touchend event handler for edit button to ensure tap functionality works correctly on iPhone/iPad
 2.0.0 - Mobile Drag & Drop + Edit Flow: Full mobile-friendly drag-and-drop reordering across rooms with persistent storage; redesigned review cards with inline quantity display and compact edit entry point; extended product edit screen with delete option and confirmation modal; optimised card layout for maximum image size while minimising card height
 1.8.15 - Fixed polyfill loading using Skypack CDN with ES modules to avoid CORS/ORB blocking
 1.8.14 - Added diagnostic logging to debug polyfill loading issue on iOS
