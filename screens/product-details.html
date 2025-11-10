@@ -49,5 +49,17 @@
     <a href="#" id="datasheet-link" target="_blank">Datasheet</a>
     <a href="#" id="website-link" target="_blank">Web</a>
   </div>
-  <button class="primary-btn" id="add-to-room-btn">Add to Room</button>
+  <div class="product-actions-row">
+    <button class="secondary-btn destructive-secondary" id="delete-selection-btn" style="display:none;">Delete</button>
+    <button class="primary-btn" id="add-to-room-btn">Add to Room</button>
+  </div>
 </div> 
+<div id="delete-confirm-modal" class="modal" style="display:none;">
+  <div class="modal-content delete-modal-content">
+    <h3 class="delete-modal-title">Confirm delete</h3>
+    <div class="delete-modal-actions">
+      <button id="delete-cancel-btn" class="secondary-btn">Cancel</button>
+      <button id="delete-confirm-btn" class="primary-btn destructive-primary">Delete</button>
+    </div>
+  </div>
+</div>
