@@ -1,8 +1,9 @@
 import { StorageManager } from './storage.js';
 import { CONFIG } from './config.js';
-import { DataService } from './data-service.js';
+import { dataService } from './data-service.js';
 import { ScannerController } from './scanner.js';
 import { Utils } from './utils.js';
+import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/modular/sortable.esm.js';
 
 // Navigation and screen management
 export class NavigationManager {
@@ -10,7 +11,9 @@ export class NavigationManager {
     this.currentScreen = 'welcome';
     this.selectedRoom = null;
     this.scannerController = new ScannerController();
-    this.dataService = new DataService();
+    this.dataService = dataService;
+    this.reviewSortables = [];
+    this.currentEditSelectionId = null;
     this.setupScannerCallback();
   }
 
@@ -335,8 +338,9 @@ export class NavigationManager {
       document.body.innerHTML = html;
       
       this.currentScreen = 'product-details';
+      this.currentEditSelectionId = options.mode === 'edit' ? options.selectionId || null : null;
       this.populateProductDetails(product, options);
-      this.setupProductDetailsHandlers(product);
+      this.setupProductDetailsHandlers(product, options);
     } catch (error) {
       console.error('Failed to load product details screen:', error);
     }
@@ -394,6 +398,20 @@ export class NavigationManager {
     this.setupQuantitySelect();
     this.setupAnnotationField();
     this.setupAnnotationCharacterCount(options);
+
+    if (options.room) {
+      const roomSelect = document.getElementById('room-select');
+      if (roomSelect) {
+        const hasExisting = Array.from(roomSelect.options).some(opt => opt.value === options.room);
+        if (!hasExisting) {
+          const option = document.createElement('option');
+          option.value = options.room;
+          option.textContent = options.room;
+          roomSelect.appendChild(option);
+        }
+        roomSelect.value = options.room;
+      }
+    }
 
     // Restore quantity if passed in options
     if (options.quantity) {
@@ -498,7 +516,14 @@ export class NavigationManager {
             } else if (options.quantity) {
               quantity = options.quantity;
             }
-            this.showProductDetailsScreen(selected, { notes, quantity });
+            const roomSelect = document.getElementById('room-select');
+            const roomValue = roomSelect ? roomSelect.value : options.room;
+            this.showProductDetailsScreen(selected, {
+              ...options,
+              notes,
+              quantity,
+              room: roomValue
+            });
           }
         };
       } else {
@@ -522,7 +547,10 @@ export class NavigationManager {
       });
       charCount.textContent = annotationInput.value.length + '/140';
       // Restore notes if passed in options
-      if (options.notes) annotationInput.value = options.notes;
+      if (options.notes) {
+        annotationInput.value = options.notes;
+        charCount.textContent = annotationInput.value.length + '/140';
+      }
     }
   }
 
@@ -530,17 +558,117 @@ export class NavigationManager {
     // Now handled by setupAnnotationCharacterCount
   }
 
-  setupProductDetailsHandlers(product) {
+  setupProductDetailsHandlers(product, options = {}) {
     const backBtn = document.getElementById('back-to-scanner');
     const addBtn = document.getElementById('add-to-room-btn');
+    const deleteBtn = document.getElementById('delete-selection-btn');
 
     if (backBtn) {
-      backBtn.onclick = () => this.showScannerScreen();
+      backBtn.onclick = () => {
+        if (options.mode === 'edit') {
+          this.showReviewScreen();
+        } else {
+          this.showScannerScreen();
+        }
+      };
     }
 
     if (addBtn) {
-      addBtn.onclick = () => this.addProductToSelection(product);
+      if (options.mode === 'edit' && options.selectionId) {
+        addBtn.textContent = 'Save';
+        addBtn.onclick = () => this.saveEditedProduct(product, options);
+      } else {
+        addBtn.textContent = 'Add to Room';
+        addBtn.onclick = () => this.addProductToSelection(product);
+      }
     }
+
+    if (deleteBtn) {
+      if (options.mode === 'edit' && options.selectionId) {
+        deleteBtn.style.display = 'block';
+        deleteBtn.onclick = () => this.showDeleteModal(product, options);
+      } else {
+        deleteBtn.style.display = 'none';
+        deleteBtn.onclick = null;
+      }
+    }
+  }
+
+  saveEditedProduct(product, options) {
+    if (!options.selectionId) return;
+
+    const roomSelect = document.getElementById('room-select');
+    const quantitySelect = document.getElementById('product-quantity');
+    const annotationField = document.getElementById('product-annotation');
+
+    const room = roomSelect ? roomSelect.value : '';
+    const quantity = quantitySelect ? Math.max(1, parseInt(quantitySelect.value, 10) || 1) : 1;
+    const notes = annotationField ? annotationField.value : '';
+
+    const success = StorageManager.updateProductDetails(options.selectionId, {
+      product: Utils.deepClone(product),
+      room,
+      quantity,
+      notes
+    });
+
+    if (!success) {
+      alert('Unable to save changes. Please try again.');
+      return;
+    }
+
+    this.currentEditSelectionId = null;
+    this.showReviewScreen();
+  }
+
+  showDeleteModal(product, options) {
+    const modal = document.getElementById('delete-confirm-modal');
+    if (!modal || !options.selectionId) return;
+
+    const messageEl = document.getElementById('delete-confirm-message');
+    if (messageEl) {
+      messageEl.textContent = 'Confirm delete';
+    }
+
+    const cancelBtn = document.getElementById('delete-cancel-btn');
+    const confirmBtn = document.getElementById('delete-confirm-btn');
+
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
+        modal.style.display = 'none';
+      };
+    }
+
+    if (confirmBtn) {
+      confirmBtn.onclick = () => {
+        const removed = StorageManager.removeProductFromSelection(options.selectionId);
+        modal.style.display = 'none';
+        if (!removed) {
+          alert('Unable to remove this product. Please try again.');
+          return;
+        }
+        this.currentEditSelectionId = null;
+        this.showReviewScreen();
+      };
+    }
+
+    modal.onclick = (event) => {
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    };
+
+    modal.style.display = 'flex';
+  }
+
+  escapeHtml(value) {
+    if (typeof value !== 'string') return '';
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   addProductToSelection(product) {
@@ -595,69 +723,70 @@ export class NavigationManager {
   renderReviewList() {
     const reviewList = document.getElementById('review-list');
     const emptyState = document.getElementById('review-empty');
-    
+
     if (!reviewList) return;
 
     const selectedProducts = StorageManager.getSelectedProducts();
-    
+
     if (selectedProducts.length === 0) {
       reviewList.innerHTML = '';
       if (emptyState) emptyState.style.display = 'block';
+      this.destroyReviewSortables();
       return;
     }
 
     if (emptyState) emptyState.style.display = 'none';
 
-    // Group products by room - use original logic
-    const byRoom = {};
-    selectedProducts.forEach(item => {
-      const room = item.room || 'Unassigned';
-      if (!byRoom[room]) byRoom[room] = [];
-      byRoom[room].push(item);
-    });
+    const byRoom = this.groupProductsByRoom(selectedProducts);
 
-    // Render using original HTML structure
     reviewList.innerHTML = Object.entries(byRoom).map(([room, items]) => `
-      <div class="review-room-group">
+      <div class="review-room-group" data-room="${room}">
         <div class="review-room-header">${room} <span class="room-count">(${items.length})</span></div>
-        ${items.map((item, idx) => {
+        <div class="review-room-items" data-room="${room}">
+        ${items.map(item => {
           const product = item.product;
-          // Handle different field naming conventions (catalog vs imported)
           const description = product.Description || product.description || product.productName || product['Product Name'] || 'Product';
           const orderCode = product.OrderCode || product.orderCode || '';
           const imageUrl = product.Image_URL || product.imageUrl || 'assets/no-image.png';
-          const rrpIncGst = product.RRP_INCGST || product.rrpIncGst || product.price || '0';
-          
+          const rrpIncGst = product.RRP_INCGST || product.rrpIncGst || product.price || '';
+          const quantity = item.quantity || 1;
+          const numericPrice = rrpIncGst ? parseFloat(rrpIncGst.toString().replace(/[^0-9.-]/g, '')) : NaN;
+          const priceLabel = !isNaN(numericPrice) ? `$${numericPrice.toFixed(2)} ea` : '';
+          const notes = item.notes ? `Notes: ${item.notes}` : '';
+          const descriptionText = this.escapeHtml(description);
+          const orderCodeText = this.escapeHtml(orderCode);
+          const notesText = notes ? this.escapeHtml(notes) : '';
+          const codeDisplay = orderCode ? `Code: ${orderCodeText}` : 'Code: —';
+          const qtyDisplay = `Qty: ${quantity}`;
+          const priceDisplay = priceLabel || '—';
+
           return `
-          <div class="review-product-card" style="display: flex; flex-direction: column; align-items: stretch;">
-            <div style="display: flex; flex-direction: row; align-items: flex-start;">
-              <div class="review-product-thumb-wrap">
-                <img class="review-product-thumb" src="${imageUrl}" alt="Product" onerror="this.src='assets/no-image.png';" onload="">
-                <div class="review-qty-pill" data-room="${room}" data-idx="${idx}">
-                  <button class="review-qty-btn${(item.quantity||1)===1?' delete':''}" data-action="decrement" title="${(item.quantity||1)===1?'Delete':'Decrease'}">
-                    ${(item.quantity||1)===1?`<svg viewBox='0 0 64 64' width='64' height='64'><rect x='10' y='8' width='44' height='6' rx='3' fill='black'/><polygon points='7,18 57,18 52,58 12,58' fill='none' stroke='black' stroke-width='7'/></svg>`:'–'}
-                  </button>
-                  <span class="review-qty-value">${item.quantity || 1}</span>
-                  <button class="review-qty-btn" data-action="increment" title="Increase">+</button>
-                </div>
-              </div>
-              <div class="review-product-info">
-                <div class="review-product-title">${description}</div>
-                <div class="review-product-meta">
-                  <span class="review-product-code">${orderCode ? 'Code: ' + orderCode : ''}</span>
-                  <span class="review-product-price">${rrpIncGst ? '$' + Number(rrpIncGst).toFixed(2) + ' ea' : ''}</span>
-                </div>
-                <div class="review-product-notes">${item.notes ? 'Notes: ' + item.notes : ''}</div>
+          <div class="review-product-card" data-id="${item.id}" data-room="${room}" aria-label="Selected product card">
+            <div class="review-product-thumb-wrap">
+              <img class="review-product-thumb" src="${imageUrl}" alt="Product" onerror="this.src='assets/no-image.png';">
+            </div>
+            <div class="review-product-info">
+              <div class="review-product-title">${descriptionText}</div>
+              <div class="review-product-meta">
+                <span class="review-product-code">${codeDisplay}</span>
+                <span class="review-product-qty">${qtyDisplay}</span>
+                <span class="review-product-price">${priceDisplay}</span>
               </div>
             </div>
+            ${notesText ? `<div class="review-product-notes">${notesText}</div>` : ''}
+            <button class="review-edit-btn" data-id="${item.id}" aria-label="Edit product selection">
+              <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92.83l8.49-8.49 1.42 1.42-8.49 8.49H5.92zm13.71-11.54c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path>
+              </svg>
+            </button>
           </div>
           `;
         }).join('')}
+        </div>
       </div>
     `).join('');
 
-    // Setup quantity controls using original logic
-    this.setupOriginalQuantityControls(byRoom);
+    this.setupReviewInteractions();
   }
 
   groupProductsByRoom(products) {
@@ -669,50 +798,134 @@ export class NavigationManager {
     }, {});
   }
 
-  // Removed unused renderRoomGroup method
+  setupReviewInteractions() {
+    this.setupReviewEditButtons();
+    this.setupDragAndDrop();
+    this.updateRoomEmptyStates();
+  }
 
-  // renderProductCard method removed - using inline HTML in renderReviewList for proper quantity controls
+  destroyReviewSortables() {
+    if (this.reviewSortables && this.reviewSortables.length) {
+      this.reviewSortables.forEach(instance => instance.destroy());
+    }
+    this.reviewSortables = [];
+  }
 
-  setupOriginalQuantityControls(byRoom) {
-    // Original quantity pill handlers
-    document.querySelectorAll('.review-qty-pill').forEach(pill => {
-      const room = pill.getAttribute('data-room');
-      const idx = parseInt(pill.getAttribute('data-idx'), 10);
-      pill.querySelectorAll('.review-qty-btn').forEach(btn => {
-        btn.onclick = () => {
-          const action = btn.getAttribute('data-action');
-          const selectedProducts = StorageManager.getSelectedProducts();
-          
-          // Find the product to update using room and index
-          let count = -1;
-          const toUpdateIdx = selectedProducts.findIndex(item => {
-            if (item.room === room) count++;
-            return item.room === room && count === idx;
+  setupDragAndDrop() {
+    const containers = Array.from(document.querySelectorAll('.review-room-items'));
+    if (!containers.length) {
+      this.destroyReviewSortables();
+      return;
+    }
+
+    this.destroyReviewSortables();
+
+    this.reviewSortables = containers.map(container => new Sortable(container, {
+      group: { name: 'review-rooms', pull: true, put: true },
+      animation: 160,
+      draggable: '.review-product-card',
+      handle: '.review-product-card',
+      filter: '.review-edit-btn',
+      delay: 180,
+      delayOnTouchOnly: true,
+      touchStartThreshold: 6,
+      fallbackTolerance: 8,
+      fallbackOnBody: true,
+      ghostClass: 'review-card-ghost',
+      chosenClass: 'review-card-chosen',
+      dragClass: 'review-card-dragging',
+      onFilter: (evt) => {
+        evt.preventDefault();
+      },
+      onEnd: () => this.persistReorderedProducts()
+    }));
+  }
+
+  persistReorderedProducts() {
+    const selectedProducts = StorageManager.getSelectedProducts();
+    if (!selectedProducts.length) return;
+
+    const productMap = new Map(selectedProducts.map(item => [item.id, item]));
+    const newOrder = [];
+
+    document.querySelectorAll('.review-room-group').forEach(group => {
+      const room = group.getAttribute('data-room') || 'Unassigned';
+      const cards = group.querySelectorAll('.review-product-card');
+      cards.forEach(card => {
+        const id = card.getAttribute('data-id');
+        const existing = productMap.get(id);
+        if (existing) {
+          newOrder.push({
+            ...existing,
+            room
           });
-          
-          if (toUpdateIdx !== -1) {
-            const product = selectedProducts[toUpdateIdx];
-            let qty = parseInt(product.quantity, 10) || 1;
-            
-            if (action === 'increment') {
-              StorageManager.updateProductQuantity(product.id, qty + 1);
-            } else if (action === 'decrement') {
-              if (qty === 1) {
-                StorageManager.removeProductFromSelection(product.id);
-              } else {
-                StorageManager.updateProductQuantity(product.id, qty - 1);
-              }
-            }
-            
-            this.renderReviewList();
-            this.updateSelectionCount();
-          }
-        };
+          productMap.delete(id);
+        }
       });
+    });
+
+    // Append any items that may not have been rendered (safety)
+    productMap.forEach(item => newOrder.push(item));
+
+    const saved = StorageManager.setSelectedProducts(newOrder);
+    if (!saved) {
+      alert('Unable to save the new order. Please try again.');
+      return;
+    }
+    this.renderReviewList();
+    this.updateSelectionCount();
+  }
+
+  setupReviewEditButtons() {
+    const editButtons = document.querySelectorAll('.review-edit-btn');
+    editButtons.forEach(button => {
+      // Use touchend for iOS compatibility
+      const handleEdit = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const selectionId = button.getAttribute('data-id');
+        if (selectionId) {
+          this.handleEditSelection(selectionId);
+        }
+      };
+      
+      button.addEventListener('touchend', handleEdit, { passive: false });
+      button.addEventListener('click', handleEdit);
     });
   }
 
-  // Removed unused setupQuantityControls and handleQuantityAction methods
+  handleEditSelection(selectionId) {
+    const selectedProducts = StorageManager.getSelectedProducts();
+    const selection = selectedProducts.find(item => item.id === selectionId);
+    if (!selection) {
+      alert('Unable to find product in selection.');
+      return;
+    }
+
+    this.currentEditSelectionId = selectionId;
+    const { product, notes, quantity, room } = selection;
+    this.showProductDetailsScreen(product, {
+      mode: 'edit',
+      selectionId,
+      notes,
+      quantity,
+      room
+    });
+  }
+
+  updateRoomEmptyStates() {
+    document.querySelectorAll('.review-room-items').forEach(container => {
+      if (container.children.length === 0) {
+        container.classList.add('is-empty');
+      } else {
+        container.classList.remove('is-empty');
+      }
+    });
+  }
+
+  // Removed unused renderRoomGroup method
+
+  // renderProductCard method removed - using inline HTML in renderReviewList for proper quantity controls
 
   showPdfFormModal() {
     const modal = document.getElementById('pdf-email-modal');
