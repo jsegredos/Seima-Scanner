@@ -1,16 +1,6 @@
-2.0.1 - iOS Edit Button Fix: Added explicit touchend event handler for edit button to ensure tap functionality works correctly on iPhone/iPad
-2.0.0 - Mobile Drag & Drop + Edit Flow: Full mobile-friendly drag-and-drop reordering across rooms with persistent storage; redesigned review cards with inline quantity display and compact edit entry point; extended product edit screen with delete option and confirmation modal; optimised card layout for maximum image size while minimising card height
-1.8.15 - Fixed polyfill loading using Skypack CDN with ES modules to avoid CORS/ORB blocking
-1.8.14 - Added diagnostic logging to debug polyfill loading issue on iOS
-1.8.13 - Fixed polyfill loading timing - wait for polyfill availability during early initialization
-1.8.12 - CRITICAL FIX: Initialize scanner on app startup to preserve iOS user gesture context for camera access
-1.8.11 - Added polyfill wait logic and detailed console logging for iOS debugging
-1.8.10 - Reverted home screen button layout to original design - fixed version number overlap
-1.8.9 - Simplified scanner to match working MD implementation exactly - removed all extra complexity
-1.8.8 - Fixed home screen button positioning on iPhone with proper safe area handling
-1.8.7 - Added explicit Start Camera button for iOS - direct user gesture required for camera access
-1.8.6 - Enhanced camera activation on iOS with detailed logging and iOS-specific video attributes
-1.8.5 - Fixed scanner initialization on iOS with improved polyfill loading and defer attributes
+2.0.1 - Minor fix to cater for our annoying friends at apple who insists on making life difficult. iOS explicit touchend event handler for edit button to ensure tap functionality works correctly on iPhone/iPad
+2.0.0 - Mobile Drag & Drop + Edit Flow: Full mobile-friendly drag-and-drop reordering across rooms with persistent storage; redesigned review cards with inline quantity display and compact edit entry point; extended product edit screen with delete
+1.8.5 - Finally jumped through all the hurdles to make those annoying apple phones scan barcodes.
 1.8.4 - Refactored barcode scanner with iOS polyfill support and improved mobile layout for iPhone safe areas
 1.8.3 - Fix: barcode scanning now properly looks up products by barcode instead of order code.
 1.8.2 - Product search dropdown now shows order code prefix for better identification.
