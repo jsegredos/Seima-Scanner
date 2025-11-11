@@ -1,6 +1,8 @@
 <div class="review-container">
-  <img src="assets/seima-logo.png" alt="SEIMA Logo" class="page-logo">
-  <button class="back-btn" id="back-to-scanner" aria-label="Back to Scanner">&#60;</button>
+  <div class="top-bar">
+    <button class="back-btn" id="back-to-scanner" aria-label="Back to Scanner">&#60;</button>
+    <img src="assets/seima-logo.png" alt="SEIMA Logo" class="page-logo">
+  </div>
   <h2>Review Selection</h2>
   <p class="subtitle">Your product selections</p>
   <div id="review-list"></div>
@@ -11,30 +13,41 @@
   <div id="review-empty" class="empty-state" style="display:none;">No products selected yet.</div>
   <div id="pdf-email-modal" class="modal" style="display:none;">
     <div class="modal-content">
+      <h3 style="margin: 0 0 20px 0; color: #333;">Email Product Selection</h3>
       <form id="pdf-email-form" autocomplete="off">
-        <label for="user-name">Name</label>
-        <input type="text" id="user-name" name="user-name" required maxlength="60" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
-        <label for="user-project">Project</label>
-        <input type="text" id="user-project" name="user-project" required maxlength="60" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
-        <label for="user-address">Address <span style="color:#888;font-size:0.95em;">(optional)</span></label>
-        <input type="text" id="user-address" name="user-address" maxlength="100" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
-        <label for="user-email">Email Address</label>
-        <input type="email" id="user-email" name="user-email" required maxlength="80" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
-        <label for="user-telephone">Telephone <span style="color:#888;font-size:0.95em;">(optional)</span></label>
-        <input type="tel" id="user-telephone" name="user-telephone" maxlength="20" style="width:100%;margin-bottom:10px;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:1.5px solid #e0e0e0;">
-        <div style="margin: 12px 0 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 20px;">
-          <span style="display: flex; align-items: center;">
-            <input type="checkbox" id="exclude-price-checkbox" name="exclude-price" style="margin-right: 8px;">
-            <label for="exclude-price-checkbox" style="font-size:1.05rem; color:#222; cursor:pointer;">Exclude price</label>
-          </span>
-          <span style="display: flex; align-items: center;">
-            <input type="checkbox" id="export-csv-checkbox" name="export-csv" checked style="margin-right: 8px;">
-<label for="export-csv-checkbox" style="font-size:1.05rem; color:#222; cursor:pointer;">Export CSV (recommended)</label>
-          </span>
+        <div class="form-field">
+          <label class="form-label">Name *</label>
+          <input type="text" id="user-name" name="user-name" class="form-input" required maxlength="60">
         </div>
-        <div style="display:flex;gap:16px;justify-content:flex-end;margin-top:10px;">
-          <button type="button" id="pdf-email-cancel" class="secondary-btn cancel-btn">Cancel</button>
-          <button type="submit" id="pdf-email-send" class="primary-btn send-btn">Send</button>
+        <div class="form-field">
+          <label class="form-label">Project *</label>
+          <input type="text" id="user-project" name="user-project" class="form-input" required maxlength="60">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Address <span style="color:#888;font-size:0.95em;">(optional)</span></label>
+          <input type="text" id="user-address" name="user-address" class="form-input" maxlength="100">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Email Address *</label>
+          <input type="email" id="user-email" name="user-email" class="form-input" required maxlength="80">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Telephone <span style="color:#888;font-size:0.95em;">(optional)</span></label>
+          <input type="tel" id="user-telephone" name="user-telephone" class="form-input" maxlength="20">
+        </div>
+        <div class="form-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="exclude-price-checkbox" name="exclude-price">
+            <span>Exclude price</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="export-csv-checkbox" name="export-csv" checked>
+            <span>Export CSV (recommended)</span>
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="pdf-email-cancel" class="secondary-btn">Cancel</button>
+          <button type="submit" id="pdf-email-send" class="primary-btn">Send</button>
         </div>
       </form>
     </div>

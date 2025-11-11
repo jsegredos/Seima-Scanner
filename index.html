@@ -20,17 +20,18 @@
     <button id="start-btn" class="primary-btn">Select Products</button>
     <button id="view-selection-btn" class="primary-btn" style="margin-top: 18px;">View Selection</button>
     
-    <div style="position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); text-align: center;">
-      <button id="clear-selection-btn" class="clear-selection-btn" style="font-size: 14pt; padding: 10px 20px; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;">Clear Selection</button>
-      <button id="seima-contact-btn" class="primary-btn" style="background: #a09484; border-color: #a09484; font-size: 14pt; padding: 10px 20px; display: block; margin-left: auto; margin-right: auto;">Seima Contact</button>
+    <div style="position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); text-align: center; display: flex; flex-direction: column; gap: 10px;">
+      <button id="clear-selection-btn" class="clear-selection-btn">Clear Selection</button>
+      <button id="seima-contact-btn" class="seima-contact-btn">Seima Contact</button>
     </div>
   </div>
   <div id="clear-selection-modal" class="modal" style="display:none;">
     <div class="modal-content">
-      <p style="margin-bottom: 24px;">Are you sure you want to clear all product and room selections?</p>
-      <div style="display: flex; gap: 16px; justify-content: flex-end;">
+      <h3 style="margin: 0 0 20px 0; color: #333;">Confirm Clear All</h3>
+      <p style="margin-bottom: 24px; color: #666;">Are you sure you want to clear all product and room selections?</p>
+      <div class="modal-actions">
         <button id="modal-cancel-btn" class="secondary-btn">Cancel</button>
-        <button id="modal-confirm-btn" class="primary-btn" style="background: #b91c1c; color: #fff;">Clear All</button>
+        <button id="modal-confirm-btn" class="destructive-primary">Clear All</button>
       </div>
     </div>
   </div>
@@ -42,15 +43,15 @@
       
       <!-- Step 1: File Selection -->
       <div id="file-selection-step">
-        <div id="file-drop-zone" style="border: 2px dashed #ccc; padding: 40px; text-align: center; margin: 20px 0; border-radius: 8px; background: #fafafa; cursor: pointer;">
+        <div id="file-drop-zone" class="file-drop-zone">
           <p style="margin: 0 0 10px 0; color: #666; font-size: 16px;">Drop CSV or Excel file here or click to browse</p>
           <p style="margin: 0; color: #999; font-size: 14px;">Supported formats: .csv, .xlsx</p>
           <input type="file" id="file-input" accept=".csv,.xlsx" style="display: none;">
         </div>
-        <div id="selected-file-info" style="display: none; margin: 10px 0; padding: 10px; background: #e8f5e8; border-radius: 4px;">
+        <div id="selected-file-info" class="file-info" style="display: none;">
           <strong>Selected:</strong> <span id="selected-file-name"></span>
         </div>
-        <div style="display: flex; gap: 16px; justify-content: flex-end; margin-top: 20px;">
+        <div class="modal-actions">
           <button id="import-cancel-btn" class="secondary-btn">Cancel</button>
           <button id="import-next-btn" class="primary-btn" disabled>Next</button>
         </div>
@@ -59,28 +60,32 @@
       <!-- Step 2: Import Mode Selection -->
       <div id="import-mode-step" style="display: none;">
         <p style="margin-bottom: 20px; color: #333;">Choose how to import the data:</p>
-        <div style="margin: 20px 0;">
-          <label style="display: block; margin-bottom: 15px; cursor: pointer;">
-            <input type="radio" name="import-mode" value="append" checked style="margin-right: 8px;">
-            <strong>Append</strong> - Add to existing selection (items will be added to "Blank" room)
+        <div class="import-options">
+          <label class="import-option">
+            <input type="radio" name="import-mode" value="append" checked>
+            <div>
+              <strong>Append</strong> - Add to existing selection (items will be added to "Blank" room)
+            </div>
           </label>
-          <label style="display: block; cursor: pointer;">
-            <input type="radio" name="import-mode" value="override" style="margin-right: 8px;">
-            <strong>Override</strong> - Replace all existing selections (warning: this will clear everything)
+          <label class="import-option">
+            <input type="radio" name="import-mode" value="override">
+            <div>
+              <strong>Override</strong> - Replace all existing selections (warning: this will clear everything)
+            </div>
           </label>
         </div>
-        <div id="override-warning" style="display: none; margin: 15px 0; padding: 15px; background: #fee; border: 1px solid #fcc; border-radius: 4px; color: #c33;">
+        <div id="override-warning" class="warning-message" style="display: none;">
           <strong>Warning:</strong> This will delete all your current product selections and room assignments.
         </div>
-        <div style="display: flex; gap: 16px; justify-content: flex-end; margin-top: 20px;">
+        <div class="modal-actions">
           <button id="import-back-btn" class="secondary-btn">Back</button>
           <button id="import-process-btn" class="primary-btn">Import</button>
         </div>
       </div>
 
       <!-- Step 3: Processing -->
-      <div id="import-processing-step" style="display: none; text-align: center; padding: 40px 20px;">
-        <div style="border:6px solid #e0e0e0;border-top:6px solid #059669;border-radius:50%;width:54px;height:54px;animation:spin 1s linear infinite;margin:0 auto 20px;"></div>
+      <div id="import-processing-step" class="processing-step" style="display: none;">
+        <div class="spinner"></div>
         <p style="margin: 0; color: #666;">Processing file...</p>
       </div>
 
@@ -90,9 +95,9 @@
         <div id="import-summary" style="margin-bottom: 20px;"></div>
         <div id="not-found-products" style="display: none;">
           <h5 style="margin: 20px 0 10px 0; color: #c33;">Products added with placeholder information:</h5>
-          <div id="not-found-list" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fafafa;"></div>
+          <div id="not-found-list" class="not-found-list"></div>
         </div>
-        <div style="display: flex; gap: 16px; justify-content: flex-end; margin-top: 20px;">
+        <div class="modal-actions">
           <button id="import-close-btn" class="primary-btn">Done</button>
         </div>
       </div>
@@ -105,38 +110,35 @@
       <h3 style="margin: 0 0 20px 0; color: #333;">Seima Staff Contact Details</h3>
       <p style="margin-bottom: 20px; color: #666;">Enter your contact details to be included in the PDF and receive a copy of the email.</p>
       
-      <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">Name *</label>
-        <input type="text" id="staff-name" placeholder="Enter your full name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+      <div class="form-field">
+        <label class="form-label">Name *</label>
+        <input type="text" id="staff-name" class="form-input" placeholder="Enter your full name">
       </div>
       
-      <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">Mobile Number *</label>
-        <input type="tel" id="staff-mobile" placeholder="Enter your mobile number" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+      <div class="form-field">
+        <label class="form-label">Mobile Number *</label>
+        <input type="tel" id="staff-mobile" class="form-input" placeholder="Enter your mobile number">
       </div>
       
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">Email Address *</label>
-        <input type="email" id="staff-email" placeholder="Enter your email address" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+      <div class="form-field">
+        <label class="form-label">Email Address *</label>
+        <input type="email" id="staff-email" class="form-input" placeholder="Enter your email address">
       </div>
       
-      <div id="staff-details-status" style="display: none; margin-bottom: 15px; padding: 10px; border-radius: 4px;">
+      <div id="staff-details-status" class="status-message" style="display: none;">
         <!-- Status message will be shown here -->
       </div>
       
-      <div style="display: flex; gap: 16px; justify-content: flex-end;">
+      <div class="modal-actions">
         <button id="staff-contact-cancel-btn" class="secondary-btn">Cancel</button>
         <button id="staff-contact-save-btn" class="primary-btn">Save Contact Details</button>
       </div>
     </div>
   </div>
 
-  <div id="pdf-spinner" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:rgba(255,255,255,0.7);align-items:center;justify-content:center;">
-    <div style="border:6px solid #e0e0e0;border-top:6px solid #2563eb;border-radius:50%;width:54px;height:54px;animation:spin 1s linear infinite;"></div>
+  <div id="pdf-spinner" class="pdf-spinner" style="display:none;">
+    <div class="spinner" style="border-top-color: #2563eb;"></div>
   </div>
-  <style>
-    @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
-  </style>
   <!-- Barcode Detection API Polyfill for iOS Safari - Use Skypack CDN with proper CORS -->
   <script type="module">
     import * as zbarWasm from 'https://cdn.skypack.dev/@undecaf/zbar-wasm@0.9.15';

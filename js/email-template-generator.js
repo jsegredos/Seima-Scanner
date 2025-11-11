@@ -91,33 +91,31 @@ export class EmailTemplateGenerator {
       <style>
           * { box-sizing: border-box; }
           body {
-              font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
               margin: 0;
               padding: 20px;
-              background-color: ${this.brandColors.background};
-              color: ${this.brandColors.textPrimary};
+              background-color: #ffffff;
+              color: #1f2937;
               line-height: 1.6;
           }
           .email-container {
               max-width: 600px;
               margin: 0 auto;
-              background-color: ${this.brandColors.cardBackground};
-              border-radius: 16px;
-              overflow: hidden;
-              box-shadow: 0 4px 32px rgba(0,0,0,0.08);
+              background-color: #ffffff;
+              border: 1px solid #e5e7eb;
           }
           .header {
-              background: linear-gradient(135deg, ${this.brandColors.primary} 0%, ${this.brandColors.primaryDark} 100%);
-              color: white;
-              padding: 40px 30px;
+              background: #1f2937;
+              color: #ffffff;
+              padding: 32px 30px;
               text-align: center;
-              position: relative;
+              border-bottom: 3px solid ${this.brandColors.primary};
           }
           .header h1 {
-              margin: 0 0 8px 0;
-              font-size: 28px;
+              margin: 0;
+              font-size: 24px;
               font-weight: 600;
-              letter-spacing: 0.5px;
+              letter-spacing: 2px;
           }
           .header .subtitle {
               margin: 0;
@@ -129,36 +127,36 @@ export class EmailTemplateGenerator {
               padding: 40px 30px;
           }
           .greeting {
-              font-size: 18px;
-              margin-bottom: 24px;
-              color: #374151;
+              font-size: 16px;
+              margin-bottom: 20px;
+              color: #1f2937;
+              font-weight: 500;
           }
           .intro-text {
-              font-size: 16px;
-              margin-bottom: 32px;
-              color: ${this.brandColors.textSecondary};
+              font-size: 15px;
+              margin-bottom: 30px;
+              color: #4b5563;
+              line-height: 1.7;
           }
           .card {
-              border-radius: 12px;
+              border: 1px solid #e5e7eb;
               padding: 24px;
               margin: 24px 0;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.05);
           }
           .summary-card {
-              background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-              border-left: 4px solid ${this.brandColors.primary};
+              background: #fafafa;
           }
           .summary-title {
               margin: 0 0 20px 0;
-              font-size: 20px;
+              font-size: 18px;
               font-weight: 600;
-              color: ${this.brandColors.primaryDark};
-              display: flex;
-              align-items: center;
+              color: #1f2937;
+              padding-bottom: 12px;
+              border-bottom: 2px solid ${this.brandColors.primary};
           }
           .summary-title::before {
-              content: '📋';
-              margin-right: 8px;
+              content: '';
+              margin-right: 0;
           }
           .summary-table {
               display: table;
@@ -168,7 +166,7 @@ export class EmailTemplateGenerator {
           }
           .summary-row {
               display: table-row;
-              border-bottom: 1px solid ${this.brandColors.border};
+              border-bottom: 1px solid #e5e7eb;
           }
           .summary-row:last-child {
               border-bottom: none;
@@ -177,20 +175,23 @@ export class EmailTemplateGenerator {
               display: table-cell;
               font-weight: 600;
               color: #374151;
-              padding: 10px 24px 10px 0;
+              padding: 12px 24px 12px 0;
               width: 40%;
               vertical-align: top;
+              font-size: 14px;
           }
           .summary-value {
               display: table-cell;
-              color: ${this.brandColors.textMuted};
-              padding: 10px 0;
+              color: #6b7280;
+              padding: 12px 0;
               width: 60%;
               vertical-align: top;
+              font-size: 14px;
           }
           .attachments-card {
-              background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-              border-left: 4px solid ${this.brandColors.success};
+              background: #ffffff;
+              border: 1px solid #e5e7eb;
+              border-left: 3px solid ${this.brandColors.success};
           }
           .attachments-title {
               margin: 0 0 16px 0;
@@ -262,51 +263,55 @@ export class EmailTemplateGenerator {
               top: 0;
           }
           .contact-section {
-              background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-              border-radius: 8px;
+              background: #ffffff;
+              border: 1px solid #e5e7eb;
+              border-left: 3px solid ${this.brandColors.primary};
               padding: 20px;
-              margin: 24px 0;
-              text-align: center;
+              margin: 30px 0;
           }
           .contact-title {
               margin: 0 0 12px 0;
               font-weight: 600;
-              color: #92400e;
+              color: #1f2937;
+              font-size: 16px;
           }
           .contact-info {
               margin: 8px 0;
-              color: #a16207;
+              color: #4b5563;
+              font-size: 14px;
+              line-height: 1.6;
           }
           .contact-link {
               color: ${this.brandColors.primary};
               text-decoration: none;
-              font-weight: 600;
+              font-weight: 500;
           }
           .footer {
-              background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
-              color: #ffffff;
-              padding: 30px;
+              background: #f9fafb;
+              color: #6b7280;
+              padding: 24px 30px;
               text-align: center;
+              border-top: 1px solid #e5e7eb;
           }
           .footer-links {
-              margin: 16px 0;
+              margin: 12px 0;
           }
           .footer-link {
-              color: #ffffff;
+              color: #374151;
               text-decoration: none;
               margin: 0 12px;
               font-weight: 500;
+              font-size: 14px;
           }
           .footer-link:hover {
-              color: #93c5fd;
-              text-decoration: underline;
+              color: ${this.brandColors.primary};
           }
           .footer-copyright {
-              font-size: 14px;
-              color: #ffffff;
-              margin-top: 16px;
-              border-top: 1px solid #4b5563;
-              padding-top: 16px;
+              font-size: 12px;
+              color: #9ca3af;
+              margin-top: 12px;
+              padding-top: 12px;
+              border-top: 1px solid #e5e7eb;
           }
           @media (max-width: 600px) {
               body { padding: 10px; }
@@ -340,8 +345,7 @@ export class EmailTemplateGenerator {
    */
   generateContent(emailData, customMessage = null) {
     const message = customMessage || `
-      Thank you for choosing SEIMA for your project. We're pleased to provide your personalised product selection, 
-      professionally formatted and ready for your review.
+      Thank you for choosing SEIMA for your project. We're pleased to provide your personalised product selection for your review.
     `;
 
     return `
@@ -362,7 +366,7 @@ export class EmailTemplateGenerator {
               <h3 class="summary-title">Project Summary</h3>
               <div class="summary-table">
                   <div class="summary-row">
-                      <span class="summary-label">Customer:</span>
+                      <span class="summary-label">Name:</span>
                       <span class="summary-value">${emailData.customerName}</span>
                   </div>
                   <div class="summary-row">
@@ -452,10 +456,13 @@ export class EmailTemplateGenerator {
   generateContactSection() {
     return `
       <div class="content">
-          <p style="margin-top: 32px; color: #6b7280;">
-              This selection was generated using the SEIMA Product Scanner application. 
-              If you have any questions or need to make changes to your selection, please don't hesitate to contact our team.
-          </p>
+          <div class="contact-section">
+              <h3 class="contact-title">Questions or Need Assistance?</h3>
+              <div class="contact-info">
+                  <p style="margin: 8px 0;">Email: <a href="mailto:sales@seima.com.au" class="contact-link">sales@seima.com.au</a></p>
+                  <p style="margin: 8px 0;">Website: <a href="https://www.seima.com.au" class="contact-link">www.seima.com.au</a></p>
+              </div>
+          </div>
           
           <p style="margin-top: 24px; color: #374151;">
               Best regards,<br>
@@ -472,13 +479,13 @@ export class EmailTemplateGenerator {
     return `
       <div class="footer">
           <div class="footer-links">
-              <a href="https://www.seima.com.au" class="footer-link">Website</a>
+              <a href="https://www.seima.com.au" class="footer-link">Visit Website</a>
               <a href="https://www.seima.com.au/products" class="footer-link">Products</a>
               <a href="https://www.seima.com.au/support" class="footer-link">Support</a>
               <a href="mailto:info@seima.com.au" class="footer-link">Contact</a>
           </div>
           <div class="footer-copyright">
-              <p>© SEIMA. All rights reserved.</p>
+              © ${new Date().getFullYear()} SEIMA. All rights reserved.
           </div>
       </div>
     `;

@@ -38,126 +38,133 @@ class SimpleEmailTemplateGenerator {
                   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
                   margin: 0;
                   padding: 20px;
-                  background-color: ${this.brandColors.background};
-                  color: ${this.brandColors.textPrimary};
+                  background-color: #ffffff;
+                  color: #1f2937;
                   line-height: 1.6;
               }
               .email-container {
                   max-width: 600px;
                   margin: 0 auto;
-                  background-color: ${this.brandColors.cardBackground};
-                  border-radius: 16px;
-                  overflow: hidden;
-                  box-shadow: 0 4px 32px rgba(0,0,0,0.08);
+                  background-color: #ffffff;
+                  border: 1px solid #e5e7eb;
               }
               .header {
-                  background: linear-gradient(135deg, ${this.brandColors.primary} 0%, ${this.brandColors.primaryDark} 100%);
-                  color: white;
-                  padding: 40px 30px;
+                  background: #1f2937;
+                  color: #ffffff;
+                  padding: 32px 30px;
                   text-align: center;
+                  border-bottom: 3px solid ${this.brandColors.primary};
               }
               .header h1 {
-                  margin: 0 0 8px 0;
-                  font-size: 28px;
-                  font-weight: 600;
-                  letter-spacing: 0.5px;
-              }
-              .header .subtitle {
                   margin: 0;
-                  font-size: 16px;
-                  opacity: 0.9;
-                  font-weight: 400;
+                  font-size: 24px;
+                  font-weight: 600;
+                  letter-spacing: 2px;
               }
               .content {
                   padding: 40px 30px;
               }
               .greeting {
-                  font-size: 18px;
-                  margin-bottom: 24px;
-                  color: #374151;
+                  font-size: 16px;
+                  margin-bottom: 20px;
+                  color: #1f2937;
+                  font-weight: 500;
               }
               .intro-text {
-                  font-size: 16px;
-                  margin-bottom: 32px;
-                  color: ${this.brandColors.textSecondary};
+                  font-size: 15px;
+                  margin-bottom: 30px;
+                  color: #4b5563;
+                  line-height: 1.7;
               }
               .card {
-                  border-radius: 12px;
+                  border: 1px solid #e5e7eb;
                   padding: 24px;
                   margin: 24px 0;
-                  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
               }
-                             .summary-card {
-                   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-               }
-                             .summary-title {
-                   margin: 0 0 20px 0;
-                   font-size: 20px;
-                   font-weight: 600;
-                   color: ${this.brandColors.primaryDark};
-               }
+              .summary-card {
+                  background: #fafafa;
+              }
+              .summary-title {
+                  margin: 0 0 20px 0;
+                  font-size: 18px;
+                  font-weight: 600;
+                  color: #1f2937;
+                  padding-bottom: 12px;
+                  border-bottom: 2px solid ${this.brandColors.primary};
+              }
               .summary-grid {
                   display: grid;
-                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                  gap: 16px;
+                  grid-template-columns: 1fr;
+                  gap: 0;
               }
               .summary-item {
                   display: flex;
                   justify-content: space-between;
-                  padding: 8px 0;
-                  border-bottom: 1px solid ${this.brandColors.border};
+                  padding: 12px 0;
+                  border-bottom: 1px solid #e5e7eb;
               }
               .summary-item:last-child { border-bottom: none; }
               .summary-label {
                   font-weight: 600;
                   color: #374151;
+                  font-size: 14px;
               }
               .summary-value {
-                  color: ${this.brandColors.textMuted};
+                  color: #6b7280;
                   text-align: right;
+                  font-size: 14px;
               }
               
-                             .contact-section {
-                   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                   border-radius: 8px;
-                   padding: 20px;
-                   margin: 24px 0;
-                   text-align: center;
-                   border: 1px solid #dee2e6;
-               }
-               .contact-title {
-                   margin: 0 0 12px 0;
-                   font-weight: 600;
-                   color: #495057;
-               }
-               .contact-info {
-                   margin: 8px 0;
-                   color: #6c757d;
-               }
+              .contact-section {
+                  background: #ffffff;
+                  border: 1px solid #e5e7eb;
+                  border-left: 3px solid ${this.brandColors.primary};
+                  padding: 20px;
+                  margin: 30px 0;
+              }
+              .contact-title {
+                  margin: 0 0 12px 0;
+                  font-weight: 600;
+                  color: #1f2937;
+                  font-size: 16px;
+              }
+              .contact-info {
+                  margin: 8px 0;
+                  color: #4b5563;
+                  font-size: 14px;
+                  line-height: 1.6;
+              }
               .contact-link {
                   color: ${this.brandColors.primary};
                   text-decoration: none;
-                  font-weight: 600;
+                  font-weight: 500;
               }
               .footer {
-                  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
-                  color: #e5e7eb;
-                  padding: 30px;
+                  background: #f9fafb;
+                  color: #6b7280;
+                  padding: 24px 30px;
                   text-align: center;
+                  border-top: 1px solid #e5e7eb;
               }
-                             .footer-links { margin: 16px 0; }
-                             .footer-link {
-                   color: #ffffff;
-                   text-decoration: none;
-                   margin: 0 12px;
-                   font-weight: 500;
-               }
-              .footer-copyright {
+              .footer-links { 
+                  margin: 12px 0; 
+              }
+              .footer-link {
+                  color: #374151;
+                  text-decoration: none;
+                  margin: 0 12px;
+                  font-weight: 500;
                   font-size: 14px;
-                  opacity: 0.8;
-                  margin-top: 16px;
-                  border-top: 1px solid #4b5563;
-                  padding-top: 16px;
+              }
+              .footer-link:hover {
+                  color: ${this.brandColors.primary};
+              }
+              .footer-copyright {
+                  font-size: 12px;
+                  color: #9ca3af;
+                  margin-top: 12px;
+                  padding-top: 12px;
+                  border-top: 1px solid #e5e7eb;
               }
               @media (max-width: 600px) {
                   body { padding: 10px; }
@@ -177,14 +184,14 @@ class SimpleEmailTemplateGenerator {
                   <p class="greeting">Dear ${emailData.customerName},</p>
                   
                                      <p class="intro-text">
-                       Thank you for choosing Seima for your project. We're pleased to provide your personalised product selection attached to this email for your review.
-                   </p>
+                      Thank you for choosing SEIMA for your project. We're pleased to provide your personalised product selection for your review.
+                  </p>
                   
                   <div class="card summary-card">
                       <h3 class="summary-title">Project Summary</h3>
                       <div class="summary-grid">
                           <div class="summary-item">
-                              <span class="summary-label">Customer:</span>
+                              <span class="summary-label">Name:</span>
                               <span class="summary-value">${emailData.customerName}</span>
                           </div>
                           <div class="summary-item">
@@ -220,32 +227,28 @@ class SimpleEmailTemplateGenerator {
                   
                   
                   <div class="contact-section">
-                      <h4 class="contact-title">Need Expert Assistance?</h4>
-                      <p class="contact-info">Our technical team is ready to help with product specifications, installation guidance, or project consultation.</p>
-                                             <p class="contact-info">
-                           <a href="mailto:info@seima.com.au" class="contact-link">info@seima.com.au</a><br>
-                           <a href="https://www.seima.com.au" class="contact-link">www.seima.com.au</a>
-                       </p>
+                      <h4 class="contact-title">Questions or Need Assistance?</h4>
+                      <p class="contact-info">
+                          Email: <a href="mailto:info@seima.com.au" class="contact-link">info@seima.com.au</a><br>
+                          Web: <a href="https://www.seima.com.au" class="contact-link">www.seima.com.au</a>
+                      </p>
                   </div>
                   
-                  
-                  
-                  <p style="margin-top: 24px; color: #374151;">
+                  <p style="margin-top: 32px; color: #374151; font-size: 15px;">
                       Best regards,<br>
-                      <strong>The Seima Team</strong>
+                      <strong>The SEIMA Team</strong>
                   </p>
               </div>
               
-                                            <div class="footer">
-                   <div class="footer-links">
+              <div class="footer">
+                  <div class="footer-links">
                       <a href="https://www.seima.com.au" class="footer-link">Website</a>
                       <a href="https://www.seima.com.au/products" class="footer-link">Products</a>
-                      <a href="https://www.seima.com.au/support" class="footer-link">Support</a>
                       <a href="mailto:info@seima.com.au" class="footer-link">Contact</a>
                   </div>
-                                     <div class="footer-copyright">
-                       <p>© SEIMA Pty Ltd. All rights reserved. | Generated by Seima app v${emailData.appVersion}</p>
-                   </div>
+                  <div class="footer-copyright">
+                      <p style="margin: 0;">© SEIMA Pty Ltd. All rights reserved.</p>
+                  </div>
               </div>
           </div>
       </body>
@@ -612,10 +615,10 @@ export class UnifiedEmailService {
 
     return `Dear ${userDetails.name || 'Customer'},
 
-Thank you for selecting Seima products. Your selection summary is below.
+Thank you for choosing SEIMA for your project. We're pleased to provide your personalised product selection for your review.
 
 Summary:
-Customer:     ${userDetails.name || ''}
+Name:         ${userDetails.name || ''}
 Project:      ${userDetails.project || ''}
 Address:      ${userDetails.address || ''}
 Email:        ${userDetails.email || ''}
