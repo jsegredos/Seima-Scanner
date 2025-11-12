@@ -1,6 +1,6 @@
-2.0.3 - Fixed camera access issue on iPhone Chrome where the camera permission dialog wouldn't appear when opening the scanner
+2.0.3 - Fixed camera access issue on iPhone (apple problems again!!) using Chrome where the camera permission dialog wouldn't appear when opening the scanner
 2.0.2 - Email Template Redesign: Clean, professional email design with simplified layout; removed gradients; improved typography and spacing; updated contact section
-2.0.1 - Minor fix to cater for annoying apple phones that insist on making life difficult. iOS explicit touchend event handler for edit button to ensure tap functionality works correctly on iPhone/iPad
+2.0.1 - Minor fix to cater for annoying apple phones :( that insist on making life difficult. iOS explicit touchend event handler for edit button to ensure tap functionality works correctly on iPhone/iPad
 2.0.0 - Mobile Drag & Drop + Edit Flow: Full mobile-friendly drag-and-drop reordering across rooms with persistent storage; redesigned review cards with inline quantity display and compact edit entry point; extended product edit screen with delete
 1.8.5 - Finally jumped through all the hurdles to make those bloody apple phones scan barcodes. They make it hard to love them as a developer!!
 1.8.4 - Refactored barcode scanner with iOS polyfill support and improved mobile layout for iPhone safe areas
