@@ -54,7 +54,7 @@ export const CONFIG = {
   CATALOG_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRnMqBCqB9L52W6YNgreLHJKvxOanS76CJN8ZUorBl8Iccha6MzUpDkGa0N8GSYFPP2zyql1Tq6aBn8/pub?gid=0&single=true&output=csv',
   
   // Version information
-  VERSION: '2.0.2',
+  VERSION: '2.0.3',
   
   // Performance settings
   PERFORMANCE: {

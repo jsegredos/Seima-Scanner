@@ -179,10 +179,113 @@ export class NavigationManager {
   }
 
   async showScannerScreen() {
+    // Prevent double requests
+    if (this._loadingScannerScreen) {
+      console.log('Scanner screen already loading');
+      return;
+    }
+    
+    this._loadingScannerScreen = true;
+    let tempStream = null;
+
     try {
       // Stop any active scanning first
       this.scannerController.stopScanning();
       
+      // CRITICAL: Request camera permission BEFORE async fetch operation
+      // This maintains the user gesture chain in iOS Chrome
+      console.log('🎥 Requesting camera permission...');
+      
+      try {
+        // Check if permission API is available (not in all browsers)
+        if (navigator.permissions && navigator.permissions.query) {
+          try {
+            const permissionStatus = await navigator.permissions.query({ name: 'camera' });
+            console.log('Camera permission status:', permissionStatus.state);
+            
+            // If permission is already granted, we can skip the temp stream
+            if (permissionStatus.state === 'granted') {
+              console.log('✅ Camera permission already granted, skipping temp stream');
+            } else {
+              // Request temp stream to trigger permission dialog
+              tempStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                  facingMode: 'environment',
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 }
+                }
+              });
+              
+              console.log('✅ Camera permission granted');
+              
+              // Immediately stop the temporary stream
+              if (tempStream) {
+                tempStream.getTracks().forEach(track => {
+                  track.stop();
+                });
+                tempStream = null;
+              }
+            }
+          } catch (permQueryError) {
+            // Permissions API query failed, fall back to requesting stream
+            console.log('Permissions API query failed, requesting stream directly');
+            tempStream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: 'environment',
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              }
+            });
+            
+            console.log('✅ Camera permission granted');
+            
+            if (tempStream) {
+              tempStream.getTracks().forEach(track => {
+                track.stop();
+              });
+              tempStream = null;
+            }
+          }
+        } else {
+          // Permissions API not available, always request stream
+          tempStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: 'environment',
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          });
+          
+          console.log('✅ Camera permission granted');
+          
+          if (tempStream) {
+            tempStream.getTracks().forEach(track => {
+              track.stop();
+            });
+            tempStream = null;
+          }
+        }
+        
+      } catch (permissionError) {
+        // Camera permission denied or unavailable
+        console.error('❌ Camera permission denied:', permissionError);
+        this._loadingScannerScreen = false;
+        
+        // Show user-friendly error message
+        let errorMessage = 'Camera access denied or unavailable.';
+        if (permissionError.name === 'NotAllowedError') {
+          errorMessage = 'Camera access denied. Please enable camera permissions in your browser settings.';
+        } else if (permissionError.name === 'NotFoundError') {
+          errorMessage = 'No camera found on this device.';
+        } else if (permissionError.name === 'NotReadableError') {
+          errorMessage = 'Camera is already in use by another application.';
+        }
+        
+        alert(errorMessage);
+        return; // Don't proceed to scanner screen
+      }
+      
+      // Now fetch the scanner HTML (permission already granted, no gesture needed)
       const response = await fetch('screens/scanner.html');
       const html = await response.text();
       document.body.innerHTML = html;
@@ -198,14 +301,22 @@ export class NavigationManager {
       // Setup event handlers
       this.setupScannerScreenHandlers();
       
-      // Start scanning immediately
+      // Start scanning immediately (permission already granted)
       this.scannerController.startScanning().catch(error => {
         console.error('Failed to start scanner:', error);
       });
       
       this.updateSelectionCount();
+      
     } catch (error) {
       console.error('Failed to load scanner screen:', error);
+      alert('Failed to load scanner. Please try again.');
+    } finally {
+      // Clean up temp stream if something went wrong
+      if (tempStream) {
+        tempStream.getTracks().forEach(track => track.stop());
+      }
+      this._loadingScannerScreen = false;
     }
   }
 
