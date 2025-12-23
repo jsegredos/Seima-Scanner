@@ -5,6 +5,7 @@
  */
 
 import { CONFIG } from './config.js';
+import { selectionRecorder } from './selection-recorder.js';
 
 // Simple email template generator (inline to avoid extra file dependency)
 class SimpleEmailTemplateGenerator {
@@ -426,6 +427,10 @@ export class UnifiedEmailService {
 
       if (result.status === 200) {
         this.showSuccess('✅ Beautiful email sent successfully!');
+        
+        // Record the selection for tracking and reporting
+        this.recordSelection(userDetails, pdfBlob, csvData, result);
+        
         return { success: true, method: 'emailjs', result };
       } else {
         throw new Error(`EmailJS returned status ${result.status}`);
@@ -794,6 +799,71 @@ Seima Team`;
         notification.parentNode.removeChild(notification);
       }
     }, 5000);
+  }
+
+  /**
+   * Record selection data for tracking and reporting
+   */
+  async recordSelection(userDetails, pdfBlob, csvData, emailResult) {
+    try {
+      // Get selected products from storage
+      const selectedProducts = this.getSelectedProducts();
+      
+      if (selectedProducts.length === 0) {
+        console.log('📊 No products to record');
+        return;
+      }
+
+      // Prepare email result data
+      const emailData = {
+        success: true,
+        pdfGenerated: !!pdfBlob,
+        csvGenerated: !!csvData,
+        pdfSize: pdfBlob ? `${(pdfBlob.size / 1024 / 1024).toFixed(2)}MB` : '',
+        method: 'emailjs'
+      };
+
+      // Record the selection
+      const recordResult = await selectionRecorder.recordSelection(
+        userDetails, 
+        selectedProducts, 
+        emailData
+      );
+
+      if (recordResult.success) {
+        console.log('📊 Selection recorded successfully');
+      } else {
+        console.warn('📊 Selection recording failed:', recordResult.error || recordResult.reason);
+      }
+    } catch (error) {
+      console.error('📊 Error recording selection:', error);
+      // Don't throw - recording failure shouldn't break email flow
+    }
+  }
+
+  /**
+   * Get selected products from storage (unified format)
+   */
+  getSelectedProducts() {
+    try {
+      // Try new format first
+      const newFormat = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.SELECTED_PRODUCTS) || '[]');
+      if (newFormat.length > 0) {
+        return newFormat;
+      }
+
+      // Fallback to legacy format
+      const legacyFormat = JSON.parse(localStorage.getItem('selection') || '[]');
+      return legacyFormat.map(item => ({
+        product: item,
+        room: item.Room || '',
+        notes: item.Notes || '',
+        quantity: item.Quantity || 1
+      }));
+    } catch (error) {
+      console.error('Error getting selected products:', error);
+      return [];
+    }
   }
 }
 

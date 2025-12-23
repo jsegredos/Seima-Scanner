@@ -1,3 +1,4 @@
+3.0.0 - Selection Recording System: Comprehensive tracking of all customer selections with automatic recording to Google Sheets for showroom performance analysis and customer follow-up
 2.0.3 - Fixed camera access issue on iPhone (apple problems again!!) using Chrome where the camera permission dialog wouldn't appear when opening the scanner
 2.0.2 - Email Template Redesign: Clean, professional email design with simplified layout; removed gradients; improved typography and spacing; updated contact section
 2.0.1 - Minor fix to cater for annoying apple phones :( that insist on making life difficult. iOS explicit touchend event handler for edit button to ensure tap functionality works correctly on iPhone/iPad

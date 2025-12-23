@@ -10,6 +10,7 @@ import { pdfGenerator } from './pdf-unified.js';
 import { pdfCore } from './pdf-core.js';
 import { pdfLayouts } from './pdf-layouts.js';
 import { StorageManager } from './storage.js';
+import { selectionRecorder } from './selection-recorder.js';
 import * as utils from './utils.js';
 
 export class ModuleCoordinator {
@@ -21,6 +22,7 @@ export class ModuleCoordinator {
       pdfCore,
       pdfLayouts,
       StorageManager,
+      selectionRecorder,
       utils
     };
     this.isInitialized = false;

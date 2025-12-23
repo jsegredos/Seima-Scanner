@@ -54,7 +54,7 @@ export const CONFIG = {
   CATALOG_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRnMqBCqB9L52W6YNgreLHJKvxOanS76CJN8ZUorBl8Iccha6MzUpDkGa0N8GSYFPP2zyql1Tq6aBn8/pub?gid=0&single=true&output=csv',
   
   // Version information
-  VERSION: '2.0.3',
+  VERSION: '3.0.0',
   
   // Performance settings
   PERFORMANCE: {
@@ -114,6 +114,13 @@ export const CONFIG = {
     EXTENDED_TIMEOUTS_FOR_SAMSUNG: true
   },
 
+  // Selection Recording Configuration
+  SELECTION_RECORDING: {
+    ENABLED: true,
+    GOOGLE_SHEETS_URL: 'https://script.google.com/macros/s/AKfycbypt3Y7RLAko49s6Nc0mecYYd4FyiQqBcHFJr-1megO3-m1Vo1bCbUOkqAax3g9w508RA/exec', // Set this after deploying your Google Apps Script
+    RETRY_ATTEMPTS: 3,
+    RETRY_DELAY: 1000 // milliseconds
+  }
 
 };
 
