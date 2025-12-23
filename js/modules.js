@@ -11,6 +11,10 @@ import { pdfCore } from './pdf-core.js';
 import { pdfLayouts } from './pdf-layouts.js';
 import { StorageManager } from './storage.js';
 import { selectionRecorder } from './selection-recorder.js';
+import { leadTracker } from './lead-tracker.js';
+import { leadWizard } from './lead-wizard.js';
+import { leadWizardIntegration } from './lead-wizard-integration.js';
+import { builderMerchantService } from './builder-merchant-service.js';
 import * as utils from './utils.js';
 
 export class ModuleCoordinator {
@@ -23,6 +27,10 @@ export class ModuleCoordinator {
       pdfLayouts,
       StorageManager,
       selectionRecorder,
+      leadTracker,
+      leadWizard,
+      leadWizardIntegration,
+      builderMerchantService,
       utils
     };
     this.isInitialized = false;
@@ -188,6 +196,11 @@ export { emailService } from './email-unified.js';
 export { pdfGenerator } from './pdf-unified.js';
 export { CONFIG } from './config.js';
 export { StorageManager } from './storage.js';
+export { selectionRecorder } from './selection-recorder.js';
+export { leadTracker } from './lead-tracker.js';
+export { leadWizard } from './lead-wizard.js';
+export { leadWizardIntegration } from './lead-wizard-integration.js';
+export { builderMerchantService } from './builder-merchant-service.js';
 export * from './utils.js';
 
 // Initialize immediately when imported

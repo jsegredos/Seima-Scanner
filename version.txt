@@ -1,3 +1,4 @@
+3.1.0 - Server-Side Builder/Merchant Management: Centralized builder/merchant lists with smart duplicate prevention, real-time search suggestions, and similarity detection to minimize duplicates across all showrooms
 3.0.0 - Selection Recording System: Comprehensive selections tracking to googlesheets
 2.0.3 - Fixed camera access issue on iPhone (apple problems again!!) using Chrome where the camera permission dialog wouldn't appear when opening the scanner
 2.0.2 - Email Template Redesign: Clean, professional email design with simplified layout; removed gradients; improved typography and spacing; updated contact section

@@ -827,7 +827,20 @@ export class NavigationManager {
     }
 
     if (quickPdfBtn) {
-      quickPdfBtn.onclick = () => this.showPdfFormModal();
+      // Set up lead wizard integration if available
+      if (window.leadWizardIntegration) {
+        console.log('📧 Setting up lead wizard integration on review screen');
+        // Store the original handler function (not an event handler)
+        window.leadWizardIntegration.originalEmailHandler = () => this.showPdfFormModal();
+        quickPdfBtn.onclick = (e) => {
+          console.log('🧙‍♂️ Lead wizard intercepted email button (navigation)!');
+          e.preventDefault();
+          window.leadWizardIntegration.showLeadWizardFlow();
+        };
+      } else {
+        // Fallback to original behavior
+        quickPdfBtn.onclick = () => this.showPdfFormModal();
+      }
     }
   }
 
@@ -1123,6 +1136,13 @@ export class NavigationManager {
       if (confirmBtn) {
         confirmBtn.onclick = () => {
           StorageManager.clearAllSelections();
+          
+          // Clear lead tracking data as well
+          if (window.leadWizardIntegration) {
+            window.leadWizardIntegration.clearCurrentLeadData();
+            console.log('🧹 Lead data cleared with selection clear');
+          }
+          
           modal.style.display = 'none';
           this.updateSelectionCount();
         };

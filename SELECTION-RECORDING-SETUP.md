@@ -19,10 +19,11 @@ Every time a customer selection is finalised and emailed, the system will automa
 
 1. **Go to Google Sheets**: [sheets.google.com](https://sheets.google.com)
 2. **Create a new sheet** called "Seima Selection Records"
-3. **Set up columns** in Row 1 (copy and paste this header row):
+3. **The script will automatically create "Builders" and "Merchants" sheets** when first accessed
+4. **Set up columns** in Row 1 of the main sheet (copy and paste this header row):
 
 ```
-Timestamp	Date	Time	App Version	Staff Name	Staff Email	Staff Mobile	Customer Name	Customer Email	Customer Phone	Customer Project	Customer Address	Total Products	Total Quantity	Total Rooms	Rooms List	Estimated Value	Email Sent	PDF Generated	CSV Generated	PDF Size	Products JSON
+Timestamp	Date	Time	App Version	Staff Name	Staff Email	Staff Mobile	Customer Name	Customer Email	Customer Phone	Customer Project	Customer Address	Customer Type	Hear About Us	Project Type	Project Stage	Number of Units	Builder Name	Merchant Name	Referral Builder	Referral Merchant	Total Products	Total Quantity	Total Rooms	Rooms List	Estimated Value	Email Sent	PDF Generated	CSV Generated	PDF Size	Products JSON
 ```
 
 ### Step 2: Create Google Apps Script
@@ -72,6 +73,15 @@ function doPost(e) {
       data.customerPhone || '',
       data.customerProject || '',
       data.customerAddress || '',
+      data.customerType || '',
+      data.hearAboutUs || '',
+      data.projectType || '',
+      data.projectStage || '',
+      data.numberOfUnits || 1,
+      data.builderName || '',
+      data.merchantName || '',
+      data.referralBuilder || '',
+      data.referralMerchant || '',
       data.totalProducts || 0,
       data.totalQuantity || 0,
       data.totalRooms || 0,
@@ -101,10 +111,214 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  // Handle GET requests (for testing)
-  return ContentService
-    .createTextOutput('Seima Selection Recorder is running!')
-    .setMimeType(ContentService.MimeType.TEXT);
+  try {
+    console.log('doGet called with:', JSON.stringify(e));
+    
+    const params = e.parameter || {};
+    const action = params.action;
+    
+    switch (action) {
+      case 'getBuilders':
+        return getBuilders();
+      case 'getMerchants':
+        return getMerchants();
+      case 'addBuilder':
+        return addBuilder(params.name);
+      case 'addMerchant':
+        return addMerchant(params.name);
+      case 'searchBuilders':
+        return searchBuilders(params.query);
+      case 'searchMerchants':
+        return searchMerchants(params.query);
+      default:
+        return ContentService
+          .createTextOutput('Seima Selection Recorder is running!')
+          .setMimeType(ContentService.MimeType.TEXT);
+    }
+  } catch (error) {
+    console.error('Error in doGet:', error.toString());
+    return ContentService
+      .createTextOutput(JSON.stringify({success: false, error: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Builder/Merchant Management Functions
+function getBuilders() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let buildersSheet = getOrCreateSheet(spreadsheet, 'Builders');
+    
+    const data = buildersSheet.getDataRange().getValues();
+    const builders = data.slice(1).map(row => row[0]).filter(name => name); // Skip header, get first column
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({success: true, builders: builders}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({success: false, error: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function getMerchants() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let merchantsSheet = getOrCreateSheet(spreadsheet, 'Merchants');
+    
+    const data = merchantsSheet.getDataRange().getValues();
+    const merchants = data.slice(1).map(row => row[0]).filter(name => name); // Skip header, get first column
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({success: true, merchants: merchants}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({success: false, error: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function addBuilder(name) {
+  try {
+    if (!name || name.trim() === '') {
+      throw new Error('Builder name is required');
+    }
+    
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let buildersSheet = getOrCreateSheet(spreadsheet, 'Builders');
+    
+    // Check for duplicates (case-insensitive)
+    const data = buildersSheet.getDataRange().getValues();
+    const existingBuilders = data.slice(1).map(row => row[0]).filter(name => name);
+    const normalizedName = name.trim();
+    const duplicate = existingBuilders.find(existing => 
+      existing.toLowerCase() === normalizedName.toLowerCase()
+    );
+    
+    if (duplicate) {
+      return ContentService
+        .createTextOutput(JSON.stringify({success: false, error: 'Builder already exists', existing: duplicate}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Add new builder
+    buildersSheet.appendRow([normalizedName, new Date()]);
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({success: true, message: 'Builder added successfully', name: normalizedName}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({success: false, error: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function addMerchant(name) {
+  try {
+    if (!name || name.trim() === '') {
+      throw new Error('Merchant name is required');
+    }
+    
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let merchantsSheet = getOrCreateSheet(spreadsheet, 'Merchants');
+    
+    // Check for duplicates (case-insensitive)
+    const data = merchantsSheet.getDataRange().getValues();
+    const existingMerchants = data.slice(1).map(row => row[0]).filter(name => name);
+    const normalizedName = name.trim();
+    const duplicate = existingMerchants.find(existing => 
+      existing.toLowerCase() === normalizedName.toLowerCase()
+    );
+    
+    if (duplicate) {
+      return ContentService
+        .createTextOutput(JSON.stringify({success: false, error: 'Merchant already exists', existing: duplicate}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Add new merchant
+    merchantsSheet.appendRow([normalizedName, new Date()]);
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({success: true, message: 'Merchant added successfully', name: normalizedName}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({success: false, error: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function searchBuilders(query) {
+  try {
+    if (!query || query.trim() === '') {
+      return getBuilders(); // Return all if no query
+    }
+    
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let buildersSheet = getOrCreateSheet(spreadsheet, 'Builders');
+    
+    const data = buildersSheet.getDataRange().getValues();
+    const allBuilders = data.slice(1).map(row => row[0]).filter(name => name);
+    
+    const queryLower = query.toLowerCase();
+    const matches = allBuilders.filter(builder => 
+      builder.toLowerCase().includes(queryLower)
+    );
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({success: true, builders: matches, query: query}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({success: false, error: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function searchMerchants(query) {
+  try {
+    if (!query || query.trim() === '') {
+      return getMerchants(); // Return all if no query
+    }
+    
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let merchantsSheet = getOrCreateSheet(spreadsheet, 'Merchants');
+    
+    const data = merchantsSheet.getDataRange().getValues();
+    const allMerchants = data.slice(1).map(row => row[0]).filter(name => name);
+    
+    const queryLower = query.toLowerCase();
+    const matches = allMerchants.filter(merchant => 
+      merchant.toLowerCase().includes(queryLower)
+    );
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({success: true, merchants: matches, query: query}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({success: false, error: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Helper function to get or create a sheet
+function getOrCreateSheet(spreadsheet, sheetName) {
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+    // Add headers
+    if (sheetName === 'Builders') {
+      sheet.getRange(1, 1, 1, 2).setValues([['Builder Name', 'Date Added']]);
+    } else if (sheetName === 'Merchants') {
+      sheet.getRange(1, 1, 1, 2).setValues([['Merchant Name', 'Date Added']]);
+    }
+  }
+  return sheet;
 }
 ```
 
@@ -205,6 +419,35 @@ If you encounter issues:
 3. Verify the Google Sheet has the correct column headers
 4. Test with a simple selection first
 
+## 🏗️ Builder/Merchant Management
+
+The system now includes **server-side builder and merchant lists** with smart duplicate prevention:
+
+### **Features:**
+- ✅ **Centralized lists** - All users share the same builder/merchant lists
+- ✅ **Real-time search** - As you type, it searches for existing entries
+- ✅ **Duplicate prevention** - Shows existing matches before adding new entries
+- ✅ **Auto-complete suggestions** - Click to select from existing entries
+
+### **How It Works:**
+1. **Empty by default** - Lists start empty and build up as you add entries
+2. **Smart search** - Type 2+ characters to see existing matches
+3. **Exact match detection** - Shows when you've typed an exact existing match
+4. **One-click selection** - Click suggestions to use existing entries
+5. **Automatic sheets** - "Builders" and "Merchants" sheets are created automatically
+
+### **Testing Commands:**
+```javascript
+// Test the builder/merchant service
+testBuilderMerchantService()
+
+// Check cache status
+getBuilderMerchantStatus()
+
+// Clear cache (force refresh from server)
+clearBuilderMerchantCache()
+```
+
 ## 🎉 You're Done!
 
-Your Seima Scanner will now automatically record every finalised selection. You can access your data anytime in Google Sheets and create powerful reports to track performance across your showrooms!
+Your Seima Scanner will now automatically record every finalised selection with centralized builder/merchant management. You can access your data anytime in Google Sheets and create powerful reports to track performance across your showrooms!

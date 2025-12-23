@@ -74,6 +74,12 @@ export class EmailService {
         // Record the selection for tracking and reporting
         this.recordSelection(enhancedUserDetails, pdfBlob, csvData, result);
         
+        // Always clear lead data after successful email (regardless of recording result)
+        if (window.leadWizardIntegration) {
+          window.leadWizardIntegration.clearCurrentLeadData();
+          console.log('🧹 Lead data cleared after successful email send');
+        }
+        
         return result;
       } else {
         throw new Error(result.error || 'Email sending failed');
@@ -234,6 +240,12 @@ export class EmailService {
       this._showError(`Email sending failed and file download failed. Please try again.`);
     }
     
+    // Clear lead data even when email fails (files were generated/downloaded)
+    if (window.leadWizardIntegration) {
+      window.leadWizardIntegration.clearCurrentLeadData();
+      console.log('🧹 Lead data cleared after email failure (files downloaded)');
+    }
+    
     return {
       success: false,
       method: 'download_fallback',
@@ -325,15 +337,29 @@ export class EmailService {
         method: 'legacy-email-service'
       };
 
+      // Enhance userDetails with lead data if available
+      const enhancedUserDetails = { ...userDetails };
+      if (userDetails.leadData) {
+        enhancedUserDetails.leadData = userDetails.leadData;
+      } else if (window.currentLeadData) {
+        enhancedUserDetails.leadData = window.currentLeadData;
+      }
+
       // Record the selection
       const recordResult = await selectionRecorder.recordSelection(
-        userDetails, 
+        enhancedUserDetails, 
         selectedProducts, 
         emailData
       );
 
       if (recordResult.success) {
         console.log('📊 Selection recorded successfully');
+        
+        // Clear lead data after successful recording
+        if (window.leadWizardIntegration) {
+          window.leadWizardIntegration.clearCurrentLeadData();
+          console.log('🧹 Lead data cleared after successful email');
+        }
       } else {
         console.warn('📊 Selection recording failed:', recordResult.error || recordResult.reason);
       }

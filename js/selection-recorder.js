@@ -63,6 +63,9 @@ export class SelectionRecorder {
     const estimatedValue = this.calculateEstimatedValue(selectedProducts);
     const uniqueRooms = [...new Set(selectedProducts.map(item => item.room).filter(Boolean))];
 
+    // Extract lead data if available
+    const leadData = userDetails.leadData || {};
+    
     // Create the main selection record
     const selectionRecord = {
       // Timestamp and metadata
@@ -82,6 +85,17 @@ export class SelectionRecorder {
       customerPhone: userDetails.phone || '',
       customerProject: userDetails.project || '',
       customerAddress: userDetails.address || '',
+      
+      // Lead tracking information
+      customerType: leadData.customerType || '',
+      hearAboutUs: leadData.hearAboutUs || '',
+      projectType: leadData.projectType || '',
+      projectStage: leadData.projectStage || '',
+      numberOfUnits: leadData.numberOfUnits || 1,
+      builderName: leadData.builderName || '',
+      merchantName: leadData.merchantName || '',
+      referralBuilder: leadData.referralBuilder || '',
+      referralMerchant: leadData.referralMerchant || '',
       
       // Selection summary
       totalProducts: totalProducts,

@@ -324,6 +324,21 @@ export class AppService {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
+
+  /**
+   * Getter methods for backward compatibility
+   */
+  get emailService() {
+    return this.services.email;
+  }
+
+  get dataService() {
+    return this.services.data;
+  }
+
+  get pdfService() {
+    return this.services.pdf;
+  }
 }
 
 /**

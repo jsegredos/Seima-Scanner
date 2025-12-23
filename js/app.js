@@ -233,14 +233,12 @@ class SeimaScanner {
   async handleEmailRequest(userDetails, pdfBlob, csvBlob = null) {
     try {
       const result = await this.appService.emailService.sendEmail({
-        to_email: userDetails.email,
-        to_name: userDetails.name,
-        from_name: userDetails.staffName || 'Seima Staff',
-        reply_to: userDetails.staffEmail || '',
-        subject: `Product Selection from ${userDetails.name}`,
-        message: userDetails.message || 'Please find attached product selection.',
+        email: userDetails.email,
+        name: userDetails.name,
         phone: userDetails.mobile || '',
-        location: userDetails.location || ''
+        project: userDetails.project || '',
+        address: userDetails.address || '',
+        message: userDetails.message || 'Please find attached product selection.'
       }, pdfBlob, csvBlob);
       
       if (result.success) {
