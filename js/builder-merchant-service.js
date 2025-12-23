@@ -40,6 +40,8 @@ export class BuilderMerchantService {
       
       if (result.success) {
         this.cache.builders = result.builders || [];
+        // Ensure alphabetical sorting (case-insensitive)
+        this.cache.builders.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
         this.cache.lastFetch = Date.now();
         console.log(`🏗️ Fetched ${this.cache.builders.length} builders from server`);
         return this.cache.builders;
@@ -73,6 +75,8 @@ export class BuilderMerchantService {
       
       if (result.success) {
         this.cache.merchants = result.merchants || [];
+        // Ensure alphabetical sorting (case-insensitive)
+        this.cache.merchants.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
         this.cache.lastFetch = Date.now();
         console.log(`🏪 Fetched ${this.cache.merchants.length} merchants from server`);
         return this.cache.merchants;
@@ -104,8 +108,11 @@ export class BuilderMerchantService {
       const result = await response.json();
       
       if (result.success) {
-        console.log(`🔍 Found ${result.builders.length} builders matching "${query}"`);
-        return result.builders || [];
+        const builders = result.builders || [];
+        // Ensure alphabetical sorting (case-insensitive)
+        builders.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        console.log(`🔍 Found ${builders.length} builders matching "${query}"`);
+        return builders;
       } else {
         throw new Error(result.error || 'Failed to search builders');
       }
@@ -114,9 +121,11 @@ export class BuilderMerchantService {
       // Fallback to local search if server fails
       const allBuilders = await this.getBuilders();
       const queryLower = query.toLowerCase();
-      return allBuilders.filter(builder => 
+      const matches = allBuilders.filter(builder => 
         builder.toLowerCase().includes(queryLower)
       );
+      // Sort matches alphabetically
+      return matches.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     }
   }
 
@@ -134,8 +143,11 @@ export class BuilderMerchantService {
       const result = await response.json();
       
       if (result.success) {
-        console.log(`🔍 Found ${result.merchants.length} merchants matching "${query}"`);
-        return result.merchants || [];
+        const merchants = result.merchants || [];
+        // Ensure alphabetical sorting (case-insensitive)
+        merchants.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        console.log(`🔍 Found ${merchants.length} merchants matching "${query}"`);
+        return merchants;
       } else {
         throw new Error(result.error || 'Failed to search merchants');
       }
@@ -144,9 +156,11 @@ export class BuilderMerchantService {
       // Fallback to local search if server fails
       const allMerchants = await this.getMerchants();
       const queryLower = query.toLowerCase();
-      return allMerchants.filter(merchant => 
+      const matches = allMerchants.filter(merchant => 
         merchant.toLowerCase().includes(queryLower)
       );
+      // Sort matches alphabetically
+      return matches.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     }
   }
 

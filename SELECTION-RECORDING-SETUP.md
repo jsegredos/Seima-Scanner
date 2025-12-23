@@ -152,6 +152,9 @@ function getBuilders() {
     const data = buildersSheet.getDataRange().getValues();
     const builders = data.slice(1).map(row => row[0]).filter(name => name); // Skip header, get first column
     
+    // Sort alphabetically (case-insensitive)
+    builders.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    
     return ContentService
       .createTextOutput(JSON.stringify({success: true, builders: builders}))
       .setMimeType(ContentService.MimeType.JSON);
@@ -169,6 +172,9 @@ function getMerchants() {
     
     const data = merchantsSheet.getDataRange().getValues();
     const merchants = data.slice(1).map(row => row[0]).filter(name => name); // Skip header, get first column
+    
+    // Sort alphabetically (case-insensitive)
+    merchants.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     
     return ContentService
       .createTextOutput(JSON.stringify({success: true, merchants: merchants}))
@@ -269,6 +275,9 @@ function searchBuilders(query) {
       builder.toLowerCase().includes(queryLower)
     );
     
+    // Sort matches alphabetically (case-insensitive)
+    matches.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    
     return ContentService
       .createTextOutput(JSON.stringify({success: true, builders: matches, query: query}))
       .setMimeType(ContentService.MimeType.JSON);
@@ -295,6 +304,9 @@ function searchMerchants(query) {
     const matches = allMerchants.filter(merchant => 
       merchant.toLowerCase().includes(queryLower)
     );
+    
+    // Sort matches alphabetically (case-insensitive)
+    matches.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     
     return ContentService
       .createTextOutput(JSON.stringify({success: true, merchants: matches, query: query}))
@@ -431,10 +443,11 @@ The system now includes **server-side builder and merchant lists** with smart du
 
 ### **How It Works:**
 1. **Empty by default** - Lists start empty and build up as you add entries
-2. **Smart search** - Type 2+ characters to see existing matches
-3. **Exact match detection** - Shows when you've typed an exact existing match
-4. **One-click selection** - Click suggestions to use existing entries
-5. **Automatic sheets** - "Builders" and "Merchants" sheets are created automatically
+2. **Alphabetical ordering** - All lists are automatically sorted A-Z (case-insensitive)
+3. **Smart search** - Type 2+ characters to see existing matches
+4. **Exact match detection** - Shows when you've typed an exact existing match
+5. **One-click selection** - Click suggestions to use existing entries
+6. **Automatic sheets** - "Builders" and "Merchants" sheets are created automatically
 
 ### **Testing Commands:**
 ```javascript
