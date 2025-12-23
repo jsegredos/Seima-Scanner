@@ -1,4 +1,5 @@
-3.1.1 - Alphabetical Sorting: All builder and merchant lists now display in alphabetical order (A-Z, case-insensitive) across dropdowns, search results, and suggestions for better usability
+3.1.2 - Lead Recording Reliability: Ensures customer details from the lead wizard flow are used for emailing and Google Sheet recording, avoiding silent fallbacks to downloads only
+3.1.1 - Alphabetical Sorting: All builder and merchant lists now display in alphabetical order (A–Z, case-insensitive) across dropdowns, search results, and suggestions for better usability
 3.1.0 - Server-Side Builder/Merchant Management: Centralized builder/merchant lists with smart duplicate prevention, real-time search suggestions, and similarity detection to minimize duplicates across all showrooms
 3.0.0 - Selection Recording System: Comprehensive selections tracking to googlesheets
 2.0.3 - Fixed camera access issue on iPhone (apple problems again!!) using Chrome where the camera permission dialog wouldn't appear when opening the scanner

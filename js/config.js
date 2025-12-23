@@ -1,6 +1,6 @@
 // Configuration constants
 export const CONFIG = {
-  VERSION: '3.1.1',
+  VERSION: '3.1.2',
   ROOMS: {
     PREDEFINED: [
       { name: "Bath 1", icon: "🛁" },
@@ -53,9 +53,6 @@ export const CONFIG = {
   
   // Product catalog API configuration
   CATALOG_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRnMqBCqB9L52W6YNgreLHJKvxOanS76CJN8ZUorBl8Iccha6MzUpDkGa0N8GSYFPP2zyql1Tq6aBn8/pub?gid=0&single=true&output=csv',
-  
-  // Version information
-  VERSION: '3.0.0',
   
   // Performance settings
   PERFORMANCE: {
