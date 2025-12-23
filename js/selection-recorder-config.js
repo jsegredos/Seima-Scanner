@@ -111,3 +111,4 @@ if (typeof window !== 'undefined') {
   window.toggleSelectionRecording = toggleSelectionRecording;
   window.setupSelectionRecorder = setupSelectionRecorder;
 }
+
