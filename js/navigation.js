@@ -827,18 +827,13 @@ export class NavigationManager {
     }
 
     if (quickPdfBtn) {
-      // Set up lead wizard integration if available
-      if (window.leadWizardIntegration) {
-        console.log('📧 Setting up lead wizard integration on review screen');
-        // Store the original handler function (not an event handler)
-        window.leadWizardIntegration.originalEmailHandler = () => this.showPdfFormModal();
-        quickPdfBtn.onclick = (e) => {
-          console.log('🧙‍♂️ Lead wizard intercepted email button (navigation)!');
-          e.preventDefault();
-          window.leadWizardIntegration.showLeadWizardFlow();
-        };
-      } else {
-        // Fallback to original behavior
+      // Lead wizard integration handles the email button automatically
+      // No need to set up handlers here - the integration uses event delegation
+      console.log('📧 Email button available - lead wizard integration will handle it');
+      
+      // Only set fallback if lead wizard integration is not available
+      if (!window.leadWizardIntegration) {
+        console.log('⚠️ Lead wizard integration not available, using fallback');
         quickPdfBtn.onclick = () => this.showPdfFormModal();
       }
     }

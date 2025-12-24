@@ -75,9 +75,16 @@ export class EmailService {
         this.recordSelection(enhancedUserDetails, pdfBlob, csvData, result);
         
         // Always clear lead data after successful email (regardless of recording result)
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/271cbb43-06c0-4898-a939-268461524d29',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'email-service.js:77',message:'About to clear lead data',data:{hasLeadWizardIntegration:!!window.leadWizardIntegration,timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
+        // #endregion
         if (window.leadWizardIntegration) {
           window.leadWizardIntegration.clearCurrentLeadData();
           console.log('🧹 Lead data cleared after successful email send');
+        } else {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/271cbb43-06c0-4898-a939-268461524d29',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'email-service.js:82',message:'leadWizardIntegration not available',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
+          // #endregion
         }
         
         return result;
@@ -511,11 +518,8 @@ class MicrosoftGraphProvider {
 }
 
 /**
- * Email Template Generator - EXACT COPY from original email-unified.js
+ * Email Template Generator is imported from email-template-generator.js
  */
-// The EmailTemplateGenerator class has been removed as per the edit hint.
-// If you need to generate email content, you will need to implement it here or
-// rely on a separate email template generator service.
 
 // Create singleton instance
 export const emailService = new EmailService(); 

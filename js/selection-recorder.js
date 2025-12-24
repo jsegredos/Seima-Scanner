@@ -68,8 +68,7 @@ export class SelectionRecorder {
     
     // Create the main selection record
     const selectionRecord = {
-      // Timestamp and metadata
-      timestamp: timestamp.toISOString(),
+      // Date, time and metadata
       date: timestamp.toLocaleDateString('en-AU'),
       time: timestamp.toLocaleTimeString('en-AU'),
       appVersion: CONFIG.VERSION,
@@ -88,10 +87,8 @@ export class SelectionRecorder {
       
       // Lead tracking information
       customerType: leadData.customerType || '',
-      hearAboutUs: leadData.hearAboutUs || '',
-      projectType: leadData.projectType || '',
-      projectStage: leadData.projectStage || '',
-      numberOfUnits: leadData.numberOfUnits || 1,
+      hearAboutUs: this.formatHearAboutUs(leadData),
+      projectNotes: leadData.projectNotes || '',
       builderName: leadData.builderName || '',
       merchantName: leadData.merchantName || '',
       referralBuilder: leadData.referralBuilder || '',
@@ -122,6 +119,31 @@ export class SelectionRecorder {
     };
 
     return selectionRecord;
+  }
+
+  /**
+   * Format hearAboutUs array into a comma-separated string
+   * Note: Referral builder/merchant names are stored in separate columns, not concatenated here
+   */
+  formatHearAboutUs(leadData) {
+    if (!leadData || !leadData.hearAboutUs) {
+      return '';
+    }
+    
+    // Handle array format - just join with commas, no concatenation
+    if (Array.isArray(leadData.hearAboutUs)) {
+      // Only handle "Other" case where we replace with custom text
+      let hearAboutUsFormatted = [...leadData.hearAboutUs];
+      if (hearAboutUsFormatted.includes('Other') && leadData.hearAboutUsOther) {
+        const index = hearAboutUsFormatted.indexOf('Other');
+        hearAboutUsFormatted[index] = `Other (${leadData.hearAboutUsOther})`;
+      }
+      
+      return hearAboutUsFormatted.join(', ');
+    }
+    
+    // If it's already a string, return it as-is
+    return leadData.hearAboutUs || '';
   }
 
   /**
@@ -188,7 +210,8 @@ export class SelectionRecorder {
     }
 
     const testData = {
-      timestamp: new Date().toISOString(),
+      date: new Date().toLocaleDateString('en-AU'),
+      time: new Date().toLocaleTimeString('en-AU'),
       staffName: 'Test User',
       customerName: 'Test Customer',
       totalProducts: 1,

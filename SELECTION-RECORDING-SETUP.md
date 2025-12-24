@@ -23,7 +23,7 @@ Every time a customer selection is finalised and emailed, the system will automa
 4. **Set up columns** in Row 1 of the main sheet (copy and paste this header row):
 
 ```
-Timestamp	Date	Time	App Version	Staff Name	Staff Email	Staff Mobile	Customer Name	Customer Email	Customer Phone	Customer Project	Customer Address	Customer Type	Hear About Us	Project Type	Project Stage	Number of Units	Builder Name	Merchant Name	Referral Builder	Referral Merchant	Total Products	Total Quantity	Total Rooms	Rooms List	Estimated Value	Email Sent	PDF Generated	CSV Generated	PDF Size	Products JSON
+Date	Time	App Version	Staff Name	Staff Email	Staff Mobile	Customer Name	Customer Email	Customer Phone	Customer Project	Customer Address	Customer Type	Hear About Us	Project Notes	Builder Name	Merchant Name	Referral Builder	Referral Merchant	Total Products	Total Quantity	Total Rooms	Rooms List	Estimated Value	Email Sent	PDF Generated	CSV Generated	PDF Size	Products JSON
 ```
 
 ### Step 2: Create Google Apps Script
@@ -59,43 +59,62 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
-    // Prepare row data in the correct order
-    const rowData = [
-      data.timestamp || '',
-      data.date || '',
-      data.time || '',
-      data.appVersion || '',
-      data.staffName || '',
-      data.staffEmail || '',
-      data.staffMobile || '',
-      data.customerName || '',
-      data.customerEmail || '',
-      data.customerPhone || '',
-      data.customerProject || '',
-      data.customerAddress || '',
-      data.customerType || '',
-      data.hearAboutUs || '',
-      data.projectType || '',
-      data.projectStage || '',
-      data.numberOfUnits || 1,
-      data.builderName || '',
-      data.merchantName || '',
-      data.referralBuilder || '',
-      data.referralMerchant || '',
-      data.totalProducts || 0,
-      data.totalQuantity || 0,
-      data.totalRooms || 0,
-      data.roomsList || '',
-      data.estimatedValue || '0.00',
-      data.emailSent || false,
-      data.pdfGenerated || false,
-      data.csvGenerated || false,
-      data.pdfSize || '',
-      data.productsJson || ''
-    ];
+    // Get header row to find column positions (allows flexible column ordering)
+    const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const columnMap = {};
+    
+    // Map column names to their positions
+    headerRow.forEach((header, index) => {
+      if (header && header.toString().trim()) {
+        columnMap[header.toString().trim()] = index + 1; // Google Sheets is 1-indexed
+      }
+    });
+    
+    // Prepare data mapping (field name -> column name)
+    const dataMapping = {
+      'Date': data.date || '',
+      'Time': data.time || '',
+      'App Version': data.appVersion || '',
+      'Staff Name': data.staffName || '',
+      'Staff Email': data.staffEmail || '',
+      'Staff Mobile': data.staffMobile || '',
+      'Customer Name': data.customerName || '',
+      'Customer Email': data.customerEmail || '',
+      'Customer Phone': data.customerPhone || '',
+      'Customer Project': data.customerProject || '',
+      'Customer Address': data.customerAddress || '',
+      'Customer Type': data.customerType || '',
+      'Hear About Us': data.hearAboutUs || '',
+      'Project Notes': data.projectNotes || '',
+      'Builder Name': data.builderName || '',
+      'Merchant Name': data.merchantName || '',
+      'Referral Builder': data.referralBuilder || '',
+      'Referral Merchant': data.referralMerchant || '',
+      'Total Products': data.totalProducts || 0,
+      'Total Quantity': data.totalQuantity || 0,
+      'Total Rooms': data.totalRooms || 0,
+      'Rooms List': data.roomsList || '',
+      'Estimated Value': data.estimatedValue || '0.00',
+      'Email Sent': data.emailSent || false,
+      'PDF Generated': data.pdfGenerated || false,
+      'CSV Generated': data.csvGenerated || false,
+      'PDF Size': data.pdfSize || '',
+      'Products JSON': data.productsJson || ''
+    };
+    
+    // Create a new row array with the correct number of columns
+    const newRow = new Array(headerRow.length).fill('');
+    
+    // Populate the row based on column positions
+    Object.keys(dataMapping).forEach(columnName => {
+      const columnIndex = columnMap[columnName];
+      if (columnIndex) {
+        newRow[columnIndex - 1] = dataMapping[columnName]; // Convert to 0-indexed
+      }
+    });
     
     // Add the row to the sheet
-    sheet.appendRow(rowData);
+    sheet.appendRow(newRow);
     
     // Return success response
     return ContentService

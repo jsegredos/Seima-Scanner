@@ -84,10 +84,6 @@ SEIMA-Scanner/
 │   ├── pdf-service.js     # PDF generation service
 │   ├── data-service.js    # Data management service
 │   ├── email-template-generator.js  # Email template generation
-│   ├── pdf-generator.js   # PDF document generation
-│   ├── pdf-core.js        # PDF core functionality
-│   ├── pdf-layouts.js     # PDF layout templates
-│   ├── product-catalog.js # Product catalogue management
 │   ├── storage.js         # Local storage management
 │   ├── utils.js           # Utility functions
 │   └── browser-compatibility.js  # Browser detection and compatibility

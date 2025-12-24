@@ -1,6 +1,6 @@
 /**
  * Lead Tracking Service for Seima Scanner
- * Manages customer lead information collection and storage
+ * Manages customer lead information collection (in-memory only)
  */
 
 import { CONFIG } from './config.js';
@@ -9,17 +9,27 @@ import { builderMerchantService } from './builder-merchant-service.js';
 export class LeadTracker {
   constructor() {
     this.leadData = {
+      // Step 1: Customer & Project Information
+      customerName: '',
+      customerEmail: '',
+      customerPhone: '',
+      projectName: '',
+      projectAddress: '',
+      projectNotes: '',
+      excludePrice: false,
+      exportCsv: true,
+      
+      // Step 2: Customer Type
       customerType: null,
       customerTypeOther: '',
       builderName: '',
       merchantName: '',
+      
+      // Step 3: How They Found Us
       hearAboutUs: [],
       hearAboutUsOther: '',
       referralBuilder: '',
-      referralMerchant: '',
-      projectType: '',
-      projectStage: '',
-      numberOfUnits: 1
+      referralMerchant: ''
     };
     
     // Start with empty lists - will be populated as users add entries
@@ -43,7 +53,6 @@ export class LeadTracker {
    */
   updateLeadData(updates) {
     this.leadData = { ...this.leadData, ...updates };
-    this.saveToStorage();
   }
 
   /**
@@ -51,61 +60,29 @@ export class LeadTracker {
    */
   clearLeadData() {
     this.leadData = {
+      // Step 1: Customer & Project Information
+      customerName: '',
+      customerEmail: '',
+      customerPhone: '',
+      projectName: '',
+      projectAddress: '',
+      projectNotes: '',
+      excludePrice: false,
+      exportCsv: true,
+      
+      // Step 2: Customer Type
       customerType: null,
       customerTypeOther: '',
       builderName: '',
       merchantName: '',
+      
+      // Step 3: How They Found Us
       hearAboutUs: [],
       hearAboutUsOther: '',
       referralBuilder: '',
-      referralMerchant: '',
-      projectType: '',
-      projectStage: '',
-      numberOfUnits: 1
+      referralMerchant: ''
     };
     this.currentStep = 1;
-    this.saveToStorage();
-  }
-
-  /**
-   * Save lead data to localStorage
-   */
-  saveToStorage() {
-    try {
-      localStorage.setItem('leadTrackingData', JSON.stringify({
-        leadData: this.leadData,
-        currentStep: this.currentStep,
-        timestamp: new Date().toISOString()
-      }));
-    } catch (error) {
-      console.error('Error saving lead data:', error);
-    }
-  }
-
-  /**
-   * Load lead data from localStorage
-   */
-  loadFromStorage() {
-    try {
-      const stored = localStorage.getItem('leadTrackingData');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        this.leadData = parsed.leadData || this.leadData;
-        this.currentStep = parsed.currentStep || 1;
-        
-        // Clear data if older than 24 hours
-        const timestamp = new Date(parsed.timestamp);
-        const now = new Date();
-        const hoursDiff = (now - timestamp) / (1000 * 60 * 60);
-        
-        if (hoursDiff > 24) {
-          this.clearLeadData();
-        }
-      }
-    } catch (error) {
-      console.error('Error loading lead data:', error);
-      this.clearLeadData();
-    }
   }
 
   /**
@@ -114,11 +91,16 @@ export class LeadTracker {
   validateStep(step) {
     switch (step) {
       case 1:
-        return this.leadData.customerType !== null;
+        // Customer & Project Information - require name, email, and project name
+        return this.leadData.customerName && 
+               this.leadData.customerEmail && 
+               this.leadData.projectName;
       case 2:
-        return this.leadData.hearAboutUs.length > 0;
+        // Customer Type - require customer type selection
+        return this.leadData.customerType !== null;
       case 3:
-        return this.leadData.projectType && this.leadData.projectStage;
+        // How They Found Us - require at least one selection
+        return this.leadData.hearAboutUs.length > 0;
       default:
         return false;
     }
@@ -130,26 +112,17 @@ export class LeadTracker {
   getFormattedLeadData() {
     const data = this.leadData;
     
-    // Format customer type
+    // Customer type - use raw value (no concatenation with builder/merchant names)
+    // Only handle "Other" case where we replace with the custom value
     let customerTypeFormatted = data.customerType;
-    if (data.customerType === 'Builder' && data.builderName) {
-      customerTypeFormatted += ` (${data.builderName})`;
-    } else if (data.customerType === 'Merchant' && data.merchantName) {
-      customerTypeFormatted += ` (${data.merchantName})`;
-    } else if (data.customerType === 'Other' && data.customerTypeOther) {
+    if (data.customerType === 'Other' && data.customerTypeOther) {
       customerTypeFormatted = data.customerTypeOther;
     }
     
     // Format how they heard about us
+    // Note: Referral builder/merchant names are stored in separate fields, not concatenated here
     let hearAboutUsFormatted = [...data.hearAboutUs];
-    if (data.hearAboutUs.includes('Builder Referral') && data.referralBuilder) {
-      const index = hearAboutUsFormatted.indexOf('Builder Referral');
-      hearAboutUsFormatted[index] = `Builder Referral (${data.referralBuilder})`;
-    }
-    if (data.hearAboutUs.includes('Merchant Referral') && data.referralMerchant) {
-      const index = hearAboutUsFormatted.indexOf('Merchant Referral');
-      hearAboutUsFormatted[index] = `Merchant Referral (${data.referralMerchant})`;
-    }
+    // Only handle "Other" case where we replace with custom text
     if (data.hearAboutUs.includes('Other') && data.hearAboutUsOther) {
       const index = hearAboutUsFormatted.indexOf('Other');
       hearAboutUsFormatted[index] = `Other (${data.hearAboutUsOther})`;
@@ -158,9 +131,6 @@ export class LeadTracker {
     return {
       customerType: customerTypeFormatted,
       hearAboutUs: hearAboutUsFormatted.join(', '),
-      projectType: data.projectType,
-      projectStage: data.projectStage,
-      numberOfUnits: data.numberOfUnits || 1,
       
       // Raw data for analysis
       customerTypeRaw: data.customerType,
@@ -168,7 +138,8 @@ export class LeadTracker {
       builderName: data.builderName,
       merchantName: data.merchantName,
       referralBuilder: data.referralBuilder,
-      referralMerchant: data.referralMerchant
+      referralMerchant: data.referralMerchant,
+      projectNotes: data.projectNotes || ''
     };
   }
 
@@ -262,8 +233,7 @@ export class LeadTracker {
 // Create singleton instance
 export const leadTracker = new LeadTracker();
 
-// Load data on initialization
-leadTracker.loadFromStorage();
+// Load custom builder/merchant lists on initialization
 leadTracker.loadCustomLists();
 
 // Make clear function globally available for testing/reset

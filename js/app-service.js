@@ -18,6 +18,7 @@ export class AppService {
       pdf: pdfService
     };
     this.errorHandler = new ErrorHandler();
+    this.isGeneratingPDF = false; // Guard against concurrent PDF/email generation
   }
 
   /**
@@ -115,6 +116,14 @@ export class AppService {
    * This is the main coordinated function that replaces the complex legacy logic
    */
   async generateAndSendPDF(userDetails) {
+    // Prevent concurrent PDF/email generation
+    if (this.isGeneratingPDF) {
+      console.warn('⚠️ PDF generation already in progress, ignoring duplicate request');
+      return { success: false, message: 'PDF generation already in progress' };
+    }
+    
+    this.isGeneratingPDF = true;
+    
     if (!this.isInitialized) {
       await this.init();
     }
@@ -191,6 +200,9 @@ export class AppService {
     } catch (error) {
       this.errorHandler.handleError(error, 'PDF generation and sending');
       throw error;
+    } finally {
+      // Always reset the guard, even on error
+      this.isGeneratingPDF = false;
     }
   }
 
@@ -410,14 +422,4 @@ class ErrorHandler {
 }
 
 // Create singleton instance
-export const appService = new AppService();
-
-// Global debugging functions
-window.seimaDebug = {
-  getHealthStatus: () => appService.getHealthStatus(),
-  getMigrationReadiness: () => appService.getMigrationReadiness(),
-  switchToMicrosoftGraph: () => appService.switchEmailProvider('microsoftGraph'),
-  testEmail: (data) => appService.testEmail(data),
-  getErrorLog: () => JSON.parse(localStorage.getItem('seimaErrorLog') || '[]'),
-  clearErrorLog: () => localStorage.removeItem('seimaErrorLog')
-}; 
+export const appService = new AppService(); 

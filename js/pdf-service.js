@@ -1,15 +1,11 @@
 /**
- * PDF Service - EXACT COPY from original pdf-generator.js
- * This ensures identical PDF formatting and layout
+ * PDF Service
+ * Generates PDF documents with product selection data
+ * Maintains identical PDF formatting and layout
  */
 
 import { CONFIG } from './config.js';
 import { dataService } from './data-service.js';
-
-/**
- * PDF Service - EXACT COPY from original pdf-generator.js
- * This ensures identical PDF formatting and layout
- */
 export class PDFService {
   constructor() {
     this.isInitialized = false;
@@ -60,7 +56,7 @@ export class PDFService {
   }
 
   async _generatePDFWithOriginalLogic(userDetails) {
-    // EXACT COPY from original pdf-generator.js showPdfFormScreen function
+    // PDF generation logic (maintains original formatting)
     
     // Get selection data (exact same logic as original)
     const storedSelection = JSON.parse(localStorage.getItem('selection') || '[]');

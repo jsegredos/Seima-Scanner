@@ -1181,6 +1181,13 @@ body {
   z-index: 1000;
 }
 
+/* Override modal centering for lead wizard */
+#lead-wizard-modal.modal {
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  padding: 0 !important;
+}
+
 .modal-content {
   background: #fff;
   border-radius: 16px;
@@ -1191,6 +1198,19 @@ body {
   text-align: left;
 }
 
+/* Override modal-content for lead wizard - must come after .modal-content */
+.modal-content.lead-wizard-content {
+  padding: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: auto !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  align-self: stretch !important;
+}
+
 .modal-actions {
   display: flex;
   gap: 16px;
@@ -1199,31 +1219,45 @@ body {
 }
 
 .form-field {
-  margin-bottom: 15px;
+  margin-bottom: 8px;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .form-label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   font-weight: bold;
   color: #333;
+  font-size: 0.95rem;
+}
+
+.field-note {
+  font-weight: normal;
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
 }
 
 .form-input {
-  width: 100%;
-  padding: 10px;
+  width: 100% !important;
+  min-height: 44px; /* Touch-friendly minimum */
+  padding: 10px 12px;
   border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  box-sizing: border-box;
+  border-radius: 8px;
+  font-size: 16px; /* Prevent zoom on iOS */
+  box-sizing: border-box !important; /* Include padding in width calculation */
+  max-width: 100% !important;
 }
 
 .form-options {
-  margin: 12px 0 0 0;
+  margin: 8px 0 0 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .checkbox-label {
@@ -2046,21 +2080,44 @@ body {
 }
 
 /* Lead Wizard Styles */
+/* Override modal-content styles for lead wizard */
+.modal-content.lead-wizard-content,
 .lead-wizard-content {
-  max-width: 600px;
-  width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: 0;
+  max-width: 100% !important;
+  width: 100vw !important;
+  max-height: 100dvh !important; /* Dynamic viewport height */
+  height: 100dvh !important;
+  overflow: hidden;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  min-width: auto !important;
+}
+
+/* Better content distribution on mobile */
+@media (max-width: 768px) {
+  .modal-content.lead-wizard-content,
+  .lead-wizard-content {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    max-width: 100% !important;
+    border-radius: 0 !important; /* Full screen on mobile */
+    padding: 0 !important;
+  }
 }
 
 .lead-wizard-header {
-  padding: 24px 24px 16px 24px;
+  padding: 12px 4px 8px 4px !important; /* Minimal horizontal padding */
   border-bottom: 1px solid #eee;
   background: #fff;
   position: sticky;
   top: 0;
   z-index: 10;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .lead-wizard-header h3 {
@@ -2072,6 +2129,18 @@ body {
 
 .wizard-progress {
   margin-bottom: 8px;
+}
+
+/* Ensure progress indicator fits properly */
+@media (max-width: 768px) {
+  .wizard-progress {
+    margin-bottom: 6px;
+  }
+  
+  .progress-bar {
+    height: 3px; /* Slightly thinner on mobile */
+    margin-top: 8px;
+  }
 }
 
 .progress-steps {
@@ -2157,8 +2226,16 @@ body {
 }
 
 .lead-wizard-body {
-  padding: 24px;
-  min-height: 300px;
+  padding: 12px 4px !important; /* Minimal padding for maximum width on all steps */
+  flex: 1;
+  overflow-y: auto;
+  /* Account for header and footer */
+  max-height: calc(100dvh - 120px - 80px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .wizard-step-content h4 {
@@ -2169,23 +2246,76 @@ body {
 }
 
 .step-description {
-  margin: 0 0 24px 0;
+  margin: 0 0 16px 0;
   color: #666;
   font-size: 14px;
   line-height: 1.4;
 }
 
+/* Hide step titles and descriptions for cleaner look */
+.wizard-step-content h4,
+.wizard-step-content .step-description {
+  display: none;
+}
+
+.wizard-step-content {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
 .checkbox-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 8px; /* Reduced gap */
+  margin-bottom: 12px; /* Reduced margin */
+}
+
+.checkbox-item-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile-first checkbox layout */
+@media (max-width: 767px) {
+  .checkbox-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* Enhanced mobile form styling */
+@media (max-width: 768px) {
+  .form-input {
+    padding: 14px 16px; /* More generous padding on mobile */
+    font-size: 16px; /* Prevent zoom on iOS */
+    border-radius: 8px;
+  }
+  
+  .form-label {
+    margin-bottom: 8px;
+    font-size: 1rem;
+  }
+  
+  /* Better checkbox styling on mobile */
+  .checkbox-label {
+    padding: 12px 0;
+    font-size: 1rem;
+  }
+  
+  .checkbox-label input[type="checkbox"] {
+    transform: scale(1.3); /* Larger checkboxes on mobile */
+    margin-right: 12px;
+  }
 }
 
 .checkbox-item {
   display: flex;
   align-items: center;
-  padding: 12px;
+  min-height: 40px; /* Reduced height */
+  padding: 8px 12px; /* Reduced padding */
   border: 2px solid #eee;
   border-radius: 8px;
   cursor: pointer;
@@ -2200,7 +2330,7 @@ body {
 
 .checkbox-item input[type="checkbox"] {
   margin: 0 8px 0 0;
-  transform: scale(1.2);
+  transform: scale(1.1); /* Slightly smaller */
 }
 
 .checkbox-item input[type="checkbox"]:checked + .checkbox-label {
@@ -2217,11 +2347,12 @@ body {
   font-size: 14px;
   color: #333;
   user-select: none;
+  padding: 0; /* Remove any padding */
 }
 
 .conditional-field {
-  margin-top: 16px;
-  padding: 16px;
+  margin-top: 8px;
+  padding: 10px 12px;
   background: #f8f9fa;
   border-radius: 8px;
   border-left: 4px solid #a67c26;
@@ -2243,19 +2374,28 @@ body {
 }
 
 .lead-wizard-footer {
-  padding: 16px 24px;
+  padding: 16px 8px; /* Reduced horizontal padding to match body */
   border-top: 1px solid #eee;
   background: #f8f9fa;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: sticky;
-  bottom: 0;
+  flex-shrink: 0; /* Prevent footer from shrinking */
+  min-height: 80px; /* Ensure consistent footer height */
+  margin-top: auto; /* Push footer to bottom of available space */
 }
 
 .wizard-footer-right {
   display: flex;
   gap: 12px;
+}
+
+/* Ensure wizard buttons meet touch target requirements */
+.lead-wizard-footer .primary-btn,
+.lead-wizard-footer .secondary-btn {
+  min-height: 44px;
+  padding: 12px 24px;
+  font-size: 1rem;
 }
 
 .wizard-error {
@@ -2285,8 +2425,8 @@ body {
 }
 
 .add-btn {
-  width: 36px;
-  height: 36px;
+  width: 44px; /* Touch-friendly minimum */
+  height: 44px;
   border: 2px solid #a67c26;
   background: #fff;
   color: #a67c26;
@@ -2313,13 +2453,78 @@ body {
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
+  .modal-content.lead-wizard-content,
   .lead-wizard-content {
-    width: 95vw;
-    max-height: 95vh;
+    width: 100vw !important;
+    max-width: 100% !important;
+    max-height: 100dvh !important;
+    height: 100dvh !important;
+    padding: 0 !important;
+  }
+  
+  .lead-wizard-header {
+    padding: 12px 2px 8px 2px !important; /* Minimal padding on mobile */
+    min-height: 100px; /* Ensure consistent header height */
+    width: 100% !important;
+  }
+  
+  .lead-wizard-header h3 {
+    font-size: 1.3rem; /* Slightly smaller on mobile */
+    margin-bottom: 12px;
+  }
+  
+  .lead-wizard-body {
+    padding: 10px 2px !important; /* Minimal padding for maximum width on mobile */
+    max-height: calc(100dvh - 100px - 70px); /* Adjust for smaller header/footer */
+    justify-content: space-between; /* Distribute content better */
+    width: 100% !important;
+  }
+  
+  .lead-wizard-footer {
+    padding: 16px 6px; /* Minimal horizontal padding to match body */
+    min-height: 70px; /* Smaller footer on mobile */
+    position: sticky; /* Keep sticky on mobile for keyboard handling */
+    bottom: 0;
+    z-index: 10;
+  }
+  
+  .form-field {
+    margin-bottom: 8px; /* Minimal spacing for compact layout */
+  }
+  
+  /* Better mobile form layout */
+  .wizard-step-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 0; /* Allow shrinking */
+  }
+  
+  .form-options {
+    margin-top: auto; /* Push options to bottom of available space */
+    padding-top: 20px;
+    border-top: 1px solid #eee;
   }
   
   .checkbox-grid {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 6px; /* Even tighter spacing for mobile */
+  }
+  
+  .checkbox-item {
+    padding: 12px 14px; /* Larger padding for easier mobile input */
+    min-height: 48px; /* Larger touch target for mobile */
+  }
+  
+  .checkbox-item input[type="checkbox"] {
+    transform: scale(1.3); /* Larger checkbox on mobile */
+    margin-right: 12px;
+  }
+  
+  .checkbox-item .checkbox-label {
+    font-size: 15px; /* Slightly larger text for mobile readability */
   }
   
   .form-row {
@@ -2327,32 +2532,67 @@ body {
   }
   
   .progress-steps {
-    flex-direction: column;
-    gap: 8px;
+    justify-content: space-around; /* Better spacing on mobile */
+    margin-bottom: 8px;
   }
   
   .progress-step {
-    flex-direction: row;
-    justify-content: flex-start;
-  }
-  
-  .progress-step:not(:last-child)::after {
-    display: none;
+    flex: 0 1 auto; /* Don't stretch, just fit content */
+    min-width: 0; /* Allow shrinking */
   }
   
   .step-number {
-    margin-right: 8px;
-    margin-bottom: 0;
+    width: 28px; /* Slightly smaller on mobile */
+    height: 28px;
+    font-size: 12px;
+    margin-bottom: 2px;
   }
   
   .step-label {
-    text-align: left;
+    font-size: 10px; /* Smaller text on mobile */
+    line-height: 1.2;
+    max-width: 80px; /* Prevent overflow */
+    word-wrap: break-word;
+  }
+  
+  /* Adjust connecting lines for mobile */
+  .progress-step:not(:last-child)::after {
+    top: 14px; /* Adjust for smaller step numbers */
+    left: 50%;
+    right: -50%;
   }
   
   .add-btn {
-    width: 32px;
-    height: 32px;
+    width: 44px; /* Maintain touch-friendly size on mobile */
+    height: 44px;
     font-size: 16px;
+  }
+  
+/* Progressive disclosure - hide step labels on very small screens */
+@media (max-width: 480px) {
+  .progress-step .step-label {
+    display: none; /* Show only step numbers on very small screens */
+  }
+  
+  .progress-steps {
+    justify-content: center;
+    gap: 20px; /* More space between step numbers when no labels */
+  }
+  
+  .step-number {
+    width: 32px; /* Slightly larger when no labels */
+    height: 32px;
+    font-size: 14px;
+  }
+    
+    .step-description {
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+    
+    .wizard-step-content h4 {
+      font-size: 1.2rem; /* Slightly smaller heading on mobile */
+    }
   }
 }
 

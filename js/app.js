@@ -1,9 +1,6 @@
 // Import new refactored services
 import { AppService } from './app-service.js';
 import { CONFIG } from './config.js';
-import { DataService } from './data-service.js';
-import { EmailService } from './email-service.js';
-import { PDFService } from './pdf-service.js';
 
 // Import legacy modules for compatibility
 import { NavigationManager } from './navigation.js';
@@ -66,16 +63,9 @@ class SeimaScanner {
   }
 
   async initializeLegacyFallback() {
-    console.warn('🔄 Falling back to legacy initialization...');
-    try {
-      // Import and use legacy modules as fallback
-      const { moduleCoordinator } = await import('./modules.js');
-      await moduleCoordinator.init();
-      this.legacyMode = true;
-      console.log('⚠️ Running in legacy compatibility mode');
-    } catch (fallbackError) {
-      console.error('❌ Legacy fallback also failed:', fallbackError);
-    }
+    console.error('❌ Service initialization failed - no fallback available');
+    // Show user-friendly error message
+    alert('Failed to initialize the application. Please refresh the page and try again.');
   }
 
   setupGlobalAPI() {

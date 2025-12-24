@@ -53,15 +53,15 @@ export class LeadWizard {
               <div class="progress-steps">
                 <div class="progress-step active" data-step="1">
                   <span class="step-number">1</span>
-                  <span class="step-label">Customer Type</span>
+                  <span class="step-label">Customer & Project</span>
                 </div>
                 <div class="progress-step" data-step="2">
                   <span class="step-number">2</span>
-                  <span class="step-label">How They Found Us</span>
+                  <span class="step-label">Customer Type</span>
                 </div>
                 <div class="progress-step" data-step="3">
                   <span class="step-number">3</span>
-                  <span class="step-label">Project Info</span>
+                  <span class="step-label">How They Found Us</span>
                 </div>
               </div>
               <div class="progress-bar">
@@ -135,13 +135,28 @@ export class LeadWizard {
     this.updateProgressIndicator(step);
     this.updateNavigationButtons(step);
     
+    // Update title based on step
+    const titleElement = document.getElementById('wizard-title');
+    if (titleElement) {
+      switch (step) {
+        case 1:
+          titleElement.textContent = 'Customer Information';
+          break;
+        case 2:
+          titleElement.textContent = 'Customer Type';
+          break;
+        case 3:
+          titleElement.textContent = 'How you heard about us';
+          break;
+      }
+    }
+    
     const content = document.getElementById('wizard-step-content');
     
     switch (step) {
       case 1:
         content.innerHTML = this.getStep1HTML();
         this.attachStep1Listeners();
-        await this.loadBuilderMerchantOptions(step);
         break;
       case 2:
         content.innerHTML = this.getStep2HTML();
@@ -151,6 +166,7 @@ export class LeadWizard {
       case 3:
         content.innerHTML = this.getStep3HTML();
         this.attachStep3Listeners();
+        await this.loadBuilderMerchantOptions(step);
         break;
     }
     
@@ -159,9 +175,59 @@ export class LeadWizard {
   }
 
   /**
-   * Get Step 1 HTML (Customer Type)
+   * Get Step 1 HTML (Customer & Project Information)
    */
   getStep1HTML() {
+    return `
+      <div class="wizard-step-content">
+        <div class="form-field">
+          <label class="form-label">Customer Name *</label>
+          <input type="text" id="customer-name" class="form-input" required maxlength="60" placeholder="Enter customer name...">
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Email Address *</label>
+          <input type="email" id="customer-email" class="form-input" required maxlength="80" placeholder="Enter email address...">
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Phone Number <span style="color:#888;font-size:0.95em;">(optional)</span></label>
+          <input type="tel" id="customer-phone" class="form-input" maxlength="20" placeholder="Enter phone number...">
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Project Name *</label>
+          <input type="text" id="project-name" class="form-input" required maxlength="60" placeholder="Enter project name...">
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Project Address <span style="color:#888;font-size:0.95em;">(optional)</span></label>
+          <input type="text" id="project-address" class="form-input" maxlength="100" placeholder="Enter project address...">
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Project Notes <span style="color:#888;font-size:0.95em;">(optional)</span></label>
+          <textarea id="project-notes" class="form-input" rows="2" maxlength="500" placeholder="Enter any additional details about the project..."></textarea>
+        </div>
+
+        <div class="form-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="exclude-price-checkbox">
+            <span>Exclude pricing from documents</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="export-csv-checkbox" checked>
+            <span>Include CSV export (recommended)</span>
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Get Step 2 HTML (Customer Type)
+   */
+  getStep2HTML() {
     // Note: Builder and merchant options will be loaded dynamically
     const builderOptions = ''; // Will be populated by loadBuilderOptions()
     const merchantOptions = ''; // Will be populated by loadMerchantOptions()
@@ -188,7 +254,7 @@ export class LeadWizard {
         </div>
 
         <div id="builder-dropdown" class="form-field conditional-field" style="display: none;">
-          <label class="form-label">Builder Name</label>
+          <label class="form-label">Builder Name <span class="field-note">(if applicable)</span></label>
           <div class="select-with-add">
             <select id="builder-name-select" class="form-input">
               <option value="">Select builder...</option>
@@ -204,7 +270,7 @@ export class LeadWizard {
         </div>
 
         <div id="merchant-dropdown" class="form-field conditional-field" style="display: none;">
-          <label class="form-label">Merchant Name</label>
+          <label class="form-label">Merchant Name <span class="field-note">(if applicable)</span></label>
           <div class="select-with-add">
             <select id="merchant-name-select" class="form-input">
               <option value="">Select merchant...</option>
@@ -229,28 +295,59 @@ export class LeadWizard {
   }
 
   /**
-   * Get Step 2 HTML (How They Heard About Us)
+   * Get Step 3 HTML (How They Heard About Us)
    */
-  getStep2HTML() {
+  getStep3HTML() {
     // Note: Builder and merchant options will be loaded dynamically
     const builderOptions = ''; // Will be populated by loadBuilderOptions()
     const merchantOptions = ''; // Will be populated by loadMerchantOptions()
 
     return `
       <div class="wizard-step-content">
-        <h4>How did you hear about Seima?</h4>
-        <p class="step-description">Select all that apply - this helps us understand what's working</p>
-        
         <div class="checkbox-grid">
-          <label class="checkbox-item">
-            <input type="checkbox" value="Builder Referral" class="hear-about-checkbox">
-            <span class="checkbox-label">Builder Referral</span>
-          </label>
+          <div class="checkbox-item-wrapper">
+            <label class="checkbox-item">
+              <input type="checkbox" value="Builder Referral" class="hear-about-checkbox">
+              <span class="checkbox-label">Builder Referral</span>
+            </label>
+            <div id="builder-referral-dropdown" class="form-field conditional-field" style="display: none; margin-top: 8px;">
+              <label class="form-label">Which Builder?</label>
+              <div class="select-with-add">
+                <select id="referral-builder-select" class="form-input">
+                  <option value="">Select builder...</option>
+                  ${builderOptions}
+                  <option value="Other">Other (specify below)</option>
+                </select>
+                <button type="button" id="add-referral-builder-btn" class="add-btn" title="Add new builder">+</button>
+              </div>
+              <div id="referral-builder-other-input" class="form-field" style="display: none; margin-top: 8px;">
+                <input type="text" id="referral-builder-other-name" class="form-input" 
+                       placeholder="Enter builder name..." maxlength="50">
+              </div>
+            </div>
+          </div>
           
-          <label class="checkbox-item">
-            <input type="checkbox" value="Merchant Referral" class="hear-about-checkbox">
-            <span class="checkbox-label">Merchant Referral</span>
-          </label>
+          <div class="checkbox-item-wrapper">
+            <label class="checkbox-item">
+              <input type="checkbox" value="Merchant Referral" class="hear-about-checkbox">
+              <span class="checkbox-label">Merchant Referral</span>
+            </label>
+            <div id="merchant-referral-dropdown" class="form-field conditional-field" style="display: none; margin-top: 8px;">
+              <label class="form-label">Which Merchant?</label>
+              <div class="select-with-add">
+                <select id="referral-merchant-select" class="form-input">
+                  <option value="">Select merchant...</option>
+                  ${merchantOptions}
+                  <option value="Other">Other (specify below)</option>
+                </select>
+                <button type="button" id="add-referral-merchant-btn" class="add-btn" title="Add new merchant">+</button>
+              </div>
+              <div id="referral-merchant-other-input" class="form-field" style="display: none; margin-top: 8px;">
+                <input type="text" id="referral-merchant-other-name" class="form-input" 
+                       placeholder="Enter merchant name..." maxlength="50">
+              </div>
+            </div>
+          </div>
           
           <label class="checkbox-item">
             <input type="checkbox" value="Architect/Designer Referral" class="hear-about-checkbox">
@@ -287,100 +384,69 @@ export class LeadWizard {
             <span class="checkbox-label">Previous Customer</span>
           </label>
           
-          <label class="checkbox-item">
-            <input type="checkbox" value="Other" class="hear-about-checkbox">
-            <span class="checkbox-label">Other</span>
-          </label>
-        </div>
-
-        <div id="builder-referral-dropdown" class="form-field conditional-field" style="display: none;">
-          <label class="form-label">Which Builder?</label>
-          <div class="select-with-add">
-            <select id="referral-builder-select" class="form-input">
-              <option value="">Select builder...</option>
-              ${builderOptions}
-              <option value="Other">Other (specify below)</option>
-            </select>
-            <button type="button" id="add-referral-builder-btn" class="add-btn" title="Add new builder">+</button>
+          <div class="checkbox-item-wrapper">
+            <label class="checkbox-item">
+              <input type="checkbox" value="Other" class="hear-about-checkbox">
+              <span class="checkbox-label">Other</span>
+            </label>
+            <div id="hear-about-other-input" class="form-field conditional-field" style="display: none; margin-top: 8px;">
+              <label class="form-label">Please specify</label>
+              <input type="text" id="hear-about-other" class="form-input" 
+                     placeholder="How did you hear about us?" maxlength="100">
+            </div>
           </div>
-          <div id="referral-builder-other-input" class="form-field" style="display: none; margin-top: 8px;">
-            <input type="text" id="referral-builder-other-name" class="form-input" 
-                   placeholder="Enter builder name..." maxlength="50">
-          </div>
-        </div>
-
-        <div id="merchant-referral-dropdown" class="form-field conditional-field" style="display: none;">
-          <label class="form-label">Which Merchant?</label>
-          <div class="select-with-add">
-            <select id="referral-merchant-select" class="form-input">
-              <option value="">Select merchant...</option>
-              ${merchantOptions}
-              <option value="Other">Other (specify below)</option>
-            </select>
-            <button type="button" id="add-referral-merchant-btn" class="add-btn" title="Add new merchant">+</button>
-          </div>
-          <div id="referral-merchant-other-input" class="form-field" style="display: none; margin-top: 8px;">
-            <input type="text" id="referral-merchant-other-name" class="form-input" 
-                   placeholder="Enter merchant name..." maxlength="50">
-          </div>
-        </div>
-
-        <div id="hear-about-other-input" class="form-field conditional-field" style="display: none;">
-          <label class="form-label">Please specify</label>
-          <input type="text" id="hear-about-other" class="form-input" 
-                 placeholder="How did you hear about us?" maxlength="100">
         </div>
       </div>
     `;
   }
 
   /**
-   * Get Step 3 HTML (Project Information)
-   */
-  getStep3HTML() {
-    return `
-      <div class="wizard-step-content">
-        <h4>Tell us about your project</h4>
-        <p class="step-description">This helps us provide the most relevant products and advice</p>
-        
-        <div class="form-row">
-          <div class="form-field">
-            <label class="form-label">Project Type *</label>
-            <select id="project-type-select" class="form-input" required>
-              <option value="">Select project type...</option>
-              <option value="New Build">New Build</option>
-              <option value="Commercial Project">Commercial Project</option>
-              <option value="Renovation">Renovation</option>
-            </select>
-          </div>
-          
-          <div class="form-field">
-            <label class="form-label">Project Stage *</label>
-            <select id="project-stage-select" class="form-input" required>
-              <option value="">Select project stage...</option>
-              <option value="Planning">Planning</option>
-              <option value="Design">Design</option>
-              <option value="Construction">Construction</option>
-              <option value="Finishing">Finishing</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="form-field">
-          <label class="form-label">Number of Units/Builds</label>
-          <input type="number" id="number-of-units" class="form-input" 
-                 min="1" max="1000" value="1" 
-                 placeholder="e.g. 1 for single home, 10 for development">
-          <small class="form-help">For developments or multiple builds</small>
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Attach Step 1 event listeners
+   * Attach Step 1 event listeners (Customer & Project Information)
    */
   attachStep1Listeners() {
+    // Customer information fields
+    document.getElementById('customer-name').addEventListener('input', (e) => {
+      leadTracker.updateLeadData({ customerName: e.target.value });
+      this.updateNextButtonState();
+    });
+
+    document.getElementById('customer-email').addEventListener('input', (e) => {
+      leadTracker.updateLeadData({ customerEmail: e.target.value });
+      this.updateNextButtonState();
+    });
+
+    document.getElementById('customer-phone').addEventListener('input', (e) => {
+      leadTracker.updateLeadData({ customerPhone: e.target.value });
+    });
+
+    // Project information fields
+    document.getElementById('project-name').addEventListener('input', (e) => {
+      leadTracker.updateLeadData({ projectName: e.target.value });
+      this.updateNextButtonState();
+    });
+
+    document.getElementById('project-address').addEventListener('input', (e) => {
+      leadTracker.updateLeadData({ projectAddress: e.target.value });
+    });
+
+    document.getElementById('project-notes').addEventListener('input', (e) => {
+      leadTracker.updateLeadData({ projectNotes: e.target.value });
+    });
+
+    // Options checkboxes
+    document.getElementById('exclude-price-checkbox').addEventListener('change', (e) => {
+      leadTracker.updateLeadData({ excludePrice: e.target.checked });
+    });
+
+    document.getElementById('export-csv-checkbox').addEventListener('change', (e) => {
+      leadTracker.updateLeadData({ exportCsv: e.target.checked });
+    });
+  }
+
+  /**
+   * Attach Step 2 event listeners (Customer Type)
+   */
+  attachStep2Listeners() {
     const customerTypeSelect = document.getElementById('customer-type-select');
     const builderDropdown = document.getElementById('builder-dropdown');
     const merchantDropdown = document.getElementById('merchant-dropdown');
@@ -394,10 +460,14 @@ export class LeadWizard {
       merchantDropdown.style.display = 'none';
       otherInput.style.display = 'none';
       
-      // Show relevant conditional field
+      // Show relevant conditional fields based on selection
       if (value === 'Builder') {
         builderDropdown.style.display = 'block';
       } else if (value === 'Merchant') {
+        merchantDropdown.style.display = 'block';
+      } else if (value === 'Client of Builder/Merchant') {
+        // Show both builder and merchant dropdowns
+        builderDropdown.style.display = 'block';
         merchantDropdown.style.display = 'block';
       } else if (value === 'Other') {
         otherInput.style.display = 'block';
@@ -459,9 +529,9 @@ export class LeadWizard {
   }
 
   /**
-   * Attach Step 2 event listeners
+   * Attach Step 3 event listeners (How They Heard About Us)
    */
-  attachStep2Listeners() {
+  attachStep3Listeners() {
     const checkboxes = document.querySelectorAll('.hear-about-checkbox');
     const builderReferralDropdown = document.getElementById('builder-referral-dropdown');
     const merchantReferralDropdown = document.getElementById('merchant-referral-dropdown');
@@ -538,33 +608,45 @@ export class LeadWizard {
   }
 
   /**
-   * Attach Step 3 event listeners
-   */
-  attachStep3Listeners() {
-    document.getElementById('project-type-select').addEventListener('change', (e) => {
-      leadTracker.updateLeadData({ projectType: e.target.value });
-      this.updateNextButtonState();
-    });
-
-    document.getElementById('project-stage-select').addEventListener('change', (e) => {
-      leadTracker.updateLeadData({ projectStage: e.target.value });
-      this.updateNextButtonState();
-    });
-
-    document.getElementById('number-of-units').addEventListener('input', (e) => {
-      const value = parseInt(e.target.value) || 1;
-      leadTracker.updateLeadData({ numberOfUnits: value });
-    });
-  }
-
-  /**
    * Load existing data for current step
    */
   loadStepData(step) {
     const data = leadTracker.getLeadData();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/271cbb43-06c0-4898-a939-268461524d29',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lead-wizard.js:591',message:'loadStepData called',data:{step:step,hasCustomerName:!!data.customerName,hasCustomerEmail:!!data.customerEmail,customerName:data.customerName,timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
     
     switch (step) {
       case 1:
+        // Load customer and project information
+        if (data.customerName) {
+          document.getElementById('customer-name').value = data.customerName;
+        }
+        if (data.customerEmail) {
+          document.getElementById('customer-email').value = data.customerEmail;
+        }
+        if (data.customerPhone) {
+          document.getElementById('customer-phone').value = data.customerPhone;
+        }
+        if (data.projectName) {
+          document.getElementById('project-name').value = data.projectName;
+        }
+        if (data.projectAddress) {
+          document.getElementById('project-address').value = data.projectAddress;
+        }
+        if (data.projectNotes) {
+          document.getElementById('project-notes').value = data.projectNotes;
+        }
+        if (data.excludePrice !== undefined) {
+          document.getElementById('exclude-price-checkbox').checked = data.excludePrice;
+        }
+        if (data.exportCsv !== undefined) {
+          document.getElementById('export-csv-checkbox').checked = data.exportCsv;
+        }
+        break;
+        
+      case 2:
+        // Load customer type information
         if (data.customerType) {
           document.getElementById('customer-type-select').value = data.customerType;
           
@@ -585,17 +667,17 @@ export class LeadWizard {
         }
         break;
         
-      case 2:
-        // Check appropriate checkboxes
-        data.hearAboutUs.forEach(value => {
-          const checkbox = document.querySelector(`input[value="${value}"]`);
-          if (checkbox) {
-            checkbox.checked = true;
-          }
-        });
-        
-        // Trigger change to show conditional fields
-        if (data.hearAboutUs.length > 0) {
+      case 3:
+        // Load how they heard about us information
+        if (data.hearAboutUs && data.hearAboutUs.length > 0) {
+          data.hearAboutUs.forEach(value => {
+            const checkbox = document.querySelector(`input[value="${value}"]`);
+            if (checkbox) {
+              checkbox.checked = true;
+            }
+          });
+          
+          // Trigger change to show conditional fields
           const firstCheckbox = document.querySelector('.hear-about-checkbox');
           if (firstCheckbox) {
             const event = new Event('change');
@@ -612,18 +694,6 @@ export class LeadWizard {
         }
         if (data.hearAboutUsOther) {
           document.getElementById('hear-about-other').value = data.hearAboutUsOther;
-        }
-        break;
-        
-      case 3:
-        if (data.projectType) {
-          document.getElementById('project-type-select').value = data.projectType;
-        }
-        if (data.projectStage) {
-          document.getElementById('project-stage-select').value = data.projectStage;
-        }
-        if (data.numberOfUnits) {
-          document.getElementById('number-of-units').value = data.numberOfUnits;
         }
         break;
     }
@@ -713,7 +783,7 @@ export class LeadWizard {
         message = 'Please select at least one option for how you heard about us';
         break;
       case 3:
-        message = 'Please select both project type and project stage';
+        message = 'Please select at least one option for how you heard about us';
         break;
     }
     
@@ -751,7 +821,9 @@ export class LeadWizard {
    * Complete the wizard
    */
   complete() {
-    const leadData = leadTracker.getFormattedLeadData();
+    // Use raw lead data here so we keep all fields (name, email, project, etc.)
+    // Formatting for reporting/email is handled downstream.
+    const leadData = leadTracker.getLeadData();
     
     if (this.onCompleteCallback) {
       this.onCompleteCallback(leadData);
