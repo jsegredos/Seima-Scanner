@@ -1,3 +1,4 @@
+3.1.3 - Lead Tracking Improvements: Simplified customer data collection with cleaner fields, added project notes, improved form layout for better mobile experience, and fixed phone number formatting to preserve leading zeros
 3.1.2 - Lead Recording Reliability: Ensures customer details are recorded properly.
 3.1.1 - Alphabetical Sorting: All builder and merchant lists now display in alphabetical order (A–Z, case-insensitive) across dropdowns, search results, and suggestions for better usability
 3.1.0 - Server-Side Builder/Merchant Management: Centralized builder/merchant lists with smart duplicate prevention, real-time search suggestions, and similarity detection to minimize duplicates across all showrooms
