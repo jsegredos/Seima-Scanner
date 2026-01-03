@@ -28,12 +28,8 @@ export class OCRService {
       }
 
       this.worker = await Tesseract.createWorker({
-        logger: (m) => {
-          // Only log progress for debugging (can be removed in production)
-          if (m.status === 'recognizing text') {
-            console.log(`OCR: ${Math.round(m.progress * 100)}%`);
-          }
-        },
+        // Note: logger function cannot be passed to Worker (DataCloneError)
+        // Use null or omit logger parameter
         workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
         corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
       });
@@ -87,11 +83,23 @@ export class OCRService {
         return;
       }
 
+      // Check if video is ready before capturing frame
+      if (videoElement.readyState < 2) {
+        return; // Skip this scan cycle if video not ready
+      }
+
       try {
         // Capture frame from video
-        canvas.width = videoElement.videoWidth || 640;
-        canvas.height = videoElement.videoHeight || 480;
-        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        const width = videoElement.videoWidth || 640;
+        const height = videoElement.videoHeight || 480;
+        
+        if (width === 0 || height === 0) {
+          return; // Video dimensions not available yet
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(videoElement, 0, 0, width, height);
 
         // Optional: Preprocess for better results in poor lighting
         // this.preprocessCanvasForOCR(canvas);

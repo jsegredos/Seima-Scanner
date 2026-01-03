@@ -136,6 +136,15 @@ export class HybridScannerController {
       return;
     }
 
+    // Check if video is ready (readyState 4 = HAVE_ENOUGH_DATA)
+    if (this.videoElement.readyState < 2) {
+      // Video not ready yet, try again after a short delay
+      if (this.scanningRef) {
+        setTimeout(() => this.scanBarcodes(), 200);
+      }
+      return;
+    }
+
     try {
       const barcodes = await this.barcodeDetector.detect(this.videoElement);
       
