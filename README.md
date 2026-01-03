@@ -183,12 +183,12 @@ The application uses EmailJS for email functionality. Configuration in `js/confi
 ```javascript
 EMAIL: {
   PROVIDER: 'emailjs',
-  PUBLIC_KEY: 'MHAEjvnc_xx8DIRCA',
-  SERVICE_ID: 'service_rblizfg',
-  TEMPLATE_ID: 'template_8st9fhk',
+  PUBLIC_KEY: 'your_emailjs_public_key',
+  SERVICE_ID: 'your_service_id',
+  TEMPLATE_ID: 'your_template_id',
   FROM_EMAIL: 'noreply@seima.com.au',
   FROM_NAME: 'Seima Team',
-  BCC_EMAIL: 'jsegredos@gmail.com',
+  BCC_EMAIL: 'your_bcc_email@example.com',
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 2000
 }

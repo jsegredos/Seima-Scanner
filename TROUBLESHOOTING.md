@@ -112,11 +112,11 @@ Comprehensive troubleshooting guide for common issues with the SEIMA Scanner app
    
    // Verify configuration
    PROVIDER: 'emailjs'
-   PUBLIC_KEY: 'MHAEjvnc_xx8DIRCA'
-   SERVICE_ID: 'service_rblizfg'
-   TEMPLATE_ID: 'template_8st9fhk'
+   PUBLIC_KEY: 'your_emailjs_public_key'
+   SERVICE_ID: 'your_service_id'
+   TEMPLATE_ID: 'your_template_id'
    FROM_EMAIL: 'noreply@seima.com.au'
-   BCC_EMAIL: 'jsegredos@gmail.com'
+   BCC_EMAIL: 'your_bcc_email@example.com'
    ```
 
 2. **Network and Connectivity**

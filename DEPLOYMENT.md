@@ -282,12 +282,12 @@ export const CONFIG = {
   // EmailJS settings
   EMAIL: {
     PROVIDER: 'emailjs',
-    PUBLIC_KEY: 'MHAEjvnc_xx8DIRCA',
-    SERVICE_ID: 'service_rblizfg',
-    TEMPLATE_ID: 'template_8st9fhk',
+    PUBLIC_KEY: 'your_prod_public_key',
+    SERVICE_ID: 'your_prod_service_id',
+    TEMPLATE_ID: 'your_prod_template_id',
     FROM_EMAIL: 'noreply@seima.com.au',
     FROM_NAME: 'Seima Team',
-    BCC_EMAIL: 'jsegredos@gmail.com',
+    BCC_EMAIL: 'your_prod_bcc_email@example.com',
     RETRY_ATTEMPTS: 3,
     RETRY_DELAY: 2000
   },
@@ -324,8 +324,8 @@ For sensitive configuration, consider using environment variables (requires buil
 ```bash
 # .env file (not committed to git)
 EMAILJS_PUBLIC_KEY=your_public_key
-EMAILJS_SERVICE_ID=service_rblizfg
-EMAILJS_TEMPLATE_ID=template_8st9fhk
+EMAILJS_SERVICE_ID=your_service_id
+EMAILJS_TEMPLATE_ID=your_template_id
 GOOGLE_SHEETS_URL=https://script.google.com/macros/s/.../exec
 ```
 
