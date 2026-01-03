@@ -1502,12 +1502,8 @@ export class NavigationManager {
 
     cancelBtn.onclick = () => {
       modal.style.display = 'none';
-      // Resume OCR scanning
-      setTimeout(() => {
-        if (this.currentScreen === 'scanner') {
-          this.startTextScanMode();
-        }
-      }, 500);
+      // Don't auto-resume OCR - user can click "Text Scan" button again if needed
+      this.showScanFeedback('Text Scan cancelled');
     };
 
     // Show modal
