@@ -1402,19 +1402,9 @@ export class NavigationManager {
 
         const candidateDiv = document.createElement('div');
         candidateDiv.style.cssText = 'display: flex; align-items: center; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; cursor: pointer;';
-        candidateDiv.onclick = () => {
-          const checkbox = candidateDiv.querySelector('input[type="checkbox"]');
-          checkbox.checked = !checkbox.checked;
-          if (checkbox.checked) {
-            selectedProducts.add(product);
-          } else {
-            selectedProducts.delete(product);
-          }
-          confirmBtn.disabled = selectedProducts.size === 0;
-        };
-
+        
         candidateDiv.innerHTML = `
-          <input type="checkbox" style="margin-right: 12px; width: 20px; height: 20px;" 
+          <input type="checkbox" style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;" 
                  data-product-index="${index}">
           <img src="${imageUrl}" alt="${description}" 
                style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; margin-right: 12px;"
@@ -1432,6 +1422,21 @@ export class NavigationManager {
         `;
 
         const checkbox = candidateDiv.querySelector('input[type="checkbox"]');
+        
+        // Handle checkbox click directly
+        checkbox.onclick = (e) => {
+          e.stopPropagation(); // Prevent parent div click
+          const wasChecked = checkbox.checked;
+          // The checkbox state will be toggled by the browser, so we use the opposite
+          if (wasChecked) {
+            selectedProducts.delete(product);
+          } else {
+            selectedProducts.add(product);
+          }
+          confirmBtn.disabled = selectedProducts.size === 0;
+        };
+        
+        // Also handle change event as backup
         checkbox.onchange = (e) => {
           e.stopPropagation();
           if (checkbox.checked) {
@@ -1440,6 +1445,20 @@ export class NavigationManager {
             selectedProducts.delete(product);
           }
           confirmBtn.disabled = selectedProducts.size === 0;
+        };
+        
+        // Handle click on the rest of the div (not checkbox)
+        candidateDiv.onclick = (e) => {
+          // Only toggle if click wasn't on checkbox
+          if (e.target !== checkbox && e.target !== checkbox.parentElement) {
+            checkbox.checked = !checkbox.checked;
+            if (checkbox.checked) {
+              selectedProducts.add(product);
+            } else {
+              selectedProducts.delete(product);
+            }
+            confirmBtn.disabled = selectedProducts.size === 0;
+          }
         };
 
         candidatesList.appendChild(candidateDiv);

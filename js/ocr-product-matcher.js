@@ -65,16 +65,49 @@ export class OCRProductMatcher {
         }
       }
 
-      // Priority 3: Partial Description match
+      // Priority 3: Product Name/Description match (flexible matching)
       const descMatches = catalog.filter(p => {
-        const desc = (p['Product Description'] || p.Description || p['Product Name'] || '').toUpperCase();
-        const productName = (p['Product Name'] || '').toUpperCase();
+        // Get all possible text fields
+        const desc = (p['Product Description'] || p.Description || '').toUpperCase().trim();
+        const productName = (p['Product Name'] || p.productName || '').toUpperCase().trim();
+        const longDesc = (p['Long Description'] || p.LongDescription || '').toUpperCase().trim();
         
-        // Check if detected text is in description or product name
-        return desc.includes(normalized) ||
-               normalized.includes(desc.substring(0, 30)) ||
-               productName.includes(normalized) ||
-               normalized.includes(productName);
+        // Normalize both search text and product text (remove extra spaces, special chars)
+        const normalizeForMatch = (str) => str.replace(/\s+/g, ' ').replace(/[^\w\s]/g, '').trim();
+        const searchNormalized = normalizeForMatch(normalized);
+        
+        // Check exact match
+        if (desc === normalized || productName === normalized) {
+          return true;
+        }
+        
+        // Check if search text contains product name or vice versa
+        if (productName && (productName.includes(searchNormalized) || searchNormalized.includes(productName))) {
+          return true;
+        }
+        
+        // Check word-by-word matching (for "LIMNI 720" matching "LIMNI 720" or "LIMNI720")
+        const searchWords = searchNormalized.split(/\s+/).filter(w => w.length > 2);
+        if (searchWords.length > 0) {
+          const productText = normalizeForMatch(productName || desc);
+          // Check if all significant words from search are in product text
+          const allWordsMatch = searchWords.every(word => productText.includes(word));
+          if (allWordsMatch && searchWords.length >= 1) {
+            return true;
+          }
+        }
+        
+        // Check partial match in description (first 50 chars)
+        if (desc && (desc.includes(searchNormalized) || searchNormalized.includes(desc.substring(0, 50)))) {
+          return true;
+        }
+        
+        // Check long description
+        if (longDesc && longDesc.includes(searchNormalized)) {
+          return true;
+        }
+        
+        return false;
       });
 
       descMatches.forEach(product => {
