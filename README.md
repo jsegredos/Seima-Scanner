@@ -23,6 +23,10 @@ SEIMA Scanner is a comprehensive product selection tool that allows users to:
   - iOS Safari support with polyfills
   - Android device optimisation
   - Uses BarcodeDetector API (native or polyfill)
+- **Text Scan (OCR)**: Read visible text from product labels using client-side OCR
+  - Tesseract.js for offline-capable text recognition
+  - Matches OrderCodes (19xxxx format) and product descriptions
+  - Works independently from barcode scanning
 - **Room Organisation**: Organise products by predefined or custom rooms
   - Predefined rooms: Bath 1, Bath 2, Bath 3, Ensuite, Powder, Kitchen, Butlers, Laundry, Alfresco
   - Custom room creation
@@ -109,6 +113,7 @@ SEIMA Scanner is a comprehensive product selection tool that allows users to:
 - **PapaParse**: CSV parsing and generation
 - **EmailJS**: Email service integration (current)
 - **BarcodeDetector API**: Native barcode scanning (with polyfill for iOS/Safari)
+- **Tesseract.js**: Client-side OCR for text recognition from product labels
 - **SheetJS (xlsx)**: Excel file parsing
 - **@undecaf/zbar-wasm**: iOS barcode scanning polyfill
 - **@undecaf/barcode-detector-polyfill**: iOS BarcodeDetector API polyfill
@@ -254,6 +259,11 @@ Barcode scanning uses a hybrid approach with multiple engines:
   - `@undecaf/zbar-wasm` for WASM-based scanning
   - `@undecaf/barcode-detector-polyfill` for API compatibility
 - **Supported Formats**: EAN-13, EAN-8, Code 128
+- **Text Scan (OCR)**: Separate mode for reading visible text from labels
+  - Uses Tesseract.js for client-side OCR
+  - Matches OrderCodes (19xxxx format) and product descriptions
+  - Works offline after initial load
+  - Scans every 1.5 seconds for optimal battery/CPU usage
 - **Camera Selection**: Front/rear camera switching
 - **Mobile Optimisation**: Touch-friendly interface with iOS-specific fixes
 

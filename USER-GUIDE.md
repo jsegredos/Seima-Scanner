@@ -130,6 +130,40 @@ The main screen provides access to all features:
 - **Focus**: Tap to focus on barcode area
 - **Zoom**: Use pinch gestures to zoom in/out
 
+## 📝 Text Scan (OCR)
+
+### Using Text Scan Mode
+
+1. **Start Text Scan**
+   - From the scanner screen, tap the **Text Scan** button
+   - Allow camera permissions if not already granted
+
+2. **Scan Product Labels**
+   - Aim the camera at the product label showing the **Order Code** (e.g., 191234) or product name
+   - Hold steady - the app analyses the frame every 1-2 seconds
+   - Ensure good, even lighting for best results
+
+3. **Select Products**
+   - When text is detected, a confirmation dialog lists possible matches
+   - Check one or more products from the list
+   - Tap "Add Selected" to add them to your selection
+   - Or tap "Cancel" to continue scanning
+
+### Text Scan Tips
+
+- **Good Lighting**: Even, bright lighting is critical for accurate text recognition
+- **Clear Text**: Ensure the 19xxxx OrderCode or product name is clearly visible and reasonably large
+- **Steady Hold**: Keep the device steady while scanning
+- **Offline Capable**: Works fully offline after initial load
+- **Battery Efficient**: Scans every 1.5 seconds to balance accuracy and battery usage
+
+### When to Use Text Scan
+
+- Product labels without barcodes
+- Damaged or unreadable barcodes
+- Product names visible on packaging
+- OrderCodes printed on labels (19xxxx format)
+
 ## 📁 File Import
 
 ### CSV/Excel File Import

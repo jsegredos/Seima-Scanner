@@ -3,6 +3,8 @@ import { CONFIG } from './config.js';
 import { dataService } from './data-service.js';
 import { ScannerController } from './scanner.js';
 import { Utils } from './utils.js';
+import { ocrService } from './ocr-service.js';
+import { OCRProductMatcher } from './ocr-product-matcher.js';
 import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/modular/sortable.esm.js';
 
 // Navigation and screen management
@@ -323,11 +325,13 @@ export class NavigationManager {
   setupScannerScreenHandlers() {
     const backBtn = document.getElementById('back-to-rooms');
     const reviewBtn = document.getElementById('review-btn');
+    const textScanBtn = document.getElementById('text-scan-btn');
     const engineToggle = document.getElementById('scanner-engine-toggle');
 
     if (backBtn) {
       backBtn.onclick = () => {
         this.scannerController.stopScanning();
+        ocrService.stopScanning();
         this.showRoomSelection();
       };
     }
@@ -335,8 +339,13 @@ export class NavigationManager {
     if (reviewBtn) {
       reviewBtn.onclick = () => {
         this.scannerController.stopScanning();
+        ocrService.stopScanning();
         this.showReviewScreen();
       };
+    }
+
+    if (textScanBtn) {
+      textScanBtn.onclick = () => this.startTextScanMode();
     }
 
     if (engineToggle) {
@@ -1272,5 +1281,210 @@ export class NavigationManager {
     setTimeout(() => {
       statusDiv.style.display = 'none';
     }, 5000);
+  }
+
+  /**
+   * Start Text Scan (OCR) mode
+   */
+  async startTextScanMode() {
+    try {
+      // Stop barcode scanning if active
+      this.scannerController.stopScanning();
+
+      // Get video element from scanner
+      const videoElement = this.scannerController.videoElement;
+      if (!videoElement || videoElement.paused || videoElement.ended) {
+        // Need to start camera first
+        await this.scannerController.startScanning();
+        // Wait a bit for video to be ready
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      const activeVideoElement = this.scannerController.videoElement;
+      if (!activeVideoElement) {
+        throw new Error('Camera not available for Text Scan');
+      }
+
+      // Show feedback
+      this.showScanFeedback('Text Scan mode active - aim at product label...');
+
+      // Start OCR scanning
+      await ocrService.startScanning(activeVideoElement, (detectedTexts) => {
+        this.handleOcrResults(detectedTexts);
+      }, 1500);
+
+      // Update button state
+      const textScanBtn = document.getElementById('text-scan-btn');
+      if (textScanBtn) {
+        textScanBtn.textContent = 'Stop Text Scan';
+        textScanBtn.onclick = () => this.stopTextScanMode();
+      }
+
+    } catch (error) {
+      console.error('Failed to start Text Scan mode:', error);
+      this.showScanFeedback('Text Scan failed: ' + error.message);
+    }
+  }
+
+  /**
+   * Stop Text Scan (OCR) mode
+   */
+  stopTextScanMode() {
+    ocrService.stopScanning();
+    
+    const textScanBtn = document.getElementById('text-scan-btn');
+    if (textScanBtn) {
+      textScanBtn.textContent = 'Text Scan';
+      textScanBtn.onclick = () => this.startTextScanMode();
+    }
+
+    this.showScanFeedback('Text Scan stopped');
+  }
+
+  /**
+   * Handle OCR results and show confirmation modal
+   */
+  async handleOcrResults(detectedTexts) {
+    // Stop OCR scanning during confirmation
+    ocrService.stopScanning();
+
+    if (!this.dataService.isLoaded) {
+      this.showScanFeedback('Product data loading, please wait...');
+      ocrService.startScanning(this.scannerController.videoElement, (texts) => {
+        this.handleOcrResults(texts);
+      }, 1500);
+      return;
+    }
+
+    // Get catalog
+    const catalog = this.dataService.getAllProducts();
+    
+    // Find matching products
+    const candidates = OCRProductMatcher.findProductsByOcrTexts(detectedTexts, catalog);
+
+    // Show confirmation modal
+    this.showOcrConfirmationModal(candidates, detectedTexts);
+  }
+
+  /**
+   * Show OCR confirmation modal with candidate products
+   */
+  showOcrConfirmationModal(candidates, detectedTexts) {
+    const modal = document.getElementById('ocr-confirmation-modal');
+    const candidatesList = document.getElementById('ocr-candidates-list');
+    const noMatches = document.getElementById('ocr-no-matches');
+    const confirmBtn = document.getElementById('ocr-confirm-btn');
+    const cancelBtn = document.getElementById('ocr-cancel-btn');
+
+    if (!modal || !candidatesList || !confirmBtn || !cancelBtn) {
+      console.error('OCR confirmation modal elements not found');
+      return;
+    }
+
+    // Clear previous selections
+    candidatesList.innerHTML = '';
+    const selectedProducts = new Set();
+
+    if (candidates.length === 0) {
+      noMatches.style.display = 'block';
+      candidatesList.style.display = 'none';
+      confirmBtn.disabled = true;
+    } else {
+      noMatches.style.display = 'none';
+      candidatesList.style.display = 'block';
+
+      // Create candidate list
+      candidates.forEach((candidate, index) => {
+        const product = candidate.product;
+        const orderCode = product.OrderCode || 'N/A';
+        const description = product.Description || product['Product Description'] || product['Product Name'] || 'No description';
+        const imageUrl = product.Image_URL || product['Image URL'] || 'assets/no-image.png';
+
+        const candidateDiv = document.createElement('div');
+        candidateDiv.style.cssText = 'display: flex; align-items: center; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; cursor: pointer;';
+        candidateDiv.onclick = () => {
+          const checkbox = candidateDiv.querySelector('input[type="checkbox"]');
+          checkbox.checked = !checkbox.checked;
+          if (checkbox.checked) {
+            selectedProducts.add(product);
+          } else {
+            selectedProducts.delete(product);
+          }
+          confirmBtn.disabled = selectedProducts.size === 0;
+        };
+
+        candidateDiv.innerHTML = `
+          <input type="checkbox" style="margin-right: 12px; width: 20px; height: 20px;" 
+                 data-product-index="${index}">
+          <img src="${imageUrl}" alt="${description}" 
+               style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; margin-right: 12px;"
+               onerror="this.src='assets/no-image.png'">
+          <div style="flex: 1;">
+            <div style="font-weight: 600; margin-bottom: 4px;">${orderCode}</div>
+            <div style="font-size: 0.9em; color: #666; margin-bottom: 4px;">${description.substring(0, 60)}${description.length > 60 ? '...' : ''}</div>
+            <div style="font-size: 0.85em; color: #888;">
+              <span style="background: ${candidate.confidence === 'high' ? '#d1fae5' : '#fef3c7'}; 
+                           padding: 2px 6px; border-radius: 4px;">
+                ${candidate.confidence === 'high' ? 'High' : 'Medium'} confidence
+              </span>
+            </div>
+          </div>
+        `;
+
+        const checkbox = candidateDiv.querySelector('input[type="checkbox"]');
+        checkbox.onchange = (e) => {
+          e.stopPropagation();
+          if (checkbox.checked) {
+            selectedProducts.add(product);
+          } else {
+            selectedProducts.delete(product);
+          }
+          confirmBtn.disabled = selectedProducts.size === 0;
+        };
+
+        candidatesList.appendChild(candidateDiv);
+      });
+
+      confirmBtn.disabled = true;
+    }
+
+    // Setup button handlers
+    confirmBtn.onclick = () => {
+      if (selectedProducts.size === 0) return;
+
+      // Add selected products to selection
+      selectedProducts.forEach(product => {
+        this.dataService.addProduct(product, '', this.selectedRoom || 'Blank', 1);
+      });
+
+      // Close modal
+      modal.style.display = 'none';
+
+      // Show success feedback
+      this.showScanFeedback(`Added ${selectedProducts.size} product(s) to selection`);
+
+      // Update selection count
+      this.updateSelectionCount();
+
+      // Resume OCR scanning
+      setTimeout(() => {
+        if (this.currentScreen === 'scanner') {
+          this.startTextScanMode();
+        }
+      }, 1000);
+    };
+
+    cancelBtn.onclick = () => {
+      modal.style.display = 'none';
+      // Resume OCR scanning
+      setTimeout(() => {
+        if (this.currentScreen === 'scanner') {
+          this.startTextScanMode();
+        }
+      }, 500);
+    };
+
+    // Show modal
+    modal.style.display = 'flex';
   }
 } 

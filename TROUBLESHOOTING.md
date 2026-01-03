@@ -154,7 +154,56 @@ Comprehensive troubleshooting guide for common issues with the SEIMA Scanner app
    - Check for null bytes or control characters
    - Use CSV sanitization feature
 
-### 4. Barcode Scanner Problems
+### 4. Text Scan (OCR) Issues
+
+#### Text Scan Not Working
+**Symptoms:** Text Scan button doesn't work, no text detected, or errors
+**Causes:** Tesseract.js not loaded, poor lighting, camera issues
+
+**Solutions:**
+1. **Tesseract.js Loading**
+   - Check browser console for Tesseract.js loading errors
+   - Ensure internet connection for initial load (works offline after)
+   - Try refreshing the page
+
+2. **Lighting Conditions**
+   - Ensure good, even lighting on the product label
+   - Use flash or brighter environment
+   - Avoid shadows and glare
+   - Text must be clearly visible and reasonably large
+
+3. **Text Recognition**
+   - Ensure OrderCode (19xxxx format) or product name is clearly visible
+   - Hold device steady while scanning
+   - Wait 1-2 seconds between scans
+   - Try different angles if text not detected
+
+4. **Performance Issues**
+   - OCR is CPU-intensive and may be slower on older devices
+   - Close other apps to free up resources
+   - Text Scan scans every 1.5 seconds to balance performance
+
+#### No Products Found from Text Scan
+**Symptoms:** Text detected but no matching products found
+**Causes:** Text doesn't match catalog, incorrect OrderCode format
+
+**Solutions:**
+1. **Verify OrderCode Format**
+   - OrderCodes should be in 19xxxx format (6 digits starting with 19)
+   - Check that the detected text matches the actual OrderCode
+   - Try manual search to verify product exists
+
+2. **Product Description Matching**
+   - Ensure product name or description is clearly visible
+   - Text must match catalog entries (case-insensitive)
+   - Try using barcode scanning if available
+
+3. **Catalog Loading**
+   - Verify product catalog is loaded
+   - Check browser console for catalog loading errors
+   - Try refreshing the page
+
+### 5. Barcode Scanner Problems
 
 #### Camera Not Accessible
 **Symptoms:** Camera permission denied, black screen

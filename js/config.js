@@ -1,6 +1,6 @@
 // Configuration constants
 export const CONFIG = {
-  VERSION: '3.1.2',
+  VERSION: '4.0.0',
   ROOMS: {
     PREDEFINED: [
       { name: "Bath 1", icon: "🛁" },
