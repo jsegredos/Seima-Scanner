@@ -27,12 +27,9 @@ export class OCRService {
         throw new Error('Tesseract.js not loaded. Please ensure the script is included.');
       }
 
-      // Tesseract.js v5 - use simpler API without options object to avoid map error
-      // The CDN version should auto-detect paths
-      this.worker = await Tesseract.createWorker();
-
-      await this.worker.loadLanguage('eng');
-      await this.worker.initialize('eng');
+      // Tesseract.js v5 - workers come pre-initialized with language
+      // No need for loadLanguage() or initialize() - they're deprecated
+      this.worker = await Tesseract.createWorker('eng');
 
       // Optimised for product labels
       await this.worker.setParameters({
@@ -112,7 +109,13 @@ export class OCRService {
         const detectedTexts = [...new Set(lines)];
 
         if (detectedTexts.length > 0) {
+          console.log('📝 OCR detected text:', detectedTexts);
           onResults(detectedTexts);
+        }
+      } catch (error) {
+        // Ignore "Image too small" and "Line cannot be recognized" errors - these are normal
+        if (!error.message || (!error.message.includes('too small') && !error.message.includes('cannot be recognized'))) {
+          console.warn('OCR recognition error:', error);
         }
       } catch (error) {
         console.warn('OCR recognition error:', error);

@@ -21,4 +21,25 @@
     <button id="review-btn" class="primary-btn">Review (<span id="selection-count">0</span>)</button>
   </div>
   <div id="scanner-feedback"></div>
+</div>
+
+<!-- OCR Text Scan Confirmation Modal -->
+<div id="ocr-confirmation-modal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+    <h3 style="margin: 0 0 20px 0; color: #333;">Text Scan Results</h3>
+    <p style="margin-bottom: 20px; color: #666;">Select products to add to your selection:</p>
+    
+    <div id="ocr-candidates-list" style="margin-bottom: 20px;">
+      <!-- Candidate products will be listed here -->
+    </div>
+    
+    <div id="ocr-no-matches" style="display: none; padding: 20px; text-align: center; color: #666;">
+      <p>No matching products found. Try better lighting or angle.</p>
+    </div>
+    
+    <div class="modal-actions">
+      <button id="ocr-cancel-btn" class="secondary-btn">Cancel</button>
+      <button id="ocr-confirm-btn" class="primary-btn" disabled>Add Selected</button>
+    </div>
+  </div>
 </div> 
