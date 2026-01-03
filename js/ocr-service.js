@@ -27,14 +27,10 @@ export class OCRService {
         throw new Error('Tesseract.js not loaded. Please ensure the script is included.');
       }
 
-      this.worker = await Tesseract.createWorker({
-        // Note: logger function cannot be passed to Worker (DataCloneError)
-        // Use null or omit logger parameter
-        workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
-        corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
-      });
+      // Tesseract.js v5 - use simpler API without options object to avoid map error
+      // The CDN version should auto-detect paths
+      this.worker = await Tesseract.createWorker();
 
-      await this.worker.load();
       await this.worker.loadLanguage('eng');
       await this.worker.initialize('eng');
 
