@@ -29,6 +29,30 @@ Comprehensive troubleshooting guide for common issues with the SEIMA Scanner app
 
 ### 1. Application Loading Problems
 
+#### Product Catalog Not Loading
+**Symptoms:** Products not appearing, empty product list
+**Causes:** Google Sheets access issues, network problems, CORS errors
+
+**Solutions:**
+1. **Google Sheets Access**
+   - Verify Google Sheet is published correctly (File > Share > Publish to web)
+   - Check CSV export URL in `js/config.js` (`CATALOG_URL`)
+   - Ensure sheet is accessible without authentication
+   - Test URL directly in browser
+
+2. **Network Issues**
+   - Check internet connection
+   - Verify CORS headers on Google Sheets
+   - Try different network
+   - Check browser console for CORS errors
+
+3. **Cache Issues**
+   - Clear browser cache and localStorage
+   - Check browser console for cache-related errors
+   - Force reload (Ctrl+Shift+R or Cmd+Shift+R)
+
+### 2. Product Selection Issues
+
 #### Blank Screen on Load
 **Symptoms:** Application shows blank white screen
 **Causes:** JavaScript errors, browser compatibility, network issues
@@ -74,7 +98,7 @@ Comprehensive troubleshooting guide for common issues with the SEIMA Scanner app
    - Restart device
    - Check available memory and storage
 
-### 2. Email Functionality Issues
+### 3. Email Functionality Issues
 
 #### Email Not Sending
 **Symptoms:** Email fails to send, error messages in console
@@ -84,13 +108,15 @@ Comprehensive troubleshooting guide for common issues with the SEIMA Scanner app
 1. **EmailJS Configuration**
    ```javascript
    // Check in browser console
-   console.log(CONFIG.EMAIL_CONFIG);
+   console.log(CONFIG.EMAIL);
    
    // Verify configuration
+   PROVIDER: 'emailjs'
+   PUBLIC_KEY: 'MHAEjvnc_xx8DIRCA'
    SERVICE_ID: 'service_rblizfg'
    TEMPLATE_ID: 'template_8st9fhk'
-   USER_ID: 'your_user_id'
-   API_KEY: 'your_api_key'
+   FROM_EMAIL: 'noreply@seima.com.au'
+   BCC_EMAIL: 'jsegredos@gmail.com'
    ```
 
 2. **Network and Connectivity**
@@ -128,7 +154,7 @@ Comprehensive troubleshooting guide for common issues with the SEIMA Scanner app
    - Check for null bytes or control characters
    - Use CSV sanitization feature
 
-### 3. Barcode Scanner Problems
+### 4. Barcode Scanner Problems
 
 #### Camera Not Accessible
 **Symptoms:** Camera permission denied, black screen
@@ -152,7 +178,7 @@ Comprehensive troubleshooting guide for common issues with the SEIMA Scanner app
 
 #### Barcode Not Scanning
 **Symptoms:** Camera works but barcodes not recognised
-**Causes:** Poor lighting, barcode quality, distance
+**Causes:** Poor lighting, barcode quality, distance, iOS compatibility
 
 **Solutions:**
 1. **Scanning Conditions**
@@ -163,15 +189,23 @@ Comprehensive troubleshooting guide for common issues with the SEIMA Scanner app
 
 2. **Barcode Quality**
    - Ensure barcode is clear and undamaged
-   - Try different barcode types (EAN-13, Code 128)
-   - Check if barcode is in product database
+   - Try different barcode types (EAN-13, EAN-8, Code 128)
+   - Check if barcode exists in product database (BARCODE field)
+   - Verify barcode is mapped correctly in product catalog
 
 3. **Scanner Settings**
    - Enable flash for better lighting
-   - Try different camera if available
+   - Try different camera if available (front/rear)
    - Use manual focus by tapping screen
+   - On iOS: Ensure polyfills are loaded (check console for errors)
 
-### 4. PDF Generation Issues
+4. **iOS-Specific Issues**
+   - Use Chrome browser on iOS for best compatibility
+   - Ensure camera permissions are granted
+   - Check browser console for polyfill loading errors
+   - Try refreshing page if scanner doesn't initialize
+
+### 5. PDF Generation Issues
 
 #### PDF Not Generating
 **Symptoms:** PDF generation fails, error messages
@@ -209,28 +243,73 @@ Comprehensive troubleshooting guide for common issues with the SEIMA Scanner app
    - Check image source configuration
    - Use local image copies if needed
 
-### 5. Product Database Issues
+### 6. Lead Tracking & Selection Recording Issues
+
+#### Lead Wizard Not Working
+**Symptoms:** Lead wizard doesn't appear, form validation fails
+**Causes:** JavaScript errors, missing required fields
+
+**Solutions:**
+1. **Form Validation**
+   - Ensure all required fields are filled (name, email, project name)
+   - Check customer type is selected
+   - Verify phone number format (leading zeros preserved)
+   - Check browser console for validation errors
+
+2. **Builder/Merchant Search**
+   - Verify Google Sheets Apps Script URL is configured
+   - Check network connection
+   - Builder/merchant lists may be empty initially (populate as you add entries)
+   - Try refreshing page if lists don't load
+
+#### Selection Not Recording to Google Sheets
+**Symptoms:** Email sends but selection not recorded
+**Causes:** Google Sheets URL not configured, Apps Script errors
+
+**Solutions:**
+1. **Configuration Check**
+   ```javascript
+   // Check in browser console
+   console.log(CONFIG.SELECTION_RECORDING);
+   // Should show: ENABLED: true, GOOGLE_SHEETS_URL: 'https://...'
+   ```
+
+2. **Google Apps Script**
+   - Verify Apps Script is deployed as web app
+   - Check "Execute as: Me" and "Who has access: Anyone"
+   - Review Apps Script execution logs
+   - Test connection: `window.selectionRecorder.testConnection()`
+
+3. **Network Issues**
+   - Check internet connection
+   - Verify CORS is handled in Apps Script
+   - Check browser console for network errors
+
+### 7. Product Database Issues
 
 #### Products Not Loading
 **Symptoms:** Product search returns no results, empty product list
-**Causes:** CSV file issues, parsing errors, network problems
+**Causes:** Google Sheets access issues, parsing errors, network problems
 
 **Solutions:**
-1. **CSV File Validation**
-   - Check CSV file format
-   - Ensure proper encoding (UTF-8)
-   - Verify required columns exist
-   - Check for formatting errors
+1. **Google Sheets Validation**
+   - Verify Google Sheet is published as CSV
+   - Check `CATALOG_URL` in `js/config.js` is correct
+   - Ensure sheet has required columns: OrderCode, Description
+   - Verify BARCODE column exists for barcode scanning
+   - Check sheet is accessible without authentication
 
 2. **Network Issues**
-   - Check if CSV file is accessible
-   - Verify file permissions
-   - Try refreshing page
+   - Check internet connection
+   - Verify Google Sheets URL is accessible
+   - Check browser console for CORS or network errors
+   - Try accessing catalog URL directly in browser
 
 3. **Data Parsing**
    - Check browser console for parsing errors
-   - Test with smaller CSV file
    - Verify CSV structure matches expected format
+   - Check for special characters causing parsing issues
+   - Review cached data in localStorage (may need clearing)
 
 #### Product Search Not Working
 **Symptoms:** Search returns incorrect results or no results
@@ -247,27 +326,35 @@ Comprehensive troubleshooting guide for common issues with the SEIMA Scanner app
    - Verify product codes format
    - Remove special characters from search terms
 
-### 6. File Import Problems
+### 8. File Import Problems
 
-#### CSV Import Fails
-**Symptoms:** CSV file upload fails, error messages
-**Causes:** File format issues, size limits, encoding problems
+#### CSV/Excel Import Fails
+**Symptoms:** File upload fails, error messages, products not found
+**Causes:** File format issues, size limits, encoding problems, missing products
 
 **Solutions:**
 1. **File Format**
-   - Use correct CSV format with proper headers
+   - Use CSV or Excel (.xlsx) format
    - Check file encoding (UTF-8 recommended)
-   - Verify file size is within limits
+   - Verify file size is within limits (10MB max)
+   - Ensure OrderCode column exists (required)
 
 2. **Data Validation**
-   - Check for required columns
-   - Verify product codes exist in database
+   - Check for required columns (OrderCode)
+   - Verify product codes exist in catalog
    - Remove special characters from data
+   - Products not in catalog will be added with placeholder information
 
-3. **Browser Compatibility**
+3. **Import Mode**
+   - **Append mode**: Adds products to existing selection (goes to "Blank" room)
+   - **Override mode**: Replaces all selections (warning: clears everything)
+   - Choose appropriate mode for your needs
+
+4. **Browser Compatibility**
    - Try different browser
    - Check file API support
    - Use drag-and-drop instead of file picker
+   - Ensure JavaScript is enabled
 
 ## 🔍 Diagnostic Tools
 
@@ -280,19 +367,29 @@ Access browser console to check for errors:
 ### Common Console Commands
 ```javascript
 // Check application status
-window.seimaApp.getStatus()
+window.seimaDebug.getHealthStatus()
 
 // Debug selected products
-window.seimaDebug.getSelectedProducts()
+window.seimaApp.getSelectedProducts()
 
 // Test email functionality
 window.seimaDebug.testEmail()
 
-// Clear all data
-window.seimaDebug.clearAllData()
+// Check migration readiness (Microsoft Graph)
+window.seimaDebug.getMigrationReadiness()
+
+// Test selection recorder connection
+window.selectionRecorder.testConnection()
 
 // Check configuration
 console.log(CONFIG)
+
+// Get selection statistics
+window.appService.getSelectionStats()
+
+// Clear all data
+localStorage.clear()
+location.reload()
 ```
 
 ### Network Debugging
@@ -354,20 +451,30 @@ Check local storage:
 
 ### iOS Safari Issues
 **Common Problems:**
-- Camera orientation issues
+- Camera permission dialog not appearing
+- Barcode scanning not working
 - PDF download problems
 - Touch gesture conflicts
 
 **Solutions:**
 1. **Camera Issues**
-   - Use landscape mode
-   - Ensure proper lighting
-   - Try different camera apps
+   - Use Chrome browser on iOS for best compatibility
+   - Ensure camera permissions are granted in browser settings
+   - Try refreshing page if camera doesn't initialize
+   - Check browser console for polyfill loading errors
+   - Use landscape mode for better scanning
 
-2. **PDF Download**
+2. **Barcode Scanning**
+   - iOS requires polyfills for BarcodeDetector API
+   - Check console for "✅ Polyfill modules loaded" message
+   - Try Chrome instead of Safari
+   - Ensure good lighting and steady hand
+
+3. **PDF Download**
    - Use "Share" button
    - Save to Files app
-   - Use desktop version
+   - Email option works reliably
+   - Use desktop version if needed
 
 ### Android Browser Issues
 **Common Problems:**

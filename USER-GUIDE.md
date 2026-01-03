@@ -9,10 +9,12 @@ Complete guide for using the SEIMA Scanner application to select products, gener
 SEIMA Scanner is a web-based application that helps you:
 - Browse and select SEIMA bathroom and kitchen products
 - Scan product barcodes with your device camera
-- Organise products by room
+- Organise products by room with drag-and-drop reordering
+- Track customer leads and information
 - Generate professional PDF reports
 - Export product data as CSV files
 - Email selections to customers or colleagues
+- Automatically record selections to Google Sheets
 
 ### System Requirements
 
@@ -34,12 +36,10 @@ SEIMA Scanner is a web-based application that helps you:
 
 The main screen provides access to all features:
 
-- **Product Selection**: Browse and add products to your selection
-- **Barcode Scanner**: Scan product barcodes with your camera
-- **File Import**: Upload CSV files with product lists
-- **Review Selection**: View and manage your current selection
-- **Generate Reports**: Create PDF reports and CSV exports
-- **Email Reports**: Send selections via email
+- **Select Products**: Browse and add products to your selection
+- **View Selection**: Review and manage your current selection
+- **Clear Selection**: Remove all selected products
+- **SEIMA Contact**: Enter your staff contact details (included in PDFs and emails)
 
 ### Screen Navigation
 
@@ -75,9 +75,9 @@ The main screen provides access to all features:
    - Review the product details
 
 2. **Configure Selection**
-   - **Room**: Choose the room (Kitchen, Bathroom, Laundry, etc.)
-   - **Quantity**: Set the number of units needed
-   - **Notes**: Add any special requirements or notes
+   - **Room**: Choose from predefined rooms (Bath 1, Bath 2, Bath 3, Ensuite, Powder, Kitchen, Butlers, Laundry, Alfresco) or create a custom room
+   - **Quantity**: Set the number of units needed (1-10)
+   - **Notes**: Add any special requirements or notes (max 140 characters)
 
 3. **Add to Selection**
    - Click "Add to Selection"
@@ -87,20 +87,21 @@ The main screen provides access to all features:
 ### Managing Your Selection
 
 1. **View Current Selection**
-   - Click "Review Selection" to see all selected products
+   - Click "View Selection" from the main screen
    - Products are organised by room
    - Total count and estimated value displayed
+   - Drag-and-drop to reorder products within rooms (mobile and desktop)
 
 2. **Edit Products**
-   - Change quantities
-   - Update room assignments
-   - Modify notes
-   - Remove products from selection
+   - Tap/click the edit button on any product card
+   - Change quantities, room assignments, or notes
+   - Delete products from selection
+   - Inline quantity display on review cards
 
 3. **Clear Selection**
-   - Remove individual products
-   - Clear entire selection
-   - Start fresh selection
+   - Remove individual products via edit screen
+   - Use "Clear Selection" button on main screen to clear all
+   - Confirmation dialog prevents accidental clearing
 
 ## 📷 Barcode Scanner
 
@@ -131,20 +132,22 @@ The main screen provides access to all features:
 
 ## 📁 File Import
 
-### CSV File Import
+### CSV/Excel File Import
 
-1. **Prepare CSV File**
-   - Use the correct format (see template below)
+1. **Prepare File**
+   - Use CSV or Excel (.xlsx) format
    - Include OrderCode column (required)
    - Include Room, Quantity, Notes columns (optional)
 
 2. **Import Process**
-   - Click "File Import" from main screen
-   - Select your CSV file
-   - Review detected products
-   - Confirm import
+   - Access file import from product selection screen
+   - Drag and drop file or click to browse
+   - Choose import mode:
+     - **Append**: Add to existing selection (items go to "Blank" room)
+     - **Override**: Replace all existing selections (warning: clears everything)
+   - Review import results
 
-3. **CSV Format**
+3. **File Format**
    ```csv
    OrderCode,Room,Quantity,Notes
    "ABC123","Kitchen",2,"Wall mounted"
@@ -155,90 +158,143 @@ The main screen provides access to all features:
 ### Import Results
 
 - **Successful**: Products added to selection
-- **Not Found**: Products not in catalogue (manual addition required)
-- **Errors**: Invalid format or missing data
+- **Not Found**: Products not in catalogue (added with placeholder information)
+- **Errors**: Invalid format or missing data (displayed in results)
 
 ## 📊 Reports and Export
+
+### Lead Collection Wizard
+
+When you click "Email" from the review screen, a multi-step wizard collects customer information:
+
+**Step 1: Customer & Project Information**
+- Customer Name (required)
+- Customer Email (required)
+- Customer Phone (optional, preserves leading zeros)
+- Project Name (required)
+- Project Address (optional)
+- Project Notes (optional)
+- Options: Exclude price, Export CSV (recommended)
+
+**Step 2: Customer Type**
+- Select customer type: Builder, Merchant, Homeowner, or Other
+- If Builder: Select or add builder name (searches existing list)
+- If Merchant: Select or add merchant name (searches existing list)
+- Builder/Merchant lists are shared across all showrooms and sorted alphabetically
+
+**Step 3: How They Found Us**
+- Select referral sources (multiple selections possible)
+- If referred by builder: Select or add referral builder
+- If referred by merchant: Select or add referral merchant
+- Custom referral source option
 
 ### PDF Reports
 
 1. **Generate PDF**
-   - Click "Generate PDF" from main screen
-   - Fill in customer details:
-     - Name (required)
-     - Email (required)
-     - Project name
-     - Address
-     - Phone number
+   - Complete the lead collection wizard
+   - PDF is automatically generated with customer details
 
 2. **PDF Features**
    - Professional SEIMA branding
    - Customer information section
+   - Staff contact details (if configured)
    - Product images and specifications
    - Room-by-room organisation
-   - Pricing information (where available)
+   - Pricing information (optional, can be excluded)
    - QR codes for product links
+   - Professional title page
 
-3. **PDF Options**
+3. **PDF Quality Options**
    - **Standard Quality**: Full resolution images
-   - **Email Compatible**: Optimised for email attachments
+   - **Email Compatible**: Optimised for email attachments (smaller file size)
    - **Print Ready**: High-quality printing
 
 ### CSV Export
 
 1. **Generate CSV**
-   - Enable "Export CSV" option when generating reports
-   - CSV file will be created alongside PDF
+   - Enable "Export CSV" option in Step 1 of lead wizard (recommended)
+   - CSV file is automatically generated with character sanitisation for email compatibility
 
 2. **CSV Contents**
    - Product codes and descriptions
    - Room assignments
    - Quantities and notes
-   - Pricing information
+   - Pricing information (if not excluded)
    - Website links
+   - All data sanitised for reliable email delivery
 
 ## 📧 Email Integration
 
 ### Sending Reports
 
-1. **Email Setup**
-   - Enter recipient email address
-   - Add subject line (optional)
-   - Include personal message (optional)
+1. **Email Process**
+   - Complete the lead collection wizard
+   - Customer email is pre-filled from Step 1
+   - Click "Send" to generate PDF and send email
+   - Email is automatically sent with PDF and CSV (if selected) attachments
 
 2. **Attachments**
    - PDF report (always included)
-   - CSV file (if selected)
-   - Professional email template
+   - CSV file (if "Export CSV" was selected)
+   - Professional HTML email template
 
-3. **Send Email**
-   - Click "Send Email"
-   - Wait for confirmation
-   - Check sent status
+3. **Email Features**
+   - Professional SEIMA branding
+   - Customer information summary
+   - Project details
+   - Attached documents description
+   - Staff contact information
+   - BCC copy sent to SEIMA staff email
+   - Automatic download fallback if email fails
 
 ### Email Templates
 
-The application sends professional emails with:
+The application sends professional HTML emails with:
 - SEIMA branding and logo
 - Customer information summary
 - Project details
 - Attached documents description
-- Contact information
+- Staff contact information
+- Australian English spelling throughout
+
+### Selection Recording
+
+After successful email sending:
+- Selection is automatically recorded to Google Sheets (if configured)
+- Includes all customer and staff information
+- Complete product selection details
+- Selection statistics and email status
+- Builder and merchant referral information
 
 ## 🔧 Settings and Preferences
 
-### User Preferences
+### Staff Contact Details
 
-- **Room Defaults**: Set default room for new products
-- **Email Settings**: Configure default email subject and message
-- **Display Options**: Choose product display preferences
-- **Language**: Interface language (Australian English)
+1. **Configure Staff Contact**
+   - Click "SEIMA Contact" button on main screen
+   - Enter your name, mobile number, and email address
+   - Click "Save Contact Details"
+   - Your details will be included in all PDF reports and you'll receive BCC copies of emails
+
+2. **Staff Contact Features**
+   - Stored locally in browser
+   - Included in PDF title page
+   - Included in email templates
+   - Receives BCC copy of all customer emails
 
 ### Data Management
 
-- **Clear Data**: Remove all stored selections and preferences
-- **Export Data**: Backup your selections
-- **Import Data**: Restore previous selections
+- **Clear Selection**: Remove all selected products and room assignments
+- **Local Storage**: All data stored locally in browser
+- **Automatic Recording**: Selections automatically recorded to Google Sheets (if configured)
+- **Data Portability**: Export selections as CSV/PDF at any time
+
+### Room Management
+
+- **Predefined Rooms**: Bath 1, Bath 2, Bath 3, Ensuite, Powder, Kitchen, Butlers, Laundry, Alfresco
+- **Custom Rooms**: Create additional custom room names
+- **Drag-and-Drop**: Reorder products within rooms on mobile and desktop
+- **Room Organisation**: Products automatically grouped by room in review screen
 
 ## 💡 Tips and Best Practices
 
@@ -381,22 +437,34 @@ SEIMA product codes follow this format:
 
 ### Room Categories
 
-Standard room categories:
-- Kitchen
-- Bathroom
+Predefined room categories:
+- Bath 1
+- Bath 2
+- Bath 3
 - Ensuite
+- Powder
+- Kitchen
+- Butlers
 - Laundry
-- Powder Room
-- Toilet
-- Utility
-- Other
+- Alfresco
+- Custom rooms (user-created)
 
 ### File Formats
 
 Supported file formats:
-- **PDF**: Adobe PDF format
-- **CSV**: Comma-separated values
+- **PDF**: Adobe PDF format (generated reports)
+- **CSV**: Comma-separated values (import/export)
+- **Excel**: .xlsx format (import only)
 - **Images**: JPEG, PNG for product images
+
+### Builder/Merchant Management
+
+- **Shared Lists**: Builder and merchant lists are shared across all showrooms
+- **Real-Time Search**: As you type, the system searches for existing entries
+- **Duplicate Prevention**: Shows existing matches before allowing new entries
+- **Auto-Complete**: Click suggestions to select from existing entries
+- **Alphabetical Sorting**: All lists automatically sorted A-Z (case-insensitive)
+- **Server-Side Storage**: Lists stored in Google Sheets and cached locally
 
 ---
 

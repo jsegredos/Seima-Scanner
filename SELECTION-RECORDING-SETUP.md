@@ -395,9 +395,17 @@ SELECTION_RECORDING: {
 
 1. **Test the connection**:
 ```javascript
-// In browser console
-import('./js/selection-recorder.js').then(module => {
-  module.selectionRecorder.testConnection().then(result => {
+// In browser console (after page loads)
+window.testSelectionRecorder().then(result => {
+  console.log('Test result:', result);
+});
+
+// OR check status
+window.getSelectionRecorderStatus();
+
+// OR use direct import (if functions not available)
+import('./js/selection-recorder-config.js').then(module => {
+  module.testSelectionRecorder().then(result => {
     console.log('Test result:', result);
   });
 });
@@ -470,14 +478,27 @@ The system now includes **server-side builder and merchant lists** with smart du
 
 ### **Testing Commands:**
 ```javascript
-// Test the builder/merchant service
-testBuilderMerchantService()
+// Test the builder/merchant service (if available globally)
+// Note: These functions may need to be accessed via the service directly
 
-// Check cache status
-getBuilderMerchantStatus()
+// Access builder/merchant service
+const service = window.builderMerchantService || 
+  (await import('./js/builder-merchant-service.js')).builderMerchantService;
 
-// Clear cache (force refresh from server)
-clearBuilderMerchantCache()
+// Get builders
+await service.getBuilders();
+
+// Get merchants
+await service.getMerchants();
+
+// Search builders
+await service.searchBuilders('query');
+
+// Add builder
+await service.addBuilder('Builder Name');
+
+// Add merchant
+await service.addMerchant('Merchant Name');
 ```
 
 ## 🎉 You're Done!

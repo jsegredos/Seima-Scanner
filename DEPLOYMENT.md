@@ -18,7 +18,9 @@ This guide covers deployment options for the SEIMA Scanner application:
 - **Web Server**: Apache, Nginx, or IIS
 - **SSL Certificate**: Required for camera access and security
 - **Domain**: Registered domain name recommended
-- **Email Service**: EmailJS account or Microsoft Graph API
+- **Email Service**: EmailJS account (Microsoft Graph API migration-ready)
+- **Google Sheets**: Google account for product catalog and selection recording
+- **Google Apps Script**: For selection recording and builder/merchant management
 
 ### Development Tools
 
@@ -35,10 +37,16 @@ Ensure your deployment includes all necessary files:
 SEIMA-Scanner/
 ├── index.html              # Main entry point
 ├── style.css               # Global styles
-├── app.js                  # Browser compatibility
-├── version.txt             # Version tracking
-├── pricelist.csv          # Product database
+├── app.js                  # Browser compatibility (legacy)
+├── version.txt             # Version tracking and changelog
 ├── js/                     # JavaScript modules
+│   ├── app-service.js     # Main service coordinator
+│   ├── data-service.js    # Product catalog management
+│   ├── email-service.js   # Email functionality
+│   ├── pdf-service.js     # PDF/CSV generation
+│   ├── selection-recorder.js # Google Sheets integration
+│   ├── lead-tracker.js    # Lead tracking
+│   └── ...                # Other modules
 ├── screens/               # HTML screens
 ├── assets/                # Images and resources
 ├── server.py              # Python dev server
@@ -80,19 +88,26 @@ Update `js/config.js` for development:
 
 ```javascript
 // Development configuration
-const CONFIG = {
+export const CONFIG = {
   // EmailJS settings
-  EMAIL_CONFIG: {
+  EMAIL: {
+    PROVIDER: 'emailjs',
+    PUBLIC_KEY: 'your_dev_public_key',
     SERVICE_ID: 'your_dev_service_id',
     TEMPLATE_ID: 'your_dev_template_id',
-    USER_ID: 'your_dev_user_id',
-    API_KEY: 'your_dev_api_key'
+    FROM_EMAIL: 'noreply@seima.com.au',
+    FROM_NAME: 'Seima Team',
+    BCC_EMAIL: 'your_dev_email@example.com'
   },
   
-  // Development settings
-  DEBUG: true,
-  API_BASE_URL: 'http://localhost:8000',
-  ENVIRONMENT: 'development'
+  // Product catalog (Google Sheets)
+  CATALOG_URL: 'https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&single=true&output=csv',
+  
+  // Selection recording (Google Sheets Apps Script)
+  SELECTION_RECORDING: {
+    ENABLED: true,
+    GOOGLE_SHEETS_URL: 'https://script.google.com/macros/s/.../exec'
+  }
 };
 ```
 
@@ -263,33 +278,58 @@ Update `js/config.js` for production:
 
 ```javascript
 // Production configuration
-const CONFIG = {
+export const CONFIG = {
   // EmailJS settings
-  EMAIL_CONFIG: {
+  EMAIL: {
+    PROVIDER: 'emailjs',
+    PUBLIC_KEY: 'MHAEjvnc_xx8DIRCA',
     SERVICE_ID: 'service_rblizfg',
     TEMPLATE_ID: 'template_8st9fhk',
-    USER_ID: 'your_prod_user_id',
-    API_KEY: 'your_prod_api_key'
+    FROM_EMAIL: 'noreply@seima.com.au',
+    FROM_NAME: 'Seima Team',
+    BCC_EMAIL: 'jsegredos@gmail.com',
+    RETRY_ATTEMPTS: 3,
+    RETRY_DELAY: 2000
   },
   
-  // Production settings
-  DEBUG: false,
-  API_BASE_URL: 'https://seima-scanner.yourdomain.com',
-  ENVIRONMENT: 'production'
+  // Product catalog (Google Sheets - production URL)
+  CATALOG_URL: 'https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&single=true&output=csv',
+  
+  // Selection recording (Google Sheets Apps Script - production URL)
+  SELECTION_RECORDING: {
+    ENABLED: true,
+    GOOGLE_SHEETS_URL: 'https://script.google.com/macros/s/.../exec',
+    RETRY_ATTEMPTS: 3,
+    RETRY_DELAY: 1000
+  }
 };
 ```
 
+### Google Sheets Setup
+
+1. **Product Catalog**
+   - Create Google Sheet with product data
+   - Publish as CSV (File > Share > Publish to web > CSV format)
+   - Copy the published URL to `CONFIG.CATALOG_URL`
+
+2. **Selection Recording**
+   - Follow instructions in `SELECTION-RECORDING-SETUP.md`
+   - Deploy Google Apps Script
+   - Copy web app URL to `CONFIG.SELECTION_RECORDING.GOOGLE_SHEETS_URL`
+
 ### Environment Variables
 
-For sensitive configuration, use environment variables:
+For sensitive configuration, consider using environment variables (requires build process):
 
 ```bash
 # .env file (not committed to git)
+EMAILJS_PUBLIC_KEY=your_public_key
 EMAILJS_SERVICE_ID=service_rblizfg
 EMAILJS_TEMPLATE_ID=template_8st9fhk
-EMAILJS_USER_ID=your_user_id
-EMAILJS_API_KEY=your_api_key
+GOOGLE_SHEETS_URL=https://script.google.com/macros/s/.../exec
 ```
+
+Note: Current implementation uses direct configuration in `js/config.js`. For production, consider implementing a build process to inject environment variables.
 
 ## 🔒 Security Configuration
 
@@ -438,10 +478,13 @@ Document recovery steps:
    sudo systemctl reload apache2
    ```
 
-2. **Product Database Updates**
-   - Update `pricelist.csv` with new products
-   - Validate CSV format
-   - Test product search functionality
+2. **Product Catalog Updates**
+   - Update Google Sheet with new products
+   - Changes automatically reflected (cached for performance)
+   - Application checks for updates in background
+   - Cache invalidation on changes triggers reload
+   - Validate CSV format in Google Sheets
+   - Test product search functionality after updates
 
 3. **Security Updates**
    - Update web server software
@@ -460,10 +503,12 @@ Document recovery steps:
    - Use browser caching
    - Implement CDN if needed
 
-3. **Database Optimization**
-   - Optimize CSV file size
-   - Index frequently searched fields
+3. **Data Optimization**
+   - Optimize Google Sheet structure
+   - Keep product catalog columns consistent
    - Regular performance monitoring
+   - Monitor selection recording performance
+   - Review builder/merchant list growth
 
 ## 🧪 Testing
 

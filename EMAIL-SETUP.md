@@ -76,15 +76,20 @@ CSV Filename: {{csv_filename}}
 Update the configuration in `js/config.js`:
 
 ```javascript
-EMAIL_CONFIG: {
-  SERVICE_ID: 'service_rblizfg',      // Your EmailJS service ID
-  TEMPLATE_ID: 'template_8st9fhk',    // Your EmailJS template ID
-  USER_ID: 'your_emailjs_user_id',    // Your EmailJS user ID
-  API_KEY: 'your_emailjs_api_key',    // Your EmailJS API key
+EMAIL: {
+  PROVIDER: 'emailjs',
+  PUBLIC_KEY: 'MHAEjvnc_xx8DIRCA',    // Your EmailJS public key
+  SERVICE_ID: 'service_rblizfg',        // Your EmailJS service ID
+  TEMPLATE_ID: 'template_8st9fhk',      // Your EmailJS template ID
+  FROM_EMAIL: 'noreply@seima.com.au',   // From email address
+  FROM_NAME: 'Seima Team',               // From name
+  BCC_EMAIL: 'jsegredos@gmail.com',     // BCC email for record keeping
   RETRY_ATTEMPTS: 3,
-  TIMEOUT: 30000
+  RETRY_DELAY: 2000
 }
 ```
+
+**Note**: The current implementation uses `PUBLIC_KEY` instead of separate `USER_ID` and `API_KEY`. EmailJS v3 uses public keys for authentication.
 
 ### 5. Testing EmailJS Setup
 
@@ -97,8 +102,21 @@ window.seimaDebug.testEmail({
   email: 'test@example.com',
   project: 'Test Project',
   address: 'Test Address',
-  phone: '1234567890'
+  phone: '1234567890',
+  mobile: '1234567890'
 });
+
+// Or test with current selection:
+const userDetails = {
+  name: 'Test Customer',
+  email: 'customer@example.com',
+  project: 'Test Project',
+  address: '123 Test St',
+  phone: '0412 345 678',
+  sendEmail: true,
+  exportCsv: true
+};
+await window.appService.generateAndSendPDF(userDetails);
 ```
 
 ## 🔄 Microsoft Graph API Migration
@@ -238,30 +256,28 @@ class MicrosoftGraphEmailService {
 Update `js/config.js` to support Microsoft Graph:
 
 ```javascript
-EMAIL_CONFIG: {
-  // Current EmailJS config
-  EMAILJS: {
-    SERVICE_ID: 'service_rblizfg',
-    TEMPLATE_ID: 'template_8st9fhk',
-    USER_ID: 'your_emailjs_user_id',
-    API_KEY: 'your_emailjs_api_key'
-  },
-  
-  // New Microsoft Graph config
-  MICROSOFT_GRAPH: {
-    CLIENT_ID: 'your_client_id',
-    CLIENT_SECRET: 'your_client_secret',
-    TENANT_ID: 'your_tenant_id',
-    SCOPE: 'https://graph.microsoft.com/.default'
-  },
-  
+EMAIL: {
   // Active provider
-  ACTIVE_PROVIDER: 'EMAILJS', // or 'MICROSOFT_GRAPH'
+  PROVIDER: 'emailjs', // or 'microsoftGraph'
+  
+  // Current EmailJS config
+  PUBLIC_KEY: 'MHAEjvnc_xx8DIRCA',
+  SERVICE_ID: 'service_rblizfg',
+  TEMPLATE_ID: 'template_8st9fhk',
+  FROM_EMAIL: 'noreply@seima.com.au',
+  FROM_NAME: 'Seima Team',
+  BCC_EMAIL: 'jsegredos@gmail.com',
+  
+  // Microsoft Graph config (for future migration)
+  MICROSOFT_CLIENT_ID: null, // To be configured
+  MICROSOFT_TENANT_ID: null, // To be configured
   
   RETRY_ATTEMPTS: 3,
-  TIMEOUT: 30000
+  RETRY_DELAY: 2000
 }
 ```
+
+**Note**: The architecture is ready for Microsoft Graph migration. The `EmailService` class supports provider switching via `switchEmailProvider()` method.
 
 ### 4. Migration Steps
 
@@ -276,8 +292,10 @@ EMAIL_CONFIG: {
    - Monitor performance and errors
 
 3. **Full Migration**
-   - Switch `ACTIVE_PROVIDER` to `MICROSOFT_GRAPH`
-   - Remove EmailJS dependencies
+   - Switch `CONFIG.EMAIL.PROVIDER` to `'microsoftGraph'`
+   - Or use programmatic switching: `await window.appService.switchEmailProvider('microsoftGraph')`
+   - Test thoroughly in production environment
+   - Remove EmailJS dependencies (optional, can keep as fallback)
    - Update documentation
 
 ## 🔧 Advanced Configuration
@@ -299,19 +317,21 @@ const htmlContent = template.generateEmailHTML(userDetails, {
 
 ### Character Sanitisation
 
-The application includes character sanitisation for email compatibility:
+The application includes comprehensive character sanitisation for email compatibility:
 
 ```javascript
-// PDF Service includes CSV sanitisation
+// PDF Service includes CSV sanitisation for EmailJS compatibility
 _sanitizeCSVForEmail(csvContent) {
   return csvContent
     .replace(/\0/g, '') // Remove null bytes
-    .replace(/"/g, '"').replace(/"/g, '"') // Smart quotes
+    .replace(/"/g, '"').replace(/"/g, '"') // Smart quotes to straight quotes
     .replace(/€/g, 'EUR') // Euro symbol
-    .replace(/–/g, '-').replace(/—/g, '-') // En/em dashes
+    .replace(/–/g, '-').replace(/—/g, '-') // En/em dashes to hyphens
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, ''); // Control characters
 }
 ```
+
+This sanitisation ensures CSV attachments work reliably with EmailJS and prevents base64 encoding corruption issues.
 
 ### Error Handling
 
