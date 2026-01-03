@@ -1345,8 +1345,15 @@ export class NavigationManager {
    * Handle OCR results and show confirmation modal
    */
   async handleOcrResults(detectedTexts) {
-    // Stop OCR scanning during confirmation
+    // Stop OCR scanning during confirmation (already stopped in OCR service, but ensure it)
     ocrService.stopScanning();
+
+    // Check if modal is already open to prevent multiple modals
+    const existingModal = document.getElementById('ocr-confirmation-modal');
+    if (existingModal && existingModal.style.display !== 'none') {
+      console.log('OCR modal already open, ignoring new detection');
+      return;
+    }
 
     if (!this.dataService.isLoaded) {
       this.showScanFeedback('Product data loading, please wait...');

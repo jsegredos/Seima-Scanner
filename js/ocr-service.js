@@ -10,6 +10,7 @@ export class OCRService {
     this.isInitialized = false;
     this.isScanning = false;
     this.scanInterval = null;
+    this.isProcessing = false; // Flag to prevent multiple simultaneous callbacks
   }
 
   /**
@@ -74,7 +75,8 @@ export class OCRService {
     const ctx = canvas.getContext('2d');
 
     this.scanInterval = setInterval(async () => {
-      if (!this.isScanning || videoElement.paused || videoElement.ended) {
+      // Stop if not scanning, processing, or video not ready
+      if (!this.isScanning || this.isProcessing || videoElement.paused || videoElement.ended) {
         return;
       }
 
@@ -110,8 +112,20 @@ export class OCRService {
         // Deduplicate
         const detectedTexts = [...new Set(lines)];
 
-        if (detectedTexts.length > 0) {
+        if (detectedTexts.length > 0 && !this.isProcessing) {
+          // Stop scanning immediately before calling callback
+          this.isProcessing = true;
+          this.isScanning = false; // Prevent further scans
+          
           console.log('📝 OCR detected text:', detectedTexts);
+          
+          // Clear interval before callback to prevent race conditions
+          if (this.scanInterval) {
+            clearInterval(this.scanInterval);
+            this.scanInterval = null;
+          }
+          
+          // Call callback (which should stop scanning, but we already did)
           onResults(detectedTexts);
         }
       } catch (error) {
@@ -135,6 +149,7 @@ export class OCRService {
       this.scanInterval = null;
     }
     this.isScanning = false;
+    this.isProcessing = false; // Reset processing flag
     console.log('🛑 OCR scanning stopped');
   }
 
