@@ -117,8 +117,6 @@ export class OCRService {
         if (!error.message || (!error.message.includes('too small') && !error.message.includes('cannot be recognized'))) {
           console.warn('OCR recognition error:', error);
         }
-      } catch (error) {
-        console.warn('OCR recognition error:', error);
         // Continue scanning on error
       }
     }, interval);
