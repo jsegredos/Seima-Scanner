@@ -15,7 +15,17 @@ export class OCRProductMatcher {
     const orderCodeRegex = /^19\d{4}$/; // Exact 19xxxx format
 
     for (const text of texts) {
+      // Clean and normalize text
       let normalized = text.trim().toUpperCase();
+      
+      // Remove excessive whitespace
+      normalized = normalized.replace(/\s+/g, ' ').trim();
+      
+      // Extract OrderCode from text (handle cases where OCR adds spaces: "19 12 34" -> "191234")
+      const orderCodeInText = normalized.match(/19\s*\d\s*\d\s*\d\s*\d/);
+      if (orderCodeInText) {
+        normalized = orderCodeInText[0].replace(/\s/g, '');
+      }
 
       // Priority 1: Exact OrderCode match (19xxxx format)
       if (orderCodeRegex.test(normalized)) {

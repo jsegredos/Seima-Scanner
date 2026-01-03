@@ -31,10 +31,12 @@ export class OCRService {
       // No need for loadLanguage() or initialize() - they're deprecated
       this.worker = await Tesseract.createWorker('eng');
 
-      // Optimised for product labels
+      // Optimised for product labels and OrderCodes
       await this.worker.setParameters({
         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -.,()',
-        preserve_interword_spaces: '1',
+        preserve_interword_spaces: '0', // Don't preserve spaces - we'll clean them
+        tessedit_pageseg_mode: '6', // Assume uniform block of text
+        tessedit_ocr_engine_mode: '1', // LSTM only (faster, better for printed text)
       });
 
       this.isInitialized = true;
@@ -94,16 +96,16 @@ export class OCRService {
         canvas.height = height;
         ctx.drawImage(videoElement, 0, 0, width, height);
 
-        // Optional: Preprocess for better results in poor lighting
-        // this.preprocessCanvasForOCR(canvas);
+        // Preprocess for better OCR results
+        this.preprocessCanvasForOCR(canvas);
 
         // Perform OCR
         const result = await this.worker.recognize(canvas);
         
-        // Extract text lines
+        // Extract and clean text lines
         const lines = result.data.lines
-          .map(line => line.text.trim())
-          .filter(text => text.length > 3); // Filter out very short text
+          .map(line => this.cleanOcrText(line.text))
+          .filter(text => text.length > 2); // Filter out very short text
 
         // Deduplicate
         const detectedTexts = [...new Set(lines)];
@@ -137,19 +139,59 @@ export class OCRService {
   }
 
   /**
-   * Optional: Preprocess canvas for better OCR results in poor lighting
+   * Clean OCR text: remove excessive whitespace, normalize, extract useful patterns
+   * @param {string} text - Raw OCR text
+   * @returns {string} Cleaned text
+   */
+  cleanOcrText(text) {
+    if (!text) return '';
+    
+    // Remove excessive whitespace (multiple spaces/tabs/newlines)
+    let cleaned = text.replace(/\s+/g, ' ').trim();
+    
+    // Extract OrderCode pattern (19 followed by 4 digits, even with spaces)
+    const orderCodeMatch = cleaned.match(/19\s*\d\s*\d\s*\d\s*\d/);
+    if (orderCodeMatch) {
+      // Normalize to 19xxxx format
+      const code = orderCodeMatch[0].replace(/\s/g, '');
+      if (code.length === 6) {
+        return code; // Return clean OrderCode
+      }
+    }
+    
+    // Remove single character words and excessive punctuation
+    cleaned = cleaned.replace(/\b\w\b/g, '').replace(/[^\w\s\d-]/g, '');
+    
+    // Normalize whitespace again
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    
+    return cleaned;
+  }
+
+  /**
+   * Preprocess canvas for better OCR results
+   * Improves contrast and sharpness for text recognition
    * @param {HTMLCanvasElement} canvas - Canvas to preprocess
    */
   preprocessCanvasForOCR(canvas) {
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
 
+    // Apply contrast enhancement and grayscale conversion
     for (let i = 0; i < data.length; i += 4) {
-      const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      // Boost contrast for better recognition
-      const boosted = avg < 100 ? avg * 0.8 : avg + (255 - avg) * 0.5;
-      data[i] = data[i + 1] = data[i + 2] = boosted;
+      // Convert to grayscale
+      const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+      
+      // Enhance contrast (make dark text darker, light background lighter)
+      const contrast = 1.5; // Contrast factor
+      const enhanced = Math.max(0, Math.min(255, ((gray - 128) * contrast) + 128));
+      
+      // Apply threshold for better text clarity
+      const threshold = enhanced > 128 ? 255 : 0;
+      
+      data[i] = data[i + 1] = data[i + 2] = threshold;
+      // Keep alpha channel
     }
 
     ctx.putImageData(imageData, 0, 0);
