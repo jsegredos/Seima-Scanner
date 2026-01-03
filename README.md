@@ -22,7 +22,7 @@ SEIMA Scanner is a comprehensive product selection tool that allows users to:
 - **Barcode Scanner**: Use device camera to scan product barcodes (EAN-13, EAN-8, Code 128)
   - iOS Safari support with polyfills
   - Android device optimisation
-  - Hybrid scanning engine (ZXing + QuaggaJS)
+  - Uses BarcodeDetector API (native or polyfill)
 - **Room Organisation**: Organise products by predefined or custom rooms
   - Predefined rooms: Bath 1, Bath 2, Bath 3, Ensuite, Powder, Kitchen, Butlers, Laundry, Alfresco
   - Custom room creation
@@ -108,8 +108,7 @@ SEIMA Scanner is a comprehensive product selection tool that allows users to:
 - **jsPDF AutoTable**: Table generation in PDFs
 - **PapaParse**: CSV parsing and generation
 - **EmailJS**: Email service integration (current)
-- **ZXing**: Barcode scanning (primary engine)
-- **QuaggaJS**: Barcode scanning (fallback engine)
+- **BarcodeDetector API**: Native barcode scanning (with polyfill for iOS/Safari)
 - **SheetJS (xlsx)**: Excel file parsing
 - **@undecaf/zbar-wasm**: iOS barcode scanning polyfill
 - **@undecaf/barcode-detector-polyfill**: iOS BarcodeDetector API polyfill
@@ -250,8 +249,7 @@ The application uses browser localStorage for:
 ## 🔍 Barcode Scanning
 
 Barcode scanning uses a hybrid approach with multiple engines:
-- **Primary Engine**: ZXing (modern, fast)
-- **Fallback Engine**: QuaggaJS (compatibility)
+- **Primary Engine**: BarcodeDetector API (native browser support)
 - **iOS Support**: Polyfills for BarcodeDetector API
   - `@undecaf/zbar-wasm` for WASM-based scanning
   - `@undecaf/barcode-detector-polyfill` for API compatibility

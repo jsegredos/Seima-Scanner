@@ -16,8 +16,8 @@ export const CONFIG = {
   },
   
   SCANNER: {
-    DEFAULT_ENGINE: 'zxing',
-    ENGINES: ['zxing', 'quagga']
+    DEFAULT_ENGINE: 'detector',
+    ENGINES: ['detector'] // Uses BarcodeDetector API (native or polyfill)
   },
   
   SEARCH: {
