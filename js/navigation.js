@@ -1418,11 +1418,17 @@ export class NavigationManager {
     // Get catalog
     const catalog = this.dataService.getAllProducts();
     
-    // Find matching products
-    const candidates = OCRProductMatcher.findProductsByOcrTexts(detectedTexts, catalog);
+    // Find matching products (may return array of matches or object with families)
+    const result = OCRProductMatcher.findProductsByOcrTexts(detectedTexts, catalog);
 
-    // Show confirmation modal
-    this.showOcrConfirmationModal(candidates, detectedTexts);
+    // Check if multiple product families detected
+    if (result && result.requiresSelection && result.families) {
+      this.showProductFamilySelectionModal(result.families, detectedTexts);
+    } else {
+      // Single family or auto-selected - show product candidates
+      const candidates = Array.isArray(result) ? result : [];
+      this.showOcrConfirmationModal(candidates, detectedTexts);
+    }
   }
 
   /**
@@ -1526,6 +1532,9 @@ export class NavigationManager {
       confirmBtn.disabled = true;
     }
 
+    // Reset confirm button text
+    confirmBtn.textContent = 'Add Selected';
+
     // Setup button handlers
     confirmBtn.onclick = () => {
       if (selectedProducts.size === 0) return;
@@ -1566,6 +1575,113 @@ export class NavigationManager {
       // Don't auto-resume - user can tap Capture button again if needed
       this.showScanFeedback('Text Scan cancelled');
     };
+
+    // Show modal
+    modal.style.display = 'flex';
+  }
+
+  /**
+   * Show product family selection modal when multiple families detected
+   * @param {Array} families - Array of family objects with {familyName, matches, totalScore}
+   * @param {Array} detectedTexts - Original detected text data
+   */
+  showProductFamilySelectionModal(families, detectedTexts) {
+    const modal = document.getElementById('ocr-confirmation-modal');
+    const candidatesList = document.getElementById('ocr-candidates-list');
+    const noMatches = document.getElementById('ocr-no-matches');
+    const confirmBtn = document.getElementById('ocr-confirm-btn');
+    const cancelBtn = document.getElementById('ocr-cancel-btn');
+
+    if (!modal || !candidatesList || !confirmBtn || !cancelBtn) {
+      console.error('OCR confirmation modal elements not found');
+      return;
+    }
+
+    // Update modal title and description
+    const modalTitle = modal.querySelector('h3');
+    const modalDesc = modal.querySelector('p');
+    if (modalTitle) modalTitle.textContent = 'Multiple Products Detected';
+    if (modalDesc) modalDesc.textContent = 'Select which product you\'re looking for:';
+
+    // Clear previous content
+    candidatesList.innerHTML = '';
+    noMatches.style.display = 'none';
+    candidatesList.style.display = 'block';
+
+    let selectedFamily = null;
+
+    // Create family selection list
+    families.forEach((family, index) => {
+      const familyDiv = document.createElement('div');
+      familyDiv.style.cssText = 'display: flex; align-items: center; padding: 16px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s;';
+      
+      const productCount = family.matches.length;
+      const topMatch = family.matches[0];
+      const imageUrl = topMatch?.product?.Image_URL || topMatch?.product?.['Image URL'] || 'assets/no-image.png';
+      
+      familyDiv.innerHTML = `
+        <input type="radio" name="product-family" value="${index}" style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
+        <img src="${imageUrl}" alt="${family.familyName}" 
+             style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; margin-right: 12px;"
+             onerror="this.src='assets/no-image.png'">
+        <div style="flex: 1;">
+          <div style="font-weight: 600; margin-bottom: 4px; font-size: 1.1em;">${family.familyName}</div>
+          <div style="font-size: 0.9em; color: #666; margin-bottom: 4px;">${productCount} variant${productCount !== 1 ? 's' : ''} found</div>
+          <div style="font-size: 0.85em; color: #888;">
+            <span style="background: #e0e7ff; padding: 2px 6px; border-radius: 4px;">
+              ${Math.round(family.totalScore * 100)}% match
+            </span>
+          </div>
+        </div>
+      `;
+
+      const radio = familyDiv.querySelector('input[type="radio"]');
+      
+      // Handle radio click
+      radio.onclick = (e) => {
+        e.stopPropagation();
+        selectedFamily = family;
+        confirmBtn.disabled = false;
+        
+        // Update visual selection
+        document.querySelectorAll('input[name="product-family"]').forEach(r => {
+          r.closest('div').style.borderColor = '#ddd';
+          r.closest('div').style.backgroundColor = '';
+        });
+        familyDiv.style.borderColor = '#1e40af';
+        familyDiv.style.backgroundColor = '#eff6ff';
+      };
+      
+      // Handle div click
+      familyDiv.onclick = (e) => {
+        if (e.target !== radio) {
+          radio.checked = true;
+          radio.onclick(e);
+        }
+      };
+
+      candidatesList.appendChild(familyDiv);
+    });
+
+    // Setup button handlers
+    confirmBtn.onclick = () => {
+      if (!selectedFamily) return;
+
+      // Close modal
+      modal.style.display = 'none';
+
+      // Show products from selected family
+      this.showOcrConfirmationModal(selectedFamily.matches, detectedTexts);
+    };
+
+    cancelBtn.onclick = () => {
+      modal.style.display = 'none';
+      this.showScanFeedback('Text Scan cancelled');
+    };
+
+    // Reset confirm button
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Select Product Family';
 
     // Show modal
     modal.style.display = 'flex';

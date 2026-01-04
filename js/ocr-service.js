@@ -104,20 +104,44 @@ export class OCRService {
         // Perform OCR
         const result = await this.worker.recognize(canvas);
         
-        // Extract and clean text lines
-        const lines = result.data.lines
-          .map(line => this.cleanOcrText(line.text))
-          .filter(text => text.length > 2); // Filter out very short text
+        // Extract text lines with spatial data
+        const textData = result.data.lines
+          .map(line => {
+            const cleanedText = this.cleanOcrText(line.text);
+            if (cleanedText.length <= 2) return null;
+            
+            // Extract bounding box
+            const bbox = line.bbox || { x0: 0, y0: 0, x1: width, y1: height };
+            const centerX = (bbox.x0 + bbox.x1) / 2;
+            const centerY = (bbox.y0 + bbox.y1) / 2;
+            
+            return {
+              text: cleanedText,
+              bbox: bbox,
+              centerX: centerX,
+              centerY: centerY,
+              width: width,
+              height: height
+            };
+          })
+          .filter(item => item !== null);
 
-        // Deduplicate
-        const detectedTexts = [...new Set(lines)];
+        // Deduplicate by text (keep first occurrence)
+        const seen = new Set();
+        const unique = [];
+        for (const item of textData) {
+          if (!seen.has(item.text)) {
+            seen.add(item.text);
+            unique.push(item);
+          }
+        }
 
-        if (detectedTexts.length > 0 && !this.isProcessing) {
+        if (unique.length > 0 && !this.isProcessing) {
           // Stop scanning immediately before calling callback
           this.isProcessing = true;
           this.isScanning = false; // Prevent further scans
           
-          console.log('📝 OCR detected text:', detectedTexts);
+          console.log('📝 OCR detected text with spatial data:', unique.length, 'items');
           
           // Clear interval before callback to prevent race conditions
           if (this.scanInterval) {
@@ -126,7 +150,7 @@ export class OCRService {
           }
           
           // Call callback (which should stop scanning, but we already did)
-          onResults(detectedTexts);
+          onResults(unique);
         }
       } catch (error) {
         // Ignore "Image too small" and "Line cannot be recognized" errors - these are normal
@@ -156,7 +180,7 @@ export class OCRService {
   /**
    * Capture and process a single image from video element
    * @param {HTMLVideoElement} videoElement - Video element to capture frame from
-   * @returns {Promise<string[]>} Array of detected text strings
+   * @returns {Promise<Array>} Array of objects with text and spatial data {text, bbox, centerX, centerY}
    */
   async captureAndProcessImage(videoElement) {
     if (this.isProcessing) {
@@ -201,16 +225,40 @@ export class OCRService {
       // Perform OCR
       const result = await this.worker.recognize(canvas);
       
-      // Extract and clean text lines
-      const lines = result.data.lines
-        .map(line => this.cleanOcrText(line.text))
-        .filter(text => text.length > 2); // Filter out very short text
+      // Extract text lines with spatial data
+      const textData = result.data.lines
+        .map(line => {
+          const cleanedText = this.cleanOcrText(line.text);
+          if (cleanedText.length <= 2) return null;
+          
+          // Extract bounding box (Tesseract provides bbox: {x0, y0, x1, y1})
+          const bbox = line.bbox || { x0: 0, y0: 0, x1: width, y1: height };
+          const centerX = (bbox.x0 + bbox.x1) / 2;
+          const centerY = (bbox.y0 + bbox.y1) / 2;
+          
+          return {
+            text: cleanedText,
+            bbox: bbox,
+            centerX: centerX,
+            centerY: centerY,
+            width: width,
+            height: height
+          };
+        })
+        .filter(item => item !== null);
 
-      // Deduplicate
-      const detectedTexts = [...new Set(lines)];
+      // Deduplicate by text (keep first occurrence with its spatial data)
+      const seen = new Set();
+      const unique = [];
+      for (const item of textData) {
+        if (!seen.has(item.text)) {
+          seen.add(item.text);
+          unique.push(item);
+        }
+      }
 
-      console.log('📝 OCR detected text:', detectedTexts);
-      return detectedTexts;
+      console.log('📝 OCR detected text with spatial data:', unique.length, 'items');
+      return unique;
     } catch (error) {
       console.error('OCR capture error:', error);
       throw error;
