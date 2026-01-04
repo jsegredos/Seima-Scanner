@@ -107,9 +107,10 @@ export class NavigationManager {
       const lines = versionText.trim().split('\n');
       
       if (lines.length > 0) {
-        // Get the latest version (first line) and extract just the version number
+        // Get the latest version (first line) and extract version number with timestamp
         const latestLine = lines[0];
-        const versionMatch = latestLine.match(/^([^\s-]+)/);
+        // Match version number and optional timestamp: "4.0.2" or "4.0.2 (15:03)"
+        const versionMatch = latestLine.match(/^([\d.]+(?:\s*\([^)]+\))?)/);
         if (versionMatch) {
           const versionElement = document.getElementById('version-number');
           if (versionElement) {
