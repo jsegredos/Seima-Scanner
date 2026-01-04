@@ -376,6 +376,74 @@ export class OCRService {
   }
 
   /**
+   * Process a pre-captured canvas image (used when camera is stopped before processing)
+   * @param {HTMLCanvasElement} canvas - Canvas with captured frame
+   * @returns {Promise<Array>} Array of objects with text and spatial data
+   */
+  async captureAndProcessCanvas(canvas) {
+    if (this.isProcessing) {
+      console.warn('OCR processing already in progress');
+      return [];
+    }
+
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    if (!canvas) {
+      throw new Error('No canvas provided for OCR processing');
+    }
+
+    this.isProcessing = true;
+
+    try {
+      const width = canvas.width;
+      const height = canvas.height;
+
+      if (width === 0 || height === 0) {
+        throw new Error('Canvas dimensions not available');
+      }
+
+      let textData;
+
+      if (this.useWebWorker && this.workerReady) {
+        // Preprocess first, then convert to base64 for worker
+        this.preprocessCanvasForOCR(canvas);
+        const imageBase64 = this.canvasToBase64(canvas);
+        textData = await this.processWithWorker(imageBase64, width, height);
+      } else {
+        // Direct processing
+        this.preprocessCanvasForOCR(canvas);
+        const result = await this.tesseractWorker.recognize(canvas);
+        textData = this.extractTextData(result, width, height);
+      }
+
+      // Deduplicate
+      const seen = new Set();
+      const unique = textData.filter(item => {
+        if (seen.has(item.text)) return false;
+        seen.add(item.text);
+        return true;
+      });
+
+      console.log('📝 OCR detected text with spatial data:', unique.length, 'items');
+      console.log('📋 OCR Raw Data:', unique.map(item => ({
+        text: item.text,
+        centerX: Math.round(item.centerX),
+        centerY: Math.round(item.centerY),
+        bbox: item.bbox
+      })));
+
+      return unique;
+    } catch (error) {
+      console.error('OCR canvas processing error:', error);
+      throw error;
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  /**
    * Extract text data from Tesseract result
    * @param {Object} result - Tesseract recognition result
    * @param {number} width - Image width

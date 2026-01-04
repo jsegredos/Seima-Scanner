@@ -1359,13 +1359,27 @@ export class NavigationManager {
     }
 
     try {
+      // Capture frame to canvas BEFORE stopping camera
+      const width = videoElement.videoWidth || 640;
+      const height = videoElement.videoHeight || 480;
+      const captureCanvas = document.createElement('canvas');
+      captureCanvas.width = width;
+      captureCanvas.height = height;
+      const captureCtx = captureCanvas.getContext('2d');
+      captureCtx.drawImage(videoElement, 0, 0, width, height);
+
+      // Now stop camera - we have the frame captured
+      this.scannerController.stopScanning();
+
       this.showScanFeedback('Processing image...');
-      
-      // Capture and process image
-      const detectedTexts = await ocrService.captureAndProcessImage(videoElement);
+
+      // Process the captured canvas image
+      const detectedTexts = await ocrService.captureAndProcessCanvas(captureCanvas);
       
       if (detectedTexts.length === 0) {
         this.showScanFeedback('No text detected. Try better lighting or angle.');
+        // Restart camera for another attempt
+        await this.scannerController.startScanning('text');
         if (captureBtn) {
           captureBtn.disabled = false;
           captureBtn.textContent = 'Capture';
@@ -1375,7 +1389,7 @@ export class NavigationManager {
 
       // Handle the results
       await this.handleOcrResults(detectedTexts);
-      
+
       if (captureBtn) {
         captureBtn.disabled = false;
         captureBtn.textContent = 'Capture';
@@ -1383,6 +1397,12 @@ export class NavigationManager {
     } catch (error) {
       console.error('OCR capture error:', error);
       this.showScanFeedback('Error: ' + error.message);
+      // Restart camera for another attempt
+      try {
+        await this.scannerController.startScanning('text');
+      } catch (camError) {
+        console.error('Failed to restart camera:', camError);
+      }
       if (captureBtn) {
         captureBtn.disabled = false;
         captureBtn.textContent = 'Capture';
@@ -1556,7 +1576,7 @@ export class NavigationManager {
     if (candidates.length === 0) {
       noMatches.style.display = 'block';
       candidatesList.style.display = 'none';
-      confirmBtn.disabled = true;
+      confirmBtn.style.display = 'none'; // Hide button when no matches
     } else {
       noMatches.style.display = 'none';
       candidatesList.style.display = 'block';
@@ -1632,7 +1652,8 @@ export class NavigationManager {
         candidatesList.appendChild(candidateDiv);
       });
 
-      confirmBtn.disabled = true;
+      confirmBtn.style.display = 'block'; // Show button when there are matches
+      confirmBtn.disabled = true; // But disabled until selection made
     }
 
     // Reset confirm button text
@@ -1673,12 +1694,18 @@ export class NavigationManager {
       }
     };
 
-    cancelBtn.onclick = () => {
+    cancelBtn.onclick = async () => {
       modal.style.display = 'none';
-      // Don't auto-resume - user can tap Capture button again if needed
-      this.showScanFeedback('Text Scan cancelled');
+      // Restart camera for another attempt
+      try {
+        await this.scannerController.startScanning('text');
+        this.showScanFeedback('Ready to capture');
+      } catch (err) {
+        console.error('Failed to restart camera:', err);
+        this.showScanFeedback('Camera error - please try again');
+      }
     };
-    
+
     // Ensure cancel button is always enabled
     cancelBtn.disabled = false;
 
@@ -1715,18 +1742,20 @@ export class NavigationManager {
       console.error('❌ No families provided to selection modal!');
       noMatches.style.display = 'block';
       candidatesList.style.display = 'none';
-      confirmBtn.disabled = true;
-      
-      // Setup button handlers even when no families
-      confirmBtn.onclick = () => {
-        // Do nothing - button should be disabled
-      };
-      
-      cancelBtn.onclick = () => {
+      confirmBtn.style.display = 'none'; // Hide button when no families
+
+      cancelBtn.onclick = async () => {
         modal.style.display = 'none';
-        this.showScanFeedback('Text Scan cancelled');
+        // Restart camera for another attempt
+        try {
+          await this.scannerController.startScanning('text');
+          this.showScanFeedback('Ready to capture');
+        } catch (err) {
+          console.error('Failed to restart camera:', err);
+          this.showScanFeedback('Camera error - please try again');
+        }
       };
-      
+
       cancelBtn.disabled = false;
       modal.style.display = 'flex';
       return;
@@ -1742,6 +1771,7 @@ export class NavigationManager {
     candidatesList.innerHTML = '';
     noMatches.style.display = 'none';
     candidatesList.style.display = 'block';
+    confirmBtn.style.display = 'block'; // Show button when there are families
 
     let selectedFamily = null;
 
@@ -1809,9 +1839,16 @@ export class NavigationManager {
       this.showOcrConfirmationModal(selectedFamily.matches, detectedTexts);
     };
 
-    cancelBtn.onclick = () => {
+    cancelBtn.onclick = async () => {
       modal.style.display = 'none';
-      this.showScanFeedback('Text Scan cancelled');
+      // Restart camera for another attempt
+      try {
+        await this.scannerController.startScanning('text');
+        this.showScanFeedback('Ready to capture');
+      } catch (err) {
+        console.error('Failed to restart camera:', err);
+        this.showScanFeedback('Camera error - please try again');
+      }
     };
 
     // Reset confirm button
