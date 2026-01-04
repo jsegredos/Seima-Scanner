@@ -343,7 +343,7 @@ export class PDFService {
                   doc.setFont('helvetica', 'normal');
                 }
                 
-                // Price, quantity, total (exact same calculations as original)
+                // Price, quantity, total (aligned with code/description row)
                 if (!userDetails.excludePrice) {
                   doc.setFontSize(10);
                   doc.setTextColor('#222');
@@ -358,13 +358,15 @@ export class PDFService {
                   const totalPrice = priceNum && !isNaN(priceNum) ? (priceNum * quantity) : 0;
                   const totalStr = totalPrice > 0 ? ('$' + totalPrice.toFixed(2)) : '';
                   
-                  doc.text(priceStr, priceX + 30, y + 28, { align: 'center' });
-                  doc.text(quantity.toString(), qtyX + 20, y + 28, { align: 'center' });
-                  doc.text(totalStr, totalX + 20, y + 28, { align: 'center' });
+                  const priceLineY = codeY + 10; // level with code/description start
+                  doc.text(priceStr, priceX + 30, priceLineY, { align: 'center' });
+                  doc.text(quantity.toString(), qtyX + 20, priceLineY, { align: 'center' });
+                  doc.text(totalStr, totalX + 20, priceLineY, { align: 'center' });
                 } else {
                   doc.setFontSize(10);
                   doc.setTextColor('#222');
-                  doc.text(String(row.item.Quantity || 1), qtyX + 20, y + 28, { align: 'center' });
+                  const priceLineY = codeY + 10;
+                  doc.text(String(row.item.Quantity || 1), qtyX + 20, priceLineY, { align: 'center' });
                 }
                 
                 // Continue to next row

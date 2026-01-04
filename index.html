@@ -138,7 +138,7 @@
 
   <!-- OCR Text Scan Confirmation Modal -->
   <div id="ocr-confirmation-modal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+    <div class="modal-content modal-medium">
       <h3 style="margin: 0 0 20px 0; color: #333;">Text Scan Results</h3>
       <p style="margin-bottom: 20px; color: #666;">Select products to add to your selection:</p>
       
@@ -180,6 +180,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <!-- Tesseract.js for client-side OCR (Text Scan mode) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- Shared OCR utilities (classic script for main + worker use) -->
+  <script src="js/ocr-utils.js"></script>
   
   <!-- Refactored Services -->
   <script type="module" src="js/config.js"></script>

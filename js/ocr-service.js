@@ -11,8 +11,14 @@ export class OCRService {
     this.tesseractWorker = null;
     this.isInitialized = false;
     this.isScanning = false;
-    this.scanInterval = null;
+    this.scanInterval = null; // legacy name, reused as timer handle
     this.isProcessing = false;
+    this.preprocessOptions = {
+      contrast: 1.5,
+      threshold: 'auto',
+      adaptive: true,
+      adaptiveOffset: 0
+    };
 
     // Web Worker support
     this.ocrWorker = null;
@@ -24,6 +30,21 @@ export class OCRService {
     // Reusable canvas for memory efficiency
     this.canvas = null;
     this.ctx = null;
+  }
+
+  get helpers() {
+    const helpers = (globalThis && globalThis.ocrUtils) || {};
+    if (!helpers.cleanOcrText || !helpers.preprocessCanvasForOCR || !helpers.dedupeTextData) {
+      throw new Error('OCR utilities not loaded');
+    }
+    return helpers;
+  }
+
+  setPreprocessOptions(options = {}) {
+    this.preprocessOptions = {
+      ...this.preprocessOptions,
+      ...options
+    };
   }
 
   /**
@@ -219,71 +240,78 @@ export class OCRService {
     }
 
     this.isScanning = true;
+    this.runScanLoop(videoElement, onResults, interval);
 
-    this.scanInterval = setInterval(async () => {
-      if (!this.isScanning || this.isProcessing || videoElement.paused || videoElement.ended) {
+    console.log('✅ OCR scanning started' + (this.useWebWorker ? ' (Web Worker mode)' : ' (direct mode)'));
+  }
+
+  runScanLoop(videoElement, onResults, interval) {
+    if (!this.isScanning) {
+      return;
+    }
+
+    if (this.scanInterval) {
+      clearTimeout(this.scanInterval);
+    }
+
+    this.scanInterval = setTimeout(async () => {
+      if (!this.isScanning) {
         return;
       }
 
-      if (videoElement.readyState < 2) {
+      if (this.isProcessing || !videoElement || videoElement.paused || videoElement.ended || videoElement.readyState < 2) {
+        this.runScanLoop(videoElement, onResults, interval);
         return;
       }
+
+      this.isProcessing = true;
 
       try {
         const width = videoElement.videoWidth || 640;
         const height = videoElement.videoHeight || 480;
 
         if (width === 0 || height === 0) {
+          this.isProcessing = false;
+          this.runScanLoop(videoElement, onResults, interval);
           return;
         }
 
         const { canvas, ctx } = this.getCanvas(width, height);
         ctx.drawImage(videoElement, 0, 0, width, height);
 
+        const { preprocessCanvasForOCR, dedupeTextData } = this.helpers;
+        const preprocessOpts = this.preprocessOptions;
+
         let textData;
 
         if (this.useWebWorker && this.workerReady) {
-          // Use Web Worker (off main thread)
-          // Preprocess first, then convert to base64 for worker
-          this.preprocessCanvasForOCR(canvas);
+          preprocessCanvasForOCR(canvas, preprocessOpts);
           const imageBase64 = this.canvasToBase64(canvas);
           textData = await this.processWithWorker(imageBase64, width, height);
         } else {
-          // Direct processing
-          this.preprocessCanvasForOCR(canvas);
+          preprocessCanvasForOCR(canvas, preprocessOpts);
           const result = await this.tesseractWorker.recognize(canvas);
           textData = this.extractTextData(result, width, height);
         }
 
-        // Deduplicate
-        const seen = new Set();
-        const unique = textData.filter(item => {
-          if (seen.has(item.text)) return false;
-          seen.add(item.text);
-          return true;
-        });
+        const unique = dedupeTextData(textData);
 
-        if (unique.length > 0 && !this.isProcessing) {
-          this.isProcessing = true;
+        if (unique.length > 0) {
           this.isScanning = false;
-
           console.log('📝 OCR detected text with spatial data:', unique.length, 'items');
-
-          if (this.scanInterval) {
-            clearInterval(this.scanInterval);
-            this.scanInterval = null;
-          }
-
           onResults(unique);
         }
       } catch (error) {
         if (!error.message || (!error.message.includes('too small') && !error.message.includes('cannot be recognized'))) {
           console.warn('OCR recognition error:', error);
         }
+      } finally {
+        this.isProcessing = false;
+        if (this.isScanning) {
+          this.runScanLoop(videoElement, onResults, interval);
+        }
       }
     }, interval);
-
-    console.log('✅ OCR scanning started' + (this.useWebWorker ? ' (Web Worker mode)' : ' (direct mode)'));
   }
 
   /**
@@ -291,7 +319,7 @@ export class OCRService {
    */
   stopScanning() {
     if (this.scanInterval) {
-      clearInterval(this.scanInterval);
+      clearTimeout(this.scanInterval);
       this.scanInterval = null;
     }
     this.isScanning = false;
@@ -337,26 +365,22 @@ export class OCRService {
 
       let textData;
 
+      const { preprocessCanvasForOCR, dedupeTextData } = this.helpers;
+
       if (this.useWebWorker && this.workerReady) {
         // Use Web Worker
         // Preprocess first, then convert to base64 for worker
-        this.preprocessCanvasForOCR(canvas);
+        preprocessCanvasForOCR(canvas, this.preprocessOptions);
         const imageBase64 = this.canvasToBase64(canvas);
         textData = await this.processWithWorker(imageBase64, width, height);
       } else {
         // Direct processing
-        this.preprocessCanvasForOCR(canvas);
+        preprocessCanvasForOCR(canvas, this.preprocessOptions);
         const result = await this.tesseractWorker.recognize(canvas);
         textData = this.extractTextData(result, width, height);
       }
 
-      // Deduplicate
-      const seen = new Set();
-      const unique = textData.filter(item => {
-        if (seen.has(item.text)) return false;
-        seen.add(item.text);
-        return true;
-      });
+      const unique = dedupeTextData(textData);
 
       console.log('📝 OCR detected text with spatial data:', unique.length, 'items');
       console.log('📋 OCR Raw Data:', unique.map(item => ({
@@ -406,25 +430,21 @@ export class OCRService {
 
       let textData;
 
+      const { preprocessCanvasForOCR, dedupeTextData } = this.helpers;
+
       if (this.useWebWorker && this.workerReady) {
         // Preprocess first, then convert to base64 for worker
-        this.preprocessCanvasForOCR(canvas);
+        preprocessCanvasForOCR(canvas, this.preprocessOptions);
         const imageBase64 = this.canvasToBase64(canvas);
         textData = await this.processWithWorker(imageBase64, width, height);
       } else {
         // Direct processing
-        this.preprocessCanvasForOCR(canvas);
+        preprocessCanvasForOCR(canvas, this.preprocessOptions);
         const result = await this.tesseractWorker.recognize(canvas);
         textData = this.extractTextData(result, width, height);
       }
 
-      // Deduplicate
-      const seen = new Set();
-      const unique = textData.filter(item => {
-        if (seen.has(item.text)) return false;
-        seen.add(item.text);
-        return true;
-      });
+      const unique = dedupeTextData(textData);
 
       console.log('📝 OCR detected text with spatial data:', unique.length, 'items');
       console.log('📋 OCR Raw Data:', unique.map(item => ({
@@ -451,9 +471,10 @@ export class OCRService {
    * @returns {Array}
    */
   extractTextData(result, width, height) {
+    const { cleanOcrText } = this.helpers;
     return result.data.lines
       .map(line => {
-        const cleanedText = this.cleanOcrText(line.text);
+        const cleanedText = cleanOcrText(line.text);
         if (!cleanedText || (cleanedText.length < 3 && !/^19\d{4}$/.test(cleanedText))) {
           return null;
         }
@@ -473,76 +494,6 @@ export class OCRService {
         };
       })
       .filter(item => item !== null && item.text && item.text.length > 0);
-  }
-
-  /**
-   * Clean OCR text: remove excessive whitespace, normalize, extract useful patterns
-   * @param {string} text - Raw OCR text
-   * @returns {string} Cleaned text
-   */
-  cleanOcrText(text) {
-    if (!text) return '';
-
-    let cleaned = text.replace(/\s+/g, ' ').trim();
-
-    // Extract OrderCode pattern
-    const orderCodeMatch = cleaned.match(/19\s*\d\s*\d\s*\d\s*\d/);
-    if (orderCodeMatch) {
-      const code = orderCodeMatch[0].replace(/\s/g, '');
-      if (code.length === 6) {
-        return code;
-      }
-    }
-
-    // Filter garbage
-    if (cleaned.length < 3 && !/^\d+$/.test(cleaned)) {
-      return '';
-    }
-
-    const specialCharRatio = (cleaned.match(/[^\w\s]/g) || []).length / cleaned.length;
-    if (specialCharRatio > 0.3) {
-      return '';
-    }
-
-    const words = cleaned.split(/\s+/);
-    const singleCharWords = words.filter(w => w.length === 1).length;
-    if (words.length > 2 && singleCharWords / words.length > 0.5) {
-      return '';
-    }
-
-    if ((cleaned.match(/-/g) || []).length > 2) {
-      return '';
-    }
-
-    cleaned = cleaned.replace(/\b\w\b/g, '').replace(/[^\w\s]/g, '');
-    cleaned = cleaned.replace(/\s+/g, ' ').trim();
-
-    if (cleaned.length < 3) {
-      return '';
-    }
-
-    return cleaned;
-  }
-
-  /**
-   * Preprocess canvas for better OCR results
-   * @param {HTMLCanvasElement} canvas - Canvas to preprocess
-   */
-  preprocessCanvasForOCR(canvas) {
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
-      const contrast = 1.5;
-      const enhanced = Math.max(0, Math.min(255, ((gray - 128) * contrast) + 128));
-      const threshold = enhanced > 128 ? 255 : 0;
-
-      data[i] = data[i + 1] = data[i + 2] = threshold;
-    }
-
-    ctx.putImageData(imageData, 0, 0);
   }
 
   /**

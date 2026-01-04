@@ -8,6 +8,16 @@
   --font-size-small: 0.9rem;
   --spacing-unit: 8px;
   --logo-size: 220px;
+  --color-primary: #2563eb;
+  --color-primary-dark: #174ea6;
+  --color-neutral: #f3f4f6;
+  --color-neutral-strong: #e0e7ef;
+  --color-success: #10b981;
+  --color-success-dark: #059669;
+  --color-danger: #ef4444;
+  --color-danger-dark: #dc2626;
+  --shadow-1: 0 2px 12px 0 rgba(0,0,0,0.08);
+  --shadow-2: 0 4px 16px 0 rgba(0,0,0,0.12);
 }
 
 /* Base responsive styles */
@@ -62,14 +72,14 @@ body {
 }
 
 .primary-btn {
-  background: linear-gradient(90deg, #e0e7ef 0%, #f3f4f6 100%);
-  color: #222;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
   font-size: var(--font-size-large);
   font-weight: 600;
   padding: calc(var(--spacing-unit) * 2.25) calc(var(--spacing-unit) * 6);
   border: none;
   border-radius: 32px;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-1);
   cursor: pointer;
   transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
   outline: none;
@@ -81,21 +91,21 @@ body {
 
 /* Green Capture button for better visibility */
 #ocr-capture-btn.primary-btn {
-  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(90deg, var(--color-success) 0%, var(--color-success-dark) 100%);
   color: #fff;
   box-shadow: 0 2px 12px 0 rgba(16, 185, 129, 0.3);
 }
 
 #ocr-capture-btn.primary-btn:hover, 
 #ocr-capture-btn.primary-btn:focus {
-  background: linear-gradient(90deg, #059669 0%, #047857 100%);
+  background: linear-gradient(90deg, var(--color-success-dark) 0%, #047857 100%);
   box-shadow: 0 4px 16px 0 rgba(16, 185, 129, 0.4);
   transform: translateY(-2px) scale(1.03);
 }
 
 .primary-btn:hover, .primary-btn:focus {
-  background: linear-gradient(90deg, #f3f4f6 0%, #e0e7ef 100%);
-  box-shadow: 0 4px 16px 0 rgba(0,0,0,0.12);
+  background: linear-gradient(90deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
+  box-shadow: var(--shadow-2);
   transform: translateY(-2px) scale(1.03);
 }
 
@@ -1044,7 +1054,7 @@ body {
   min-height: 48px;
   padding: 12px 18px;
   font-size: 0.92rem;
-  color: #b91c1c;
+  color: var(--color-danger-dark);
   border-color: #fecaca;
   background: #ffffff;
   align-items: center;
@@ -1067,24 +1077,24 @@ body {
 
 .destructive-secondary {
   background: #fef2f2;
-  color: #b91c1c;
-  border: 2px solid #ef4444;
+  color: var(--color-danger-dark);
+  border: 2px solid var(--color-danger);
   font-weight: 600;
   transition: all 0.2s;
 }
 
 .destructive-secondary:hover, .destructive-secondary:focus {
   background: #fee2e2;
-  border-color: #dc2626;
+  border-color: var(--color-danger-dark);
   color: #991b1b;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 .destructive-primary {
-  background: #ef4444;
+  background: var(--color-danger);
   color: #fff;
-  border: 2px solid #ef4444;
+  border: 2px solid var(--color-danger);
   border-radius: 10px;
   padding: 10px 24px;
   min-height: 44px;
@@ -1094,8 +1104,8 @@ body {
 }
 
 .destructive-primary:hover, .destructive-primary:focus {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: var(--color-danger-dark);
+  border-color: var(--color-danger-dark);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
@@ -1133,11 +1143,11 @@ body {
 }
 
 .secondary-btn {
-  background: #f3f4f6;
-  color: #2563eb;
+  background: #fff;
+  color: var(--color-primary);
   font-size: 1rem;
   font-weight: 500;
-  border: 2px solid transparent;
+  border: 2px solid var(--color-primary);
   border-radius: 10px;
   padding: 10px 24px;
   min-height: 44px;
@@ -1147,8 +1157,7 @@ body {
 }
 
 .secondary-btn:hover, .secondary-btn:focus {
-  background: #e0e7ef;
-  border-color: #2563eb;
+  background: var(--color-neutral-strong);
   transform: translateY(-1px);
 }
 
@@ -1305,6 +1314,12 @@ body {
   min-width: 260px;
   box-shadow: 0 8px 32px 0 rgba(0,0,0,0.18);
   text-align: left;
+}
+
+.modal-content.modal-medium {
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 /* Override modal-content for lead wizard - must come after .modal-content */

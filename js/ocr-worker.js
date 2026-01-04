@@ -5,6 +5,13 @@
 
 // Import Tesseract.js in worker context
 importScripts('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+// Shared OCR utilities (classic script)
+importScripts('./ocr-utils.js');
+
+const { cleanOcrText, dedupeTextData } = (self && self.ocrUtils) || {};
+if (!cleanOcrText || !dedupeTextData) {
+  throw new Error('OCR utilities not loaded in worker');
+}
 
 let worker = null;
 let isInitialized = false;
@@ -36,55 +43,6 @@ async function initialize() {
     isInitialized = false;
     throw error;
   }
-}
-
-/**
- * Clean OCR text output
- * @param {string} text
- * @returns {string}
- */
-function cleanOcrText(text) {
-  if (!text) return '';
-
-  let cleaned = text.replace(/\s+/g, ' ').trim();
-
-  // Extract OrderCode pattern
-  const orderCodeMatch = cleaned.match(/19\s*\d\s*\d\s*\d\s*\d/);
-  if (orderCodeMatch) {
-    const code = orderCodeMatch[0].replace(/\s/g, '');
-    if (code.length === 6) {
-      return code;
-    }
-  }
-
-  // Filter garbage
-  if (cleaned.length < 3 && !/^\d+$/.test(cleaned)) {
-    return '';
-  }
-
-  const specialCharRatio = (cleaned.match(/[^\w\s]/g) || []).length / cleaned.length;
-  if (specialCharRatio > 0.3) {
-    return '';
-  }
-
-  const words = cleaned.split(/\s+/);
-  const singleCharWords = words.filter(w => w.length === 1).length;
-  if (words.length > 2 && singleCharWords / words.length > 0.5) {
-    return '';
-  }
-
-  if ((cleaned.match(/-/g) || []).length > 2) {
-    return '';
-  }
-
-  cleaned = cleaned.replace(/\b\w\b/g, '').replace(/[^\w\s]/g, '');
-  cleaned = cleaned.replace(/\s+/g, ' ').trim();
-
-  if (cleaned.length < 3) {
-    return '';
-  }
-
-  return cleaned;
 }
 
 /**
@@ -125,17 +83,7 @@ async function processImage(imageBase64, width, height) {
     })
     .filter(item => item !== null && item.text && item.text.length > 0);
 
-  // Deduplicate
-  const seen = new Set();
-  const unique = [];
-  for (const item of textData) {
-    if (!seen.has(item.text)) {
-      seen.add(item.text);
-      unique.push(item);
-    }
-  }
-
-  return unique;
+  return dedupeTextData(textData);
 }
 
 /**

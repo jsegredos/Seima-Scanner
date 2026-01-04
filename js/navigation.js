@@ -549,6 +549,18 @@ export class NavigationManager {
     }
   }
 
+  async restartTextCamera(feedbackMessage = 'Ready to capture') {
+    try {
+      await this.scannerController.startScanning('text');
+      if (feedbackMessage) {
+        this.showScanFeedback(feedbackMessage);
+      }
+    } catch (err) {
+      console.error('Failed to restart camera:', err);
+      this.showScanFeedback('Camera error - please try again');
+    }
+  }
+
   populateRoomSelect() {
     const select = document.getElementById('room-select');
     if (!select) return;
@@ -1378,8 +1390,7 @@ export class NavigationManager {
       
       if (detectedTexts.length === 0) {
         this.showScanFeedback('No text detected. Try better lighting or angle.');
-        // Restart camera for another attempt
-        await this.scannerController.startScanning('text');
+        await this.restartTextCamera();
         if (captureBtn) {
           captureBtn.disabled = false;
           captureBtn.textContent = 'Capture';
@@ -1397,12 +1408,7 @@ export class NavigationManager {
     } catch (error) {
       console.error('OCR capture error:', error);
       this.showScanFeedback('Error: ' + error.message);
-      // Restart camera for another attempt
-      try {
-        await this.scannerController.startScanning('text');
-      } catch (camError) {
-        console.error('Failed to restart camera:', camError);
-      }
+      await this.restartTextCamera();
       if (captureBtn) {
         captureBtn.disabled = false;
         captureBtn.textContent = 'Capture';
@@ -1696,14 +1702,7 @@ export class NavigationManager {
 
     cancelBtn.onclick = async () => {
       modal.style.display = 'none';
-      // Restart camera for another attempt
-      try {
-        await this.scannerController.startScanning('text');
-        this.showScanFeedback('Ready to capture');
-      } catch (err) {
-        console.error('Failed to restart camera:', err);
-        this.showScanFeedback('Camera error - please try again');
-      }
+      await this.restartTextCamera();
     };
 
     // Ensure cancel button is always enabled
@@ -1841,14 +1840,7 @@ export class NavigationManager {
 
     cancelBtn.onclick = async () => {
       modal.style.display = 'none';
-      // Restart camera for another attempt
-      try {
-        await this.scannerController.startScanning('text');
-        this.showScanFeedback('Ready to capture');
-      } catch (err) {
-        console.error('Failed to restart camera:', err);
-        this.showScanFeedback('Camera error - please try again');
-      }
+      await this.restartTextCamera();
     };
 
     // Reset confirm button
