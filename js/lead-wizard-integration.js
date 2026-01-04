@@ -10,6 +10,7 @@ export class LeadWizardIntegration {
   constructor() {
     this.originalEmailHandler = null;
     this.isIntegrated = false;
+    this.cachedOptions = { excludePrice: false, exportCsv: true };
   }
 
   /**
@@ -128,6 +129,12 @@ export class LeadWizardIntegration {
     
     // Store the lead data for later use in email/recording
     window.currentLeadData = leadData;
+
+    // Use checkbox values directly from leadData (saved when leaving Step 1)
+    // These are now guaranteed to be correct since saveStep1CheckboxStates() runs
+    // before navigating away from Step 1.
+    const excludePrice = !!leadData.excludePrice;
+    const exportCsv = !!leadData.exportCsv;
     
     // Create userDetails object from lead data (Step 1 has all the info we need)
     const userDetails = {
@@ -136,8 +143,8 @@ export class LeadWizardIntegration {
       phone: leadData.customerPhone,
       project: leadData.projectName,
       address: leadData.projectAddress,
-      excludePrice: leadData.excludePrice,
-      exportCsv: leadData.exportCsv,
+      excludePrice,
+      exportCsv,
       sendEmail: true,
       leadData: leadData // Include full lead data for recording
     };
@@ -329,11 +336,19 @@ export class LeadWizardIntegration {
    * Clear current lead data
    */
   clearCurrentLeadData() {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/271cbb43-06c0-4898-a939-268461524d29',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lead-wizard-integration.js:327',message:'clearCurrentLeadData called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
     window.currentLeadData = null;
+    this.cachedOptions = { excludePrice: false, exportCsv: true };
     leadTracker.clearLeadData();
+  }
+
+  /**
+   * Cache option toggles from wizard UI
+   */
+  setOptions(options = {}) {
+    this.cachedOptions = {
+      ...this.cachedOptions,
+      ...options
+    };
   }
 
   /**

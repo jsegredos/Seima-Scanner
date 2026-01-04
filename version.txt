@@ -1,3 +1,4 @@
+4.0.5 - Fixed issue where "Exclude pricing" and "Include CSV export" checkbox settings were not being applied when generating PDFs.
 4.0.4 - OCR reliability & PDF layout: smoother single-loop text capture with adaptive image tuning options, refreshed button/modal styling, PDF line items now top align.
 4.0.3 - OCR Performance Upgrade: catalog indexing for instant product lookups, fuzzy matching for OCR error tolerance, Web Worker support for off-main-thread processing (responsive UI), reusable canvas for memory efficiency, and centralized OCR configuration.
 4.0.2 - OCR Spatial Grouping: Smart multi-product page handling with spatial analysis to prioritize center-focused products and group by product families, reducing false matches from adjacent products. Improved OCR text filtering, fixed modal button handlers, larger text capture area (70% vs 60%), optimized camera settings

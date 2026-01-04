@@ -434,13 +434,28 @@ export class LeadWizard {
     });
 
     // Options checkboxes
-    document.getElementById('exclude-price-checkbox').addEventListener('change', (e) => {
-      leadTracker.updateLeadData({ excludePrice: e.target.checked });
-    });
+    const excludeCheckbox = document.getElementById('exclude-price-checkbox');
+    const exportCheckbox = document.getElementById('export-csv-checkbox');
+    
+    if (excludeCheckbox) {
+      excludeCheckbox.addEventListener('change', (e) => {
+        const excludePrice = !!e.target.checked;
+        leadTracker.updateLeadData({ excludePrice });
+        if (window.leadWizardIntegration) {
+          window.leadWizardIntegration.setOptions({ excludePrice });
+        }
+      });
+    }
 
-    document.getElementById('export-csv-checkbox').addEventListener('change', (e) => {
-      leadTracker.updateLeadData({ exportCsv: e.target.checked });
-    });
+    if (exportCheckbox) {
+      exportCheckbox.addEventListener('change', (e) => {
+        const exportCsv = !!e.target.checked;
+        leadTracker.updateLeadData({ exportCsv });
+        if (window.leadWizardIntegration) {
+          window.leadWizardIntegration.setOptions({ exportCsv });
+        }
+      });
+    }
   }
 
   /**
@@ -612,57 +627,51 @@ export class LeadWizard {
    */
   loadStepData(step) {
     const data = leadTracker.getLeadData();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/271cbb43-06c0-4898-a939-268461524d29',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lead-wizard.js:591',message:'loadStepData called',data:{step:step,hasCustomerName:!!data.customerName,hasCustomerEmail:!!data.customerEmail,customerName:data.customerName,timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
     
     switch (step) {
       case 1:
         // Load customer and project information
-        if (data.customerName) {
-          document.getElementById('customer-name').value = data.customerName;
-        }
-        if (data.customerEmail) {
-          document.getElementById('customer-email').value = data.customerEmail;
-        }
-        if (data.customerPhone) {
-          document.getElementById('customer-phone').value = data.customerPhone;
-        }
-        if (data.projectName) {
-          document.getElementById('project-name').value = data.projectName;
-        }
-        if (data.projectAddress) {
-          document.getElementById('project-address').value = data.projectAddress;
-        }
-        if (data.projectNotes) {
-          document.getElementById('project-notes').value = data.projectNotes;
-        }
-        if (data.excludePrice !== undefined) {
-          document.getElementById('exclude-price-checkbox').checked = data.excludePrice;
-        }
-        if (data.exportCsv !== undefined) {
-          document.getElementById('export-csv-checkbox').checked = data.exportCsv;
-        }
+        const nameEl = document.getElementById('customer-name');
+        const emailEl = document.getElementById('customer-email');
+        const phoneEl = document.getElementById('customer-phone');
+        const projectNameEl = document.getElementById('project-name');
+        const projectAddressEl = document.getElementById('project-address');
+        const projectNotesEl = document.getElementById('project-notes');
+        const excludeEl = document.getElementById('exclude-price-checkbox');
+        const exportEl = document.getElementById('export-csv-checkbox');
+
+        if (nameEl && data.customerName) nameEl.value = data.customerName;
+        if (emailEl && data.customerEmail) emailEl.value = data.customerEmail;
+        if (phoneEl && data.customerPhone) phoneEl.value = data.customerPhone;
+        if (projectNameEl && data.projectName) projectNameEl.value = data.projectName;
+        if (projectAddressEl && data.projectAddress) projectAddressEl.value = data.projectAddress;
+        if (projectNotesEl && data.projectNotes) projectNotesEl.value = data.projectNotes;
+        if (excludeEl && data.excludePrice !== undefined) excludeEl.checked = data.excludePrice;
+        if (exportEl && data.exportCsv !== undefined) exportEl.checked = data.exportCsv;
         break;
         
       case 2:
         // Load customer type information
-        if (data.customerType) {
-          document.getElementById('customer-type-select').value = data.customerType;
+        const typeSelect = document.getElementById('customer-type-select');
+        if (typeSelect && data.customerType) {
+          typeSelect.value = data.customerType;
           
           // Trigger change event to show conditional fields
           const event = new Event('change');
-          document.getElementById('customer-type-select').dispatchEvent(event);
+          typeSelect.dispatchEvent(event);
           
           // Load conditional field values
-          if (data.builderName) {
-            document.getElementById('builder-name-select').value = data.builderName;
+          const builderSelect = document.getElementById('builder-name-select');
+          const merchantSelect = document.getElementById('merchant-name-select');
+          const typeOther = document.getElementById('customer-type-other');
+          if (builderSelect && data.builderName) {
+            builderSelect.value = data.builderName;
           }
-          if (data.merchantName) {
-            document.getElementById('merchant-name-select').value = data.merchantName;
+          if (merchantSelect && data.merchantName) {
+            merchantSelect.value = data.merchantName;
           }
-          if (data.customerTypeOther) {
-            document.getElementById('customer-type-other').value = data.customerTypeOther;
+          if (typeOther && data.customerTypeOther) {
+            typeOther.value = data.customerTypeOther;
           }
         }
         break;
@@ -686,14 +695,18 @@ export class LeadWizard {
         }
         
         // Load conditional field values
-        if (data.referralBuilder) {
-          document.getElementById('referral-builder-select').value = data.referralBuilder;
+        const referralBuilderSelect = document.getElementById('referral-builder-select');
+        const referralMerchantSelect = document.getElementById('referral-merchant-select');
+        const hearAboutOther = document.getElementById('hear-about-other');
+
+        if (referralBuilderSelect && data.referralBuilder) {
+          referralBuilderSelect.value = data.referralBuilder;
         }
-        if (data.referralMerchant) {
-          document.getElementById('referral-merchant-select').value = data.referralMerchant;
+        if (referralMerchantSelect && data.referralMerchant) {
+          referralMerchantSelect.value = data.referralMerchant;
         }
-        if (data.hearAboutUsOther) {
-          document.getElementById('hear-about-other').value = data.hearAboutUsOther;
+        if (hearAboutOther && data.hearAboutUsOther) {
+          hearAboutOther.value = data.hearAboutUsOther;
         }
         break;
     }
@@ -735,6 +748,7 @@ export class LeadWizard {
    */
   updateNextButtonState() {
     const nextBtn = document.getElementById('wizard-next-btn');
+    if (!nextBtn) return;
     const isValid = leadTracker.validateStep(leadTracker.currentStep);
     
     nextBtn.disabled = !isValid;
@@ -751,11 +765,41 @@ export class LeadWizard {
       this.showValidationError(currentStep);
       return;
     }
+
+    // Save Step 1 checkbox states BEFORE navigating away (the HTML will be replaced)
+    if (currentStep === 1) {
+      this.saveStep1CheckboxStates();
+    }
     
     if (currentStep < 3) {
       this.showStep(currentStep + 1);
     } else {
       this.complete();
+    }
+  }
+
+  /**
+   * Save Step 1 checkbox states to leadTracker (called before leaving Step 1)
+   */
+  saveStep1CheckboxStates() {
+    // Find checkboxes within the wizard modal specifically
+    const modal = document.getElementById('lead-wizard-modal');
+    const excludePriceEl = modal ? modal.querySelector('#exclude-price-checkbox') : document.getElementById('exclude-price-checkbox');
+    const exportCsvEl = modal ? modal.querySelector('#export-csv-checkbox') : document.getElementById('export-csv-checkbox');
+    
+    if (excludePriceEl) {
+      const excludePrice = !!excludePriceEl.checked;
+      leadTracker.updateLeadData({ excludePrice });
+      if (window.leadWizardIntegration) {
+        window.leadWizardIntegration.setOptions({ excludePrice });
+      }
+    }
+    if (exportCsvEl) {
+      const exportCsv = !!exportCsvEl.checked;
+      leadTracker.updateLeadData({ exportCsv });
+      if (window.leadWizardIntegration) {
+        window.leadWizardIntegration.setOptions({ exportCsv });
+      }
     }
   }
 
@@ -821,15 +865,9 @@ export class LeadWizard {
    * Complete the wizard
    */
   complete() {
-    // Ensure latest checkbox states are captured before finalising
-    const excludePriceEl = document.getElementById('exclude-price-checkbox');
-    const exportCsvEl = document.getElementById('export-csv-checkbox');
-    if (excludePriceEl) {
-      leadTracker.updateLeadData({ excludePrice: !!excludePriceEl.checked });
-    }
-    if (exportCsvEl) {
-      leadTracker.updateLeadData({ exportCsv: !!exportCsvEl.checked });
-    }
+    // Note: Step 1 checkbox states were already saved in saveStep1CheckboxStates() 
+    // when leaving Step 1. The checkboxes no longer exist in the DOM at this point
+    // (we're on Step 3), so we rely on the values stored in leadTracker.
 
     // Use raw lead data here so we keep all fields (name, email, project, etc.)
     // Formatting for reporting/email is handled downstream.
