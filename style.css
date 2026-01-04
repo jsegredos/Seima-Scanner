@@ -79,6 +79,20 @@ body {
   justify-content: center;
 }
 
+/* Green Capture button for better visibility */
+#ocr-capture-btn.primary-btn {
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  box-shadow: 0 2px 12px 0 rgba(16, 185, 129, 0.3);
+}
+
+#ocr-capture-btn.primary-btn:hover, 
+#ocr-capture-btn.primary-btn:focus {
+  background: linear-gradient(90deg, #059669 0%, #047857 100%);
+  box-shadow: 0 4px 16px 0 rgba(16, 185, 129, 0.4);
+  transform: translateY(-2px) scale(1.03);
+}
+
 .primary-btn:hover, .primary-btn:focus {
   background: linear-gradient(90deg, #f3f4f6 0%, #e0e7ef 100%);
   box-shadow: 0 4px 16px 0 rgba(0,0,0,0.12);

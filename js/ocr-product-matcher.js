@@ -192,6 +192,19 @@ export class OCRProductMatcher {
       centerScore: m.centerScore
     })));
 
+    // Special handling: If we have multiple distinct OrderCodes (high confidence matches),
+    // show ALL of them regardless of family grouping. This ensures all detected order codes
+    // are visible to the user, not just the dominant family.
+    const orderCodeMatches = unique.filter(m => m.type === 'OrderCode' && m.confidence === 'high');
+    const distinctOrderCodes = new Set(orderCodeMatches.map(m => m.product.OrderCode));
+    
+    if (distinctOrderCodes.size > 1) {
+      console.log('✅ Multiple distinct OrderCodes detected:', Array.from(distinctOrderCodes));
+      console.log('📋 Showing all OrderCode matches (', orderCodeMatches.length, 'products)');
+      // Return all OrderCode matches, sorted by center score (center items first)
+      return orderCodeMatches.sort((a, b) => b.centerScore - a.centerScore);
+    }
+
     // Group by product family (extract base product name)
     const families = this.groupByProductFamily(unique);
     console.log('👥 Product Families Detected:', families.map(f => ({
@@ -233,6 +246,7 @@ export class OCRProductMatcher {
     scoredFamilies.sort((a, b) => b.totalScore - a.totalScore);
 
     // If top family has significantly higher score (>70% dominance), auto-select it
+    // BUT only if we don't have multiple distinct OrderCodes (handled above)
     if (scoredFamilies.length > 1 && scoredFamilies[0].totalScore > 0.7) {
       console.log('🎯 Auto-selecting dominant product family:', scoredFamilies[0].familyName, 'with score:', scoredFamilies[0].totalScore.toFixed(2));
       return scoredFamilies[0].matches;
