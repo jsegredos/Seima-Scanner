@@ -821,6 +821,16 @@ export class LeadWizard {
    * Complete the wizard
    */
   complete() {
+    // Ensure latest checkbox states are captured before finalising
+    const excludePriceEl = document.getElementById('exclude-price-checkbox');
+    const exportCsvEl = document.getElementById('export-csv-checkbox');
+    if (excludePriceEl) {
+      leadTracker.updateLeadData({ excludePrice: !!excludePriceEl.checked });
+    }
+    if (exportCsvEl) {
+      leadTracker.updateLeadData({ exportCsv: !!exportCsvEl.checked });
+    }
+
     // Use raw lead data here so we keep all fields (name, email, project, etc.)
     // Formatting for reporting/email is handled downstream.
     const leadData = leadTracker.getLeadData();
