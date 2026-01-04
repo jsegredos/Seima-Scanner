@@ -1,6 +1,6 @@
 // Configuration constants
 export const CONFIG = {
-  VERSION: '4.0.1',
+  VERSION: '4.1.0',
   ROOMS: {
     PREDEFINED: [
       { name: "Bath 1", icon: "🛁" },
@@ -60,6 +60,29 @@ export const CONFIG = {
     IMAGE_CACHE_SIZE: 100,
     SCANNER_TIMEOUT: 30000,
     BARCODE_SCAN_INTERVAL: 100
+  },
+
+  // OCR Configuration
+  OCR: {
+    // Scan interval in milliseconds
+    SCAN_INTERVAL: 1500,
+    // Minimum text length to consider (except OrderCodes)
+    MIN_TEXT_LENGTH: 3,
+    // Minimum confidence threshold (0-100)
+    MIN_CONFIDENCE: 60,
+    // Center region ratio (middle portion of image to prioritize)
+    CENTER_REGION_RATIO: 0.6,
+    // Fuzzy matching tolerance (Levenshtein distance)
+    FUZZY_MATCH_TOLERANCE: 1,
+    // Processing timeout in milliseconds
+    PROCESSING_TIMEOUT: 30000,
+    // Whether to prefer Web Worker (off-main-thread processing)
+    PREFER_WEB_WORKER: true,
+    // Image preprocessing settings
+    PREPROCESSING: {
+      CONTRAST: 1.5,
+      USE_THRESHOLD: true
+    }
   },
 
   // Email Configuration - Unified for Multiple Providers

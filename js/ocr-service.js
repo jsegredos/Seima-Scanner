@@ -1,59 +1,207 @@
 /**
  * OCR Service for Seima Scanner
  * Provides client-side text recognition using Tesseract.js
+ * Supports Web Worker for off-main-thread processing
  * Used for Text Scan mode to read product labels and OrderCodes
  */
 
 export class OCRService {
   constructor() {
-    this.worker = null;
+    // Tesseract worker (direct mode)
+    this.tesseractWorker = null;
     this.isInitialized = false;
     this.isScanning = false;
     this.scanInterval = null;
-    this.isProcessing = false; // Flag to prevent multiple simultaneous callbacks
+    this.isProcessing = false;
+
+    // Web Worker support
+    this.ocrWorker = null;
+    this.useWebWorker = false;
+    this.workerReady = false;
+    this.pendingRequests = new Map();
+    this.requestId = 0;
+
+    // Reusable canvas for memory efficiency
+    this.canvas = null;
+    this.ctx = null;
   }
 
   /**
-   * Initialize Tesseract.js worker
+   * Get or create reusable canvas
+   * @param {number} width
+   * @param {number} height
+   * @returns {{canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D}}
    */
-  async initialize() {
-    if (this.isInitialized && this.worker) {
-      return this.worker;
+  getCanvas(width, height) {
+    if (!this.canvas) {
+      this.canvas = document.createElement('canvas');
+      this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+    }
+    this.canvas.width = width;
+    this.canvas.height = height;
+    return { canvas: this.canvas, ctx: this.ctx };
+  }
+
+  /**
+   * Initialize OCR - tries Web Worker first, falls back to direct Tesseract
+   * @param {boolean} preferWorker - Whether to prefer Web Worker (default: true)
+   */
+  async initialize(preferWorker = true) {
+    if (this.isInitialized) {
+      return true;
+    }
+
+    // Try Web Worker first if preferred
+    if (preferWorker && typeof Worker !== 'undefined') {
+      try {
+        await this.initializeWebWorker();
+        this.useWebWorker = true;
+        this.isInitialized = true;
+        console.log('✅ OCR initialized with Web Worker (off-main-thread)');
+        return true;
+      } catch (error) {
+        console.warn('⚠️ Web Worker initialization failed, falling back to direct mode:', error.message);
+      }
+    }
+
+    // Fallback to direct Tesseract
+    await this.initializeDirect();
+    this.useWebWorker = false;
+    this.isInitialized = true;
+    console.log('✅ OCR initialized in direct mode');
+    return true;
+  }
+
+  /**
+   * Initialize Web Worker for OCR
+   */
+  async initializeWebWorker() {
+    return new Promise((resolve, reject) => {
+      try {
+        this.ocrWorker = new Worker('./js/ocr-worker.js');
+
+        const timeout = setTimeout(() => {
+          reject(new Error('Web Worker initialization timeout'));
+        }, 10000);
+
+        this.ocrWorker.onmessage = (e) => {
+          const { type, id, results, error, success } = e.data;
+
+          if (type === 'ready') {
+            // Worker is loaded, now initialize Tesseract
+            this.ocrWorker.postMessage({ type: 'init', id: 'init' });
+          } else if (type === 'init_complete') {
+            clearTimeout(timeout);
+            this.workerReady = true;
+            resolve(true);
+          } else if (type === 'result') {
+            const pending = this.pendingRequests.get(id);
+            if (pending) {
+              pending.resolve(results);
+              this.pendingRequests.delete(id);
+            }
+          } else if (type === 'error') {
+            if (id === 'init') {
+              clearTimeout(timeout);
+              reject(new Error(error));
+            } else {
+              const pending = this.pendingRequests.get(id);
+              if (pending) {
+                pending.reject(new Error(error));
+                this.pendingRequests.delete(id);
+              }
+            }
+          }
+        };
+
+        this.ocrWorker.onerror = (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        };
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Initialize Tesseract.js directly (fallback mode)
+   */
+  async initializeDirect() {
+    if (this.tesseractWorker) {
+      return this.tesseractWorker;
     }
 
     try {
-      console.log('🔍 Initializing OCR worker...');
+      console.log('🔍 Initializing Tesseract directly...');
 
       if (typeof Tesseract === 'undefined') {
         throw new Error('Tesseract.js not loaded. Please ensure the script is included.');
       }
 
-      // Tesseract.js v5 - workers come pre-initialized with language
-      // No need for loadLanguage() or initialize() - they're deprecated
-      this.worker = await Tesseract.createWorker('eng');
+      this.tesseractWorker = await Tesseract.createWorker('eng');
 
-      // Optimised for product labels and OrderCodes
-      await this.worker.setParameters({
+      await this.tesseractWorker.setParameters({
         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -.,()',
-        preserve_interword_spaces: '0', // Don't preserve spaces - we'll clean them
-        tessedit_pageseg_mode: '6', // Assume uniform block of text
-        // Note: tessedit_ocr_engine_mode can only be set during initialization in Tesseract v5
+        preserve_interword_spaces: '0',
+        tessedit_pageseg_mode: '6',
       });
 
-      this.isInitialized = true;
-      console.log('✅ OCR worker initialized successfully');
-      return this.worker;
+      return this.tesseractWorker;
     } catch (error) {
-      console.error('❌ Failed to initialize OCR worker:', error);
-      this.isInitialized = false;
+      console.error('❌ Failed to initialize Tesseract:', error);
       throw error;
     }
   }
 
   /**
+   * Convert canvas to base64 PNG for worker
+   * @param {HTMLCanvasElement} canvas
+   * @returns {string}
+   */
+  canvasToBase64(canvas) {
+    return canvas.toDataURL('image/png');
+  }
+
+  /**
+   * Process image using Web Worker
+   * @param {string} imageBase64 - Base64 encoded image
+   * @param {number} width
+   * @param {number} height
+   * @returns {Promise<Array>}
+   */
+  async processWithWorker(imageBase64, width, height) {
+    return new Promise((resolve, reject) => {
+      const id = `req_${++this.requestId}`;
+
+      const timeout = setTimeout(() => {
+        this.pendingRequests.delete(id);
+        reject(new Error('OCR processing timeout'));
+      }, 30000);
+
+      this.pendingRequests.set(id, {
+        resolve: (results) => {
+          clearTimeout(timeout);
+          resolve(results);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        }
+      });
+
+      this.ocrWorker.postMessage({
+        type: 'process',
+        id,
+        data: { imageBase64, width, height }
+      });
+    });
+  }
+
+  /**
    * Start OCR scanning on video element
    * @param {HTMLVideoElement} videoElement - Video element to capture frames from
-   * @param {Function} onResults - Callback function(results: string[])
+   * @param {Function} onResults - Callback function(results: Array)
    * @param {number} interval - Scan interval in milliseconds (default: 1500)
    */
   async startScanning(videoElement, onResults, interval = 1500) {
@@ -71,100 +219,71 @@ export class OCRService {
     }
 
     this.isScanning = true;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
 
     this.scanInterval = setInterval(async () => {
-      // Stop if not scanning, processing, or video not ready
       if (!this.isScanning || this.isProcessing || videoElement.paused || videoElement.ended) {
         return;
       }
 
-      // Check if video is ready before capturing frame
       if (videoElement.readyState < 2) {
-        return; // Skip this scan cycle if video not ready
+        return;
       }
 
       try {
-        // Capture frame from video
         const width = videoElement.videoWidth || 640;
         const height = videoElement.videoHeight || 480;
-        
+
         if (width === 0 || height === 0) {
-          return; // Video dimensions not available yet
+          return;
         }
-        
-        canvas.width = width;
-        canvas.height = height;
+
+        const { canvas, ctx } = this.getCanvas(width, height);
         ctx.drawImage(videoElement, 0, 0, width, height);
 
-        // Preprocess for better OCR results
-        this.preprocessCanvasForOCR(canvas);
+        let textData;
 
-        // Perform OCR
-        const result = await this.worker.recognize(canvas);
-        
-        // Extract text lines with spatial data
-        const textData = result.data.lines
-          .map(line => {
-            const cleanedText = this.cleanOcrText(line.text);
-            // Filter out empty or very short text (unless it's an OrderCode)
-            if (!cleanedText || (cleanedText.length < 3 && !/^19\d{4}$/.test(cleanedText))) {
-              return null;
-            }
-            
-            // Extract bounding box
-            const bbox = line.bbox || { x0: 0, y0: 0, x1: width, y1: height };
-            const centerX = (bbox.x0 + bbox.x1) / 2;
-            const centerY = (bbox.y0 + bbox.y1) / 2;
-            
-            return {
-              text: cleanedText,
-              bbox: bbox,
-              centerX: centerX,
-              centerY: centerY,
-              width: width,
-              height: height
-            };
-          })
-          .filter(item => item !== null && item.text && item.text.length > 0);
-
-        // Deduplicate by text (keep first occurrence)
-        const seen = new Set();
-        const unique = [];
-        for (const item of textData) {
-          if (!seen.has(item.text)) {
-            seen.add(item.text);
-            unique.push(item);
-          }
+        if (this.useWebWorker && this.workerReady) {
+          // Use Web Worker (off main thread)
+          // Preprocess first, then convert to base64 for worker
+          this.preprocessCanvasForOCR(canvas);
+          const imageBase64 = this.canvasToBase64(canvas);
+          textData = await this.processWithWorker(imageBase64, width, height);
+        } else {
+          // Direct processing
+          this.preprocessCanvasForOCR(canvas);
+          const result = await this.tesseractWorker.recognize(canvas);
+          textData = this.extractTextData(result, width, height);
         }
 
+        // Deduplicate
+        const seen = new Set();
+        const unique = textData.filter(item => {
+          if (seen.has(item.text)) return false;
+          seen.add(item.text);
+          return true;
+        });
+
         if (unique.length > 0 && !this.isProcessing) {
-          // Stop scanning immediately before calling callback
           this.isProcessing = true;
-          this.isScanning = false; // Prevent further scans
-          
+          this.isScanning = false;
+
           console.log('📝 OCR detected text with spatial data:', unique.length, 'items');
-          
-          // Clear interval before callback to prevent race conditions
+
           if (this.scanInterval) {
             clearInterval(this.scanInterval);
             this.scanInterval = null;
           }
-          
-          // Call callback (which should stop scanning, but we already did)
+
           onResults(unique);
         }
       } catch (error) {
-        // Ignore "Image too small" and "Line cannot be recognized" errors - these are normal
         if (!error.message || (!error.message.includes('too small') && !error.message.includes('cannot be recognized'))) {
           console.warn('OCR recognition error:', error);
         }
-        // Continue scanning on error
       }
     }, interval);
 
-    console.log('✅ OCR scanning started');
+    console.log('✅ OCR scanning started' + (this.useWebWorker ? ' (Web Worker mode)' : ' (direct mode)'));
   }
 
   /**
@@ -176,14 +295,14 @@ export class OCRService {
       this.scanInterval = null;
     }
     this.isScanning = false;
-    this.isProcessing = false; // Reset processing flag
+    this.isProcessing = false;
     console.log('🛑 OCR scanning stopped');
   }
 
   /**
    * Capture and process a single image from video element
    * @param {HTMLVideoElement} videoElement - Video element to capture frame from
-   * @returns {Promise<Array>} Array of objects with text and spatial data {text, bbox, centerX, centerY}
+   * @returns {Promise<Array>} Array of objects with text and spatial data
    */
   async captureAndProcessImage(videoElement) {
     if (this.isProcessing) {
@@ -199,7 +318,6 @@ export class OCRService {
       throw new Error('Video element not ready for OCR capture');
     }
 
-    // Check if video is ready
     if (videoElement.readyState < 2) {
       throw new Error('Video not ready - please wait a moment');
     }
@@ -207,61 +325,38 @@ export class OCRService {
     this.isProcessing = true;
 
     try {
-      // Capture frame from video
       const width = videoElement.videoWidth || 640;
       const height = videoElement.videoHeight || 480;
-      
+
       if (width === 0 || height === 0) {
         throw new Error('Video dimensions not available');
       }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      
+      const { canvas, ctx } = this.getCanvas(width, height);
       ctx.drawImage(videoElement, 0, 0, width, height);
 
-      // Preprocess for better OCR results
-      this.preprocessCanvasForOCR(canvas);
+      let textData;
 
-      // Perform OCR
-      const result = await this.worker.recognize(canvas);
-      
-      // Extract text lines with spatial data
-      const textData = result.data.lines
-        .map(line => {
-          const cleanedText = this.cleanOcrText(line.text);
-          // Filter out empty or very short text (unless it's an OrderCode)
-          if (!cleanedText || (cleanedText.length < 3 && !/^19\d{4}$/.test(cleanedText))) {
-            return null;
-          }
-          
-          // Extract bounding box (Tesseract provides bbox: {x0, y0, x1, y1})
-          const bbox = line.bbox || { x0: 0, y0: 0, x1: width, y1: height };
-          const centerX = (bbox.x0 + bbox.x1) / 2;
-          const centerY = (bbox.y0 + bbox.y1) / 2;
-          
-          return {
-            text: cleanedText,
-            bbox: bbox,
-            centerX: centerX,
-            centerY: centerY,
-            width: width,
-            height: height
-          };
-        })
-        .filter(item => item !== null && item.text && item.text.length > 0);
-
-      // Deduplicate by text (keep first occurrence with its spatial data)
-      const seen = new Set();
-      const unique = [];
-      for (const item of textData) {
-        if (!seen.has(item.text)) {
-          seen.add(item.text);
-          unique.push(item);
-        }
+      if (this.useWebWorker && this.workerReady) {
+        // Use Web Worker
+        // Preprocess first, then convert to base64 for worker
+        this.preprocessCanvasForOCR(canvas);
+        const imageBase64 = this.canvasToBase64(canvas);
+        textData = await this.processWithWorker(imageBase64, width, height);
+      } else {
+        // Direct processing
+        this.preprocessCanvasForOCR(canvas);
+        const result = await this.tesseractWorker.recognize(canvas);
+        textData = this.extractTextData(result, width, height);
       }
+
+      // Deduplicate
+      const seen = new Set();
+      const unique = textData.filter(item => {
+        if (seen.has(item.text)) return false;
+        seen.add(item.text);
+        return true;
+      });
 
       console.log('📝 OCR detected text with spatial data:', unique.length, 'items');
       console.log('📋 OCR Raw Data:', unique.map(item => ({
@@ -270,6 +365,7 @@ export class OCRService {
         centerY: Math.round(item.centerY),
         bbox: item.bbox
       })));
+
       return unique;
     } catch (error) {
       console.error('OCR capture error:', error);
@@ -280,67 +376,88 @@ export class OCRService {
   }
 
   /**
+   * Extract text data from Tesseract result
+   * @param {Object} result - Tesseract recognition result
+   * @param {number} width - Image width
+   * @param {number} height - Image height
+   * @returns {Array}
+   */
+  extractTextData(result, width, height) {
+    return result.data.lines
+      .map(line => {
+        const cleanedText = this.cleanOcrText(line.text);
+        if (!cleanedText || (cleanedText.length < 3 && !/^19\d{4}$/.test(cleanedText))) {
+          return null;
+        }
+
+        const bbox = line.bbox || { x0: 0, y0: 0, x1: width, y1: height };
+        const centerX = (bbox.x0 + bbox.x1) / 2;
+        const centerY = (bbox.y0 + bbox.y1) / 2;
+
+        return {
+          text: cleanedText,
+          bbox: bbox,
+          centerX: centerX,
+          centerY: centerY,
+          width: width,
+          height: height,
+          confidence: line.confidence
+        };
+      })
+      .filter(item => item !== null && item.text && item.text.length > 0);
+  }
+
+  /**
    * Clean OCR text: remove excessive whitespace, normalize, extract useful patterns
    * @param {string} text - Raw OCR text
    * @returns {string} Cleaned text
    */
   cleanOcrText(text) {
     if (!text) return '';
-    
-    // Remove excessive whitespace (multiple spaces/tabs/newlines)
+
     let cleaned = text.replace(/\s+/g, ' ').trim();
-    
-    // Extract OrderCode pattern (19 followed by 4 digits, even with spaces)
+
+    // Extract OrderCode pattern
     const orderCodeMatch = cleaned.match(/19\s*\d\s*\d\s*\d\s*\d/);
     if (orderCodeMatch) {
-      // Normalize to 19xxxx format
       const code = orderCodeMatch[0].replace(/\s/g, '');
       if (code.length === 6) {
-        return code; // Return clean OrderCode
+        return code;
       }
     }
-    
-    // Filter out garbage OCR text:
-    // - Very short text (less than 3 chars) unless it's a number
+
+    // Filter garbage
     if (cleaned.length < 3 && !/^\d+$/.test(cleaned)) {
       return '';
     }
-    
-    // - Text with too many special characters or punctuation
+
     const specialCharRatio = (cleaned.match(/[^\w\s]/g) || []).length / cleaned.length;
     if (specialCharRatio > 0.3) {
       return '';
     }
-    
-    // - Text that's mostly single characters separated by spaces (OCR fragments)
+
     const words = cleaned.split(/\s+/);
     const singleCharWords = words.filter(w => w.length === 1).length;
     if (words.length > 2 && singleCharWords / words.length > 0.5) {
       return '';
     }
-    
-    // - Text with too many dashes or hyphens (likely OCR errors)
+
     if ((cleaned.match(/-/g) || []).length > 2) {
       return '';
     }
-    
-    // Remove single character words and excessive punctuation
+
     cleaned = cleaned.replace(/\b\w\b/g, '').replace(/[^\w\s]/g, '');
-    
-    // Normalize whitespace again
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
-    
-    // Final check - if cleaned text is too short or looks like garbage, return empty
+
     if (cleaned.length < 3) {
       return '';
     }
-    
+
     return cleaned;
   }
 
   /**
    * Preprocess canvas for better OCR results
-   * Improves contrast and sharpness for text recognition
    * @param {HTMLCanvasElement} canvas - Canvas to preprocess
    */
   preprocessCanvasForOCR(canvas) {
@@ -348,39 +465,62 @@ export class OCRService {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
 
-    // Apply contrast enhancement and grayscale conversion
     for (let i = 0; i < data.length; i += 4) {
-      // Convert to grayscale
       const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
-      
-      // Enhance contrast (make dark text darker, light background lighter)
-      const contrast = 1.5; // Contrast factor
+      const contrast = 1.5;
       const enhanced = Math.max(0, Math.min(255, ((gray - 128) * contrast) + 128));
-      
-      // Apply threshold for better text clarity
       const threshold = enhanced > 128 ? 255 : 0;
-      
+
       data[i] = data[i + 1] = data[i + 2] = threshold;
-      // Keep alpha channel
     }
 
     ctx.putImageData(imageData, 0, 0);
   }
 
   /**
-   * Cleanup and terminate worker
+   * Get current mode info
+   * @returns {Object}
+   */
+  getModeInfo() {
+    return {
+      initialized: this.isInitialized,
+      mode: this.useWebWorker ? 'webworker' : 'direct',
+      workerReady: this.workerReady
+    };
+  }
+
+  /**
+   * Cleanup and terminate workers
    */
   async destroy() {
     this.stopScanning();
-    if (this.worker) {
-      await this.worker.terminate();
-      this.worker = null;
-      this.isInitialized = false;
-      console.log('🧹 OCR worker terminated');
+
+    // Terminate Web Worker
+    if (this.ocrWorker) {
+      try {
+        this.ocrWorker.postMessage({ type: 'terminate', id: 'terminate' });
+        this.ocrWorker.terminate();
+      } catch (e) {}
+      this.ocrWorker = null;
+      this.workerReady = false;
     }
+
+    // Terminate Tesseract worker
+    if (this.tesseractWorker) {
+      await this.tesseractWorker.terminate();
+      this.tesseractWorker = null;
+    }
+
+    // Clean up canvas
+    this.canvas = null;
+    this.ctx = null;
+
+    this.isInitialized = false;
+    this.pendingRequests.clear();
+
+    console.log('🧹 OCR service destroyed');
   }
 }
 
 // Export singleton instance
 export const ocrService = new OCRService();
-

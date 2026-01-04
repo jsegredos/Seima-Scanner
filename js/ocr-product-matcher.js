@@ -1,11 +1,25 @@
 /**
  * OCR Product Matcher
  * Matches OCR-detected text against product catalog with spatial grouping
+ * Uses CatalogIndex for O(1) lookups and fuzzy matching for OCR errors
  */
+
+import { catalogIndex } from './catalog-index.js';
 
 export class OCRProductMatcher {
   /**
+   * Ensure catalog index is built for O(1) lookups
+   * @param {Array} catalog - Product catalog array
+   */
+  static ensureIndexBuilt(catalog) {
+    if (!catalogIndex.isReady() || catalogIndex.getCatalog() !== catalog) {
+      catalogIndex.build(catalog);
+    }
+  }
+
+  /**
    * Find products matching OCR-detected texts with spatial analysis
+   * Uses indexed O(1) lookups and fuzzy matching for OCR errors
    * @param {Array} textData - Array of objects with {text, bbox, centerX, centerY, width, height}
    * @param {Array} catalog - Product catalog array
    * @returns {Array|Object} Array of match objects, or object with {families, selectedFamily} if multiple families detected
@@ -14,21 +28,24 @@ export class OCRProductMatcher {
     console.log('🔍 findProductsByOcrTexts called with', textData.length, 'items');
     console.log('🔍 First item type:', textData.length > 0 ? typeof textData[0] : 'empty');
     console.log('🔍 First item sample:', textData.length > 0 ? (typeof textData[0] === 'string' ? textData[0].substring(0, 50) : JSON.stringify(textData[0]).substring(0, 100)) : 'N/A');
-    
+
+    // Ensure catalog index is built for O(1) lookups
+    this.ensureIndexBuilt(catalog);
+
     // Handle legacy format (array of strings) for backward compatibility
     if (textData.length > 0 && typeof textData[0] === 'string') {
       console.log('⚠️  Using legacy format (array of strings)');
       const texts = textData;
       return this.findProductsByOcrTextsLegacy(texts, catalog);
     }
-    
+
     console.log('✅ Using new format (array of objects with spatial data)');
 
     // Extract texts and spatial data
     const texts = textData.map(item => item.text);
     const imageWidth = textData[0]?.width || 640;
     const imageHeight = textData[0]?.height || 480;
-    
+
     // Define center region (middle 60% of image)
     const centerLeft = imageWidth * 0.2;
     const centerRight = imageWidth * 0.8;
@@ -42,13 +59,13 @@ export class OCRProductMatcher {
     for (let i = 0; i < textData.length; i++) {
       const item = textData[i];
       const text = item.text;
-      
+
       console.log(`🔎 Processing OCR text [${i+1}/${textData.length}]: "${text}"`);
-      
+
       // Clean and normalize text
       let normalized = text.trim().toUpperCase();
       normalized = normalized.replace(/\s+/g, ' ').trim();
-      
+
       // Extract OrderCode from text
       const orderCodeInText = normalized.match(/19\s*\d\s*\d\s*\d\s*\d/);
       if (orderCodeInText) {
@@ -60,12 +77,9 @@ export class OCRProductMatcher {
                          item.centerY >= centerTop && item.centerY <= centerBottom;
       const centerScore = isInCenter ? 1.0 : 0.3; // Higher weight for center region
 
-      // Priority 1: Exact OrderCode match
+      // Priority 1: Exact OrderCode match (O(1) indexed lookup)
       if (orderCodeRegex.test(normalized)) {
-        const product = catalog.find(p => {
-          const orderCode = (p.OrderCode || '').toString().trim().toUpperCase();
-          return orderCode === normalized;
-        });
+        const product = catalogIndex.getByOrderCode(normalized);
 
         if (product) {
           console.log(`✅ OrderCode match: "${text}" → ${product.OrderCode} (${(product['Product Name'] || product.Description || '').substring(0, 40)})`);
@@ -80,18 +94,31 @@ export class OCRProductMatcher {
           });
           continue;
         } else {
-          console.log(`❌ OrderCode "${normalized}" not found in catalog`);
+          // Try fuzzy matching for OCR errors (1 character tolerance)
+          const fuzzyResult = catalogIndex.fuzzyMatchOrderCode(normalized, 1);
+          if (fuzzyResult) {
+            console.log(`✅ Fuzzy OrderCode match: "${text}" → ${fuzzyResult.product.OrderCode} (distance: ${fuzzyResult.distance})`);
+            allMatches.push({
+              text,
+              type: 'OrderCode',
+              confidence: fuzzyResult.distance === 0 ? 'high' : 'medium',
+              product: fuzzyResult.product,
+              centerX: item.centerX,
+              centerY: item.centerY,
+              centerScore: centerScore,
+              fuzzyMatch: fuzzyResult.distance > 0
+            });
+            continue;
+          }
+          console.log(`❌ OrderCode "${normalized}" not found in catalog (even with fuzzy matching)`);
         }
       }
 
-      // Priority 1: Partial OrderCode match
+      // Priority 1b: Partial OrderCode match (O(1) indexed lookup)
       const orderCodeMatch = normalized.match(/19\d{4}/);
       if (orderCodeMatch) {
         const code = orderCodeMatch[0];
-        const product = catalog.find(p => {
-          const orderCode = (p.OrderCode || '').toString().trim().toUpperCase();
-          return orderCode === code;
-        });
+        let product = catalogIndex.getByOrderCode(code);
 
         if (product) {
           console.log(`✅ Partial OrderCode match: "${text}" → ${code} (${(product['Product Name'] || product.Description || '').substring(0, 40)})`);
@@ -106,9 +133,26 @@ export class OCRProductMatcher {
           });
           continue;
         }
+
+        // Try fuzzy match on partial code
+        const fuzzyResult = catalogIndex.fuzzyMatchOrderCode(code, 1);
+        if (fuzzyResult) {
+          console.log(`✅ Fuzzy partial match: "${text}" → ${fuzzyResult.product.OrderCode} (distance: ${fuzzyResult.distance})`);
+          allMatches.push({
+            text,
+            type: 'OrderCode',
+            confidence: 'medium',
+            product: fuzzyResult.product,
+            centerX: item.centerX,
+            centerY: item.centerY,
+            centerScore: centerScore,
+            fuzzyMatch: true
+          });
+          continue;
+        }
       }
 
-      // Priority 2: Product Name match (very strict - only exact or very close matches)
+      // Priority 2: Product Name match (using indexed word lookup)
       const normalizeForMatch = (str) => str.replace(/\s+/g, ' ').replace(/[^\w\s]/g, '').trim();
       const searchNormalized = normalizeForMatch(normalized);
 
@@ -122,27 +166,42 @@ export class OCRProductMatcher {
         if (!hasValidProductNamePattern) {
           console.log(`⏭️  Skipping product name match - doesn't look like product name: "${text}"`);
         } else {
-          const productNameMatches = catalog.filter(p => {
+          // Try exact name match first (O(1) indexed lookup)
+          let exactMatch = catalogIndex.getByNameExact(normalized);
+          if (exactMatch) {
+            console.log(`📝 Exact Product Name match: "${text}" → ${exactMatch.OrderCode}`);
+            allMatches.push({
+              text,
+              type: 'ProductName',
+              confidence: 'high',
+              product: exactMatch,
+              centerX: item.centerX,
+              centerY: item.centerY,
+              centerScore: centerScore
+            });
+            continue;
+          }
+
+          // Try word-based matching using inverted index
+          const wordMatches = catalogIndex.findByNameWords(searchNormalized);
+
+          // Filter to products where name actually matches meaningfully
+          const productNameMatches = wordMatches.filter(p => {
             const productName = (p['Product Name'] || p.productName || '').toUpperCase().trim();
             if (!productName) return false;
-            
+
             const productNameNormalized = normalizeForMatch(productName);
-            
-            // Exact match
-            if (productName === normalized || productNameNormalized === searchNormalized) {
-              return true;
-            }
-            
+
             // Check if search text starts with product name (e.g., "AURORA 530" matches "AURORA 530 BASIN...")
             if (productNameNormalized.startsWith(searchNormalized) && searchNormalized.length >= 6) {
               return true;
             }
-            
-            // Check if product name starts with search text (e.g., "AURORA 530" in search matches "AURORA 530 BASIN...")
+
+            // Check if product name starts with search text
             if (searchNormalized.startsWith(productNameNormalized.split(/\s+/).slice(0, 2).join(' ')) && searchNormalized.length >= 6) {
               return true;
             }
-            
+
             return false;
           });
 
@@ -160,16 +219,31 @@ export class OCRProductMatcher {
               });
             });
             continue;
-          } else {
-            console.log(`❌ No product name match for: "${text}"`);
           }
         }
       }
 
-      // Priority 3: Description match - DISABLED to prevent false positives
-      // Description matching is too error-prone with OCR misreads
-      // Only match on OrderCodes and exact product names
-      console.log(`⏭️  Skipping description match for: "${text}" (disabled to prevent false positives)`);
+      // Priority 3: Fuzzy product name matching (for OCR errors like "Odesso" → "Odessa")
+      const fuzzyNameMatches = catalogIndex.fuzzyMatchProductName(text, 1);
+      if (fuzzyNameMatches.length > 0) {
+        console.log(`🔄 Fuzzy Product Name match: "${text}" → ${fuzzyNameMatches.length} products (${fuzzyNameMatches[0].matchedFamily})`);
+        fuzzyNameMatches.forEach(match => {
+          allMatches.push({
+            text,
+            type: 'ProductName',
+            confidence: match.confidence,
+            product: match.product,
+            centerX: item.centerX,
+            centerY: item.centerY,
+            centerScore: centerScore,
+            fuzzyMatch: match.distance > 0,
+            matchedFamily: match.matchedFamily
+          });
+        });
+        continue;
+      }
+
+      console.log(`❌ No match for: "${text}"`);
     }
 
     // Deduplicate by OrderCode
@@ -316,33 +390,34 @@ export class OCRProductMatcher {
 
   /**
    * Legacy method for backward compatibility (handles array of strings)
+   * Uses indexed O(1) lookups and fuzzy matching
    * @param {string[]} texts - Array of detected text strings
    * @param {Array} catalog - Product catalog array
    * @returns {Array} Array of match objects with product and confidence
    */
   static findProductsByOcrTextsLegacy(texts, catalog) {
+    // Ensure index is built
+    this.ensureIndexBuilt(catalog);
+
     const matches = [];
     const orderCodeRegex = /^19\d{4}$/; // Exact 19xxxx format
 
     for (const text of texts) {
       // Clean and normalize text
       let normalized = text.trim().toUpperCase();
-      
+
       // Remove excessive whitespace
       normalized = normalized.replace(/\s+/g, ' ').trim();
-      
+
       // Extract OrderCode from text (handle cases where OCR adds spaces: "19 12 34" -> "191234")
       const orderCodeInText = normalized.match(/19\s*\d\s*\d\s*\d\s*\d/);
       if (orderCodeInText) {
         normalized = orderCodeInText[0].replace(/\s/g, '');
       }
 
-      // Priority 1: Exact OrderCode match (19xxxx format)
+      // Priority 1: Exact OrderCode match (O(1) indexed lookup)
       if (orderCodeRegex.test(normalized)) {
-        const product = catalog.find(p => {
-          const orderCode = (p.OrderCode || '').toString().trim().toUpperCase();
-          return orderCode === normalized;
-        });
+        let product = catalogIndex.getByOrderCode(normalized);
 
         if (product) {
           matches.push({
@@ -353,16 +428,26 @@ export class OCRProductMatcher {
           });
           continue;
         }
+
+        // Try fuzzy match
+        const fuzzyResult = catalogIndex.fuzzyMatchOrderCode(normalized, 1);
+        if (fuzzyResult) {
+          matches.push({
+            text,
+            type: 'OrderCode',
+            confidence: 'medium',
+            product: fuzzyResult.product,
+            fuzzyMatch: true
+          });
+          continue;
+        }
       }
 
-      // Priority 1: Partial OrderCode match (contains 19xxxx)
+      // Priority 1b: Partial OrderCode match (O(1) indexed lookup)
       const orderCodeMatch = normalized.match(/19\d{4}/);
       if (orderCodeMatch) {
         const code = orderCodeMatch[0];
-        const product = catalog.find(p => {
-          const orderCode = (p.OrderCode || '').toString().trim().toUpperCase();
-          return orderCode === code;
-        });
+        let product = catalogIndex.getByOrderCode(code);
 
         if (product) {
           matches.push({
@@ -373,44 +458,41 @@ export class OCRProductMatcher {
           });
           continue;
         }
+
+        // Try fuzzy match
+        const fuzzyResult = catalogIndex.fuzzyMatchOrderCode(code, 1);
+        if (fuzzyResult) {
+          matches.push({
+            text,
+            type: 'OrderCode',
+            confidence: 'medium',
+            product: fuzzyResult.product,
+            fuzzyMatch: true
+          });
+          continue;
+        }
       }
 
       // Normalize search text for matching
       const normalizeForMatch = (str) => str.replace(/\s+/g, ' ').replace(/[^\w\s]/g, '').trim();
       const searchNormalized = normalizeForMatch(normalized);
 
-      // Priority 2: Product Name match
-      const productNameMatches = catalog.filter(p => {
-        const productName = (p['Product Name'] || p.productName || '').toUpperCase().trim();
-        
-        if (!productName) return false;
-        
-        const productNameNormalized = normalizeForMatch(productName);
-        
-        // Check exact match
-        if (productName === normalized || productNameNormalized === searchNormalized) {
-          return true;
-        }
-        
-        // Check if search text contains product name or vice versa
-        if (productName.includes(searchNormalized) || searchNormalized.includes(productName)) {
-          return true;
-        }
-        
-        // Check word-by-word matching (for "LIMNI 720" matching "LIMNI 720" or "LIMNI720")
-        const searchWords = searchNormalized.split(/\s+/).filter(w => w.length > 2);
-        if (searchWords.length > 0) {
-          const allWordsMatch = searchWords.every(word => productNameNormalized.includes(word));
-          if (allWordsMatch && searchWords.length >= 1) {
-            return true;
-          }
-        }
-        
-        return false;
-      });
+      // Priority 2: Product Name match (O(1) exact + indexed word lookup)
+      let exactMatch = catalogIndex.getByNameExact(normalized);
+      if (exactMatch) {
+        matches.push({
+          text,
+          type: 'ProductName',
+          confidence: 'high',
+          product: exactMatch
+        });
+        continue;
+      }
 
-      if (productNameMatches.length > 0) {
-        productNameMatches.forEach(product => {
+      // Word-based matching using inverted index
+      const wordMatches = catalogIndex.findByNameWords(searchNormalized);
+      if (wordMatches.length > 0) {
+        wordMatches.forEach(product => {
           matches.push({
             text,
             type: 'ProductName',
@@ -421,49 +503,8 @@ export class OCRProductMatcher {
         continue;
       }
 
-      // Priority 3: Description match
-      const descMatches = catalog.filter(p => {
-        const desc = (p['Product Description'] || p.Description || '').toUpperCase().trim();
-        
-        if (!desc) return false;
-        
-        const descNormalized = normalizeForMatch(desc);
-        
-        // Check exact match
-        if (desc === normalized || descNormalized === searchNormalized) {
-          return true;
-        }
-        
-        // Check if search text contains description or vice versa
-        if (desc.includes(searchNormalized) || searchNormalized.includes(desc)) {
-          return true;
-        }
-        
-        // Check word-by-word matching
-        const searchWords = searchNormalized.split(/\s+/).filter(w => w.length > 2);
-        if (searchWords.length > 0) {
-          const allWordsMatch = searchWords.every(word => descNormalized.includes(word));
-          if (allWordsMatch && searchWords.length >= 1) {
-            return true;
-          }
-        }
-        
-        // Check partial match in description (first 50 chars)
-        if (desc.includes(searchNormalized) || searchNormalized.includes(desc.substring(0, 50))) {
-          return true;
-        }
-        
-        return false;
-      });
-
-      descMatches.forEach(product => {
-        matches.push({
-          text,
-          type: 'Description',
-          confidence: 'medium',
-          product
-        });
-      });
+      // Priority 3: Description match - kept for legacy but limited
+      // Only exact matches to prevent false positives
     }
 
     // Deduplicate by OrderCode
