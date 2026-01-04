@@ -47,15 +47,21 @@ def main():
     script_dir = Path(__file__).parent
     os.chdir(script_dir)
     
-    PORT = 8080
+    PORT = 8000
     
     print(f"Seima Scanner Server starting on http://localhost:{PORT}")
     print(f"Root directory: {script_dir}")
     print("Press Ctrl+C to stop the server")
     
     try:
-        with socketserver.TCPServer(("", PORT), CustomHTTPRequestHandler) as httpd:
+        # Bind to all interfaces (0.0.0.0) to allow mobile device access
+        with socketserver.TCPServer(("0.0.0.0", PORT), CustomHTTPRequestHandler) as httpd:
             server_url = f"http://localhost:{PORT}"
+            # Get local IP address for mobile access
+            import socket
+            hostname = socket.gethostname()
+            local_ip = socket.gethostbyname(hostname)
+            network_url = f"http://{local_ip}:{PORT}"
             
             # Auto-open browser
             try:
@@ -66,6 +72,8 @@ def main():
                 print(f"Please open {server_url} manually")
             
             print("Server is running...")
+            print(f"Local access: {server_url}")
+            print(f"Network access (for mobile): {network_url}")
             httpd.serve_forever()
             
     except KeyboardInterrupt:

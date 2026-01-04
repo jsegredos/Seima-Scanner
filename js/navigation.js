@@ -1418,15 +1418,25 @@ export class NavigationManager {
     // Get catalog
     const catalog = this.dataService.getAllProducts();
     
+    console.log('🔎 Starting product matching with', detectedTexts.length, 'OCR text items');
+    console.log('📚 Catalog has', catalog.length, 'products');
+    
     // Find matching products (may return array of matches or object with families)
     const result = OCRProductMatcher.findProductsByOcrTexts(detectedTexts, catalog);
+    
+    console.log('📥 Matching result:', result);
+    console.log('📥 Result type:', Array.isArray(result) ? 'Array' : typeof result);
+    console.log('📥 Requires selection?', result?.requiresSelection);
+    console.log('📥 Families count:', result?.families?.length || 0);
 
     // Check if multiple product families detected
     if (result && result.requiresSelection && result.families) {
+      console.log('🔄 Showing product family selection modal with', result.families.length, 'families');
       this.showProductFamilySelectionModal(result.families, detectedTexts);
     } else {
       // Single family or auto-selected - show product candidates
       const candidates = Array.isArray(result) ? result : [];
+      console.log('✅ Showing product candidates modal with', candidates.length, 'products');
       this.showOcrConfirmationModal(candidates, detectedTexts);
     }
   }
@@ -1535,7 +1545,7 @@ export class NavigationManager {
     // Reset confirm button text
     confirmBtn.textContent = 'Add Selected';
 
-    // Setup button handlers
+    // Setup button handlers (works for both no matches and with matches)
     confirmBtn.onclick = () => {
       if (selectedProducts.size === 0) return;
 
@@ -1575,6 +1585,9 @@ export class NavigationManager {
       // Don't auto-resume - user can tap Capture button again if needed
       this.showScanFeedback('Text Scan cancelled');
     };
+    
+    // Ensure cancel button is always enabled
+    cancelBtn.disabled = false;
 
     // Show modal
     modal.style.display = 'flex';
@@ -1586,6 +1599,14 @@ export class NavigationManager {
    * @param {Array} detectedTexts - Original detected text data
    */
   showProductFamilySelectionModal(families, detectedTexts) {
+    console.log('🎭 showProductFamilySelectionModal called with:', families);
+    console.log('🎭 Families array length:', families?.length);
+    console.log('🎭 Families data:', families?.map(f => ({
+      familyName: f.familyName,
+      matchCount: f.matches?.length || 0,
+      totalScore: f.totalScore
+    })));
+
     const modal = document.getElementById('ocr-confirmation-modal');
     const candidatesList = document.getElementById('ocr-candidates-list');
     const noMatches = document.getElementById('ocr-no-matches');
@@ -1594,6 +1615,27 @@ export class NavigationManager {
 
     if (!modal || !candidatesList || !confirmBtn || !cancelBtn) {
       console.error('OCR confirmation modal elements not found');
+      return;
+    }
+
+    if (!families || families.length === 0) {
+      console.error('❌ No families provided to selection modal!');
+      noMatches.style.display = 'block';
+      candidatesList.style.display = 'none';
+      confirmBtn.disabled = true;
+      
+      // Setup button handlers even when no families
+      confirmBtn.onclick = () => {
+        // Do nothing - button should be disabled
+      };
+      
+      cancelBtn.onclick = () => {
+        modal.style.display = 'none';
+        this.showScanFeedback('Text Scan cancelled');
+      };
+      
+      cancelBtn.disabled = false;
+      modal.style.display = 'flex';
       return;
     }
 

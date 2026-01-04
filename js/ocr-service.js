@@ -37,7 +37,7 @@ export class OCRService {
         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -.,()',
         preserve_interword_spaces: '0', // Don't preserve spaces - we'll clean them
         tessedit_pageseg_mode: '6', // Assume uniform block of text
-        tessedit_ocr_engine_mode: '1', // LSTM only (faster, better for printed text)
+        // Note: tessedit_ocr_engine_mode can only be set during initialization in Tesseract v5
       });
 
       this.isInitialized = true;
@@ -108,7 +108,10 @@ export class OCRService {
         const textData = result.data.lines
           .map(line => {
             const cleanedText = this.cleanOcrText(line.text);
-            if (cleanedText.length <= 2) return null;
+            // Filter out empty or very short text (unless it's an OrderCode)
+            if (!cleanedText || (cleanedText.length < 3 && !/^19\d{4}$/.test(cleanedText))) {
+              return null;
+            }
             
             // Extract bounding box
             const bbox = line.bbox || { x0: 0, y0: 0, x1: width, y1: height };
@@ -124,7 +127,7 @@ export class OCRService {
               height: height
             };
           })
-          .filter(item => item !== null);
+          .filter(item => item !== null && item.text && item.text.length > 0);
 
         // Deduplicate by text (keep first occurrence)
         const seen = new Set();
@@ -229,7 +232,10 @@ export class OCRService {
       const textData = result.data.lines
         .map(line => {
           const cleanedText = this.cleanOcrText(line.text);
-          if (cleanedText.length <= 2) return null;
+          // Filter out empty or very short text (unless it's an OrderCode)
+          if (!cleanedText || (cleanedText.length < 3 && !/^19\d{4}$/.test(cleanedText))) {
+            return null;
+          }
           
           // Extract bounding box (Tesseract provides bbox: {x0, y0, x1, y1})
           const bbox = line.bbox || { x0: 0, y0: 0, x1: width, y1: height };
@@ -245,7 +251,7 @@ export class OCRService {
             height: height
           };
         })
-        .filter(item => item !== null);
+        .filter(item => item !== null && item.text && item.text.length > 0);
 
       // Deduplicate by text (keep first occurrence with its spatial data)
       const seen = new Set();
@@ -258,6 +264,12 @@ export class OCRService {
       }
 
       console.log('📝 OCR detected text with spatial data:', unique.length, 'items');
+      console.log('📋 OCR Raw Data:', unique.map(item => ({
+        text: item.text,
+        centerX: Math.round(item.centerX),
+        centerY: Math.round(item.centerY),
+        bbox: item.bbox
+      })));
       return unique;
     } catch (error) {
       console.error('OCR capture error:', error);
@@ -288,11 +300,40 @@ export class OCRService {
       }
     }
     
+    // Filter out garbage OCR text:
+    // - Very short text (less than 3 chars) unless it's a number
+    if (cleaned.length < 3 && !/^\d+$/.test(cleaned)) {
+      return '';
+    }
+    
+    // - Text with too many special characters or punctuation
+    const specialCharRatio = (cleaned.match(/[^\w\s]/g) || []).length / cleaned.length;
+    if (specialCharRatio > 0.3) {
+      return '';
+    }
+    
+    // - Text that's mostly single characters separated by spaces (OCR fragments)
+    const words = cleaned.split(/\s+/);
+    const singleCharWords = words.filter(w => w.length === 1).length;
+    if (words.length > 2 && singleCharWords / words.length > 0.5) {
+      return '';
+    }
+    
+    // - Text with too many dashes or hyphens (likely OCR errors)
+    if ((cleaned.match(/-/g) || []).length > 2) {
+      return '';
+    }
+    
     // Remove single character words and excessive punctuation
-    cleaned = cleaned.replace(/\b\w\b/g, '').replace(/[^\w\s\d-]/g, '');
+    cleaned = cleaned.replace(/\b\w\b/g, '').replace(/[^\w\s]/g, '');
     
     // Normalize whitespace again
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    
+    // Final check - if cleaned text is too short or looks like garbage, return empty
+    if (cleaned.length < 3) {
+      return '';
+    }
     
     return cleaned;
   }
