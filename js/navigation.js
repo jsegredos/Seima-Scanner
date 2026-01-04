@@ -1284,7 +1284,7 @@ export class NavigationManager {
   }
 
   /**
-   * Start Text Scan (OCR) mode
+   * Start Text Scan (OCR) mode - manual capture mode
    */
   async startTextScanMode() {
     try {
@@ -1306,23 +1306,73 @@ export class NavigationManager {
       }
 
       // Show feedback
-      this.showScanFeedback('Text Scan mode active - aim at product label...');
+      this.showScanFeedback('Frame the product label and tap Capture');
 
-      // Start OCR scanning
-      await ocrService.startScanning(activeVideoElement, (detectedTexts) => {
-        this.handleOcrResults(detectedTexts);
-      }, 1500);
-
-      // Update button state
+      // Update button states - show capture button, hide text scan button
       const textScanBtn = document.getElementById('text-scan-btn');
+      const captureBtn = document.getElementById('ocr-capture-btn');
+      
       if (textScanBtn) {
         textScanBtn.textContent = 'Stop Text Scan';
         textScanBtn.onclick = () => this.stopTextScanMode();
+      }
+      
+      if (captureBtn) {
+        captureBtn.style.display = 'block';
+        captureBtn.onclick = () => this.captureTextScan();
       }
 
     } catch (error) {
       console.error('Failed to start Text Scan mode:', error);
       this.showScanFeedback('Text Scan failed: ' + error.message);
+    }
+  }
+
+  /**
+   * Capture and process image for OCR
+   */
+  async captureTextScan() {
+    const videoElement = this.scannerController.videoElement;
+    if (!videoElement) {
+      this.showScanFeedback('Camera not available');
+      return;
+    }
+
+    const captureBtn = document.getElementById('ocr-capture-btn');
+    if (captureBtn) {
+      captureBtn.disabled = true;
+      captureBtn.textContent = 'Processing...';
+    }
+
+    try {
+      this.showScanFeedback('Processing image...');
+      
+      // Capture and process image
+      const detectedTexts = await ocrService.captureAndProcessImage(videoElement);
+      
+      if (detectedTexts.length === 0) {
+        this.showScanFeedback('No text detected. Try better lighting or angle.');
+        if (captureBtn) {
+          captureBtn.disabled = false;
+          captureBtn.textContent = 'Capture';
+        }
+        return;
+      }
+
+      // Handle the results
+      await this.handleOcrResults(detectedTexts);
+      
+      if (captureBtn) {
+        captureBtn.disabled = false;
+        captureBtn.textContent = 'Capture';
+      }
+    } catch (error) {
+      console.error('OCR capture error:', error);
+      this.showScanFeedback('Error: ' + error.message);
+      if (captureBtn) {
+        captureBtn.disabled = false;
+        captureBtn.textContent = 'Capture';
+      }
     }
   }
 
@@ -1333,9 +1383,17 @@ export class NavigationManager {
     ocrService.stopScanning();
     
     const textScanBtn = document.getElementById('text-scan-btn');
+    const captureBtn = document.getElementById('ocr-capture-btn');
+    
     if (textScanBtn) {
       textScanBtn.textContent = 'Text Scan';
       textScanBtn.onclick = () => this.startTextScanMode();
+    }
+    
+    if (captureBtn) {
+      captureBtn.style.display = 'none';
+      captureBtn.disabled = false;
+      captureBtn.textContent = 'Capture';
     }
 
     this.showScanFeedback('Text Scan stopped');
@@ -1345,9 +1403,6 @@ export class NavigationManager {
    * Handle OCR results and show confirmation modal
    */
   async handleOcrResults(detectedTexts) {
-    // Stop OCR scanning during confirmation (already stopped in OCR service, but ensure it)
-    ocrService.stopScanning();
-
     // Check if modal is already open to prevent multiple modals
     const existingModal = document.getElementById('ocr-confirmation-modal');
     if (existingModal && existingModal.style.display !== 'none') {
@@ -1357,9 +1412,6 @@ export class NavigationManager {
 
     if (!this.dataService.isLoaded) {
       this.showScanFeedback('Product data loading, please wait...');
-      ocrService.startScanning(this.scannerController.videoElement, (texts) => {
-        this.handleOcrResults(texts);
-      }, 1500);
       return;
     }
 
@@ -1478,31 +1530,40 @@ export class NavigationManager {
     confirmBtn.onclick = () => {
       if (selectedProducts.size === 0) return;
 
-      // Add selected products to selection
-      selectedProducts.forEach(product => {
-        this.dataService.addProduct(product, '', this.selectedRoom || 'Blank', 1);
-      });
+      // Convert Set to Array for easier handling
+      const productsArray = Array.from(selectedProducts);
 
       // Close modal
       modal.style.display = 'none';
 
-      // Show success feedback
-      this.showScanFeedback(`Added ${selectedProducts.size} product(s) to selection`);
+      // Route based on number of products selected
+      if (productsArray.length === 1) {
+        // Single product: go to product details screen for configuration
+        const product = productsArray[0];
+        this.showProductDetailsScreen(product, { 
+          scannedCode: product.OrderCode,
+          fromOcr: true 
+        });
+      } else {
+        // Multiple products: add all with defaults, then go to review screen
+        productsArray.forEach(product => {
+          this.dataService.addProduct(product, '', this.selectedRoom || 'Blank', 1);
+        });
 
-      // Update selection count
-      this.updateSelectionCount();
+        // Show success feedback
+        this.showScanFeedback(`Added ${productsArray.length} product(s) to selection`);
 
-      // Resume OCR scanning
-      setTimeout(() => {
-        if (this.currentScreen === 'scanner') {
-          this.startTextScanMode();
-        }
-      }, 1000);
+        // Update selection count
+        this.updateSelectionCount();
+
+        // Navigate to review screen
+        this.showReviewScreen();
+      }
     };
 
     cancelBtn.onclick = () => {
       modal.style.display = 'none';
-      // Don't auto-resume OCR - user can click "Text Scan" button again if needed
+      // Don't auto-resume - user can tap Capture button again if needed
       this.showScanFeedback('Text Scan cancelled');
     };
 

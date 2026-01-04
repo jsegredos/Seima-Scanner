@@ -45,7 +45,7 @@ export class OCRProductMatcher {
         }
       }
 
-      // Priority 2: Partial OrderCode match (contains 19xxxx)
+      // Priority 1: Partial OrderCode match (contains 19xxxx)
       const orderCodeMatch = normalized.match(/19\d{4}/);
       if (orderCodeMatch) {
         const code = orderCodeMatch[0];
@@ -65,45 +65,81 @@ export class OCRProductMatcher {
         }
       }
 
-      // Priority 3: Product Name/Description match (flexible matching)
-      const descMatches = catalog.filter(p => {
-        // Get all possible text fields
-        const desc = (p['Product Description'] || p.Description || '').toUpperCase().trim();
+      // Normalize search text for matching
+      const normalizeForMatch = (str) => str.replace(/\s+/g, ' ').replace(/[^\w\s]/g, '').trim();
+      const searchNormalized = normalizeForMatch(normalized);
+
+      // Priority 2: Product Name match
+      const productNameMatches = catalog.filter(p => {
         const productName = (p['Product Name'] || p.productName || '').toUpperCase().trim();
-        const longDesc = (p['Long Description'] || p.LongDescription || '').toUpperCase().trim();
         
-        // Normalize both search text and product text (remove extra spaces, special chars)
-        const normalizeForMatch = (str) => str.replace(/\s+/g, ' ').replace(/[^\w\s]/g, '').trim();
-        const searchNormalized = normalizeForMatch(normalized);
+        if (!productName) return false;
+        
+        const productNameNormalized = normalizeForMatch(productName);
         
         // Check exact match
-        if (desc === normalized || productName === normalized) {
+        if (productName === normalized || productNameNormalized === searchNormalized) {
           return true;
         }
         
         // Check if search text contains product name or vice versa
-        if (productName && (productName.includes(searchNormalized) || searchNormalized.includes(productName))) {
+        if (productName.includes(searchNormalized) || searchNormalized.includes(productName)) {
           return true;
         }
         
         // Check word-by-word matching (for "LIMNI 720" matching "LIMNI 720" or "LIMNI720")
         const searchWords = searchNormalized.split(/\s+/).filter(w => w.length > 2);
         if (searchWords.length > 0) {
-          const productText = normalizeForMatch(productName || desc);
-          // Check if all significant words from search are in product text
-          const allWordsMatch = searchWords.every(word => productText.includes(word));
+          const allWordsMatch = searchWords.every(word => productNameNormalized.includes(word));
+          if (allWordsMatch && searchWords.length >= 1) {
+            return true;
+          }
+        }
+        
+        return false;
+      });
+
+      if (productNameMatches.length > 0) {
+        productNameMatches.forEach(product => {
+          matches.push({
+            text,
+            type: 'ProductName',
+            confidence: 'medium',
+            product
+          });
+        });
+        continue;
+      }
+
+      // Priority 3: Description match
+      const descMatches = catalog.filter(p => {
+        const desc = (p['Product Description'] || p.Description || '').toUpperCase().trim();
+        
+        if (!desc) return false;
+        
+        const descNormalized = normalizeForMatch(desc);
+        
+        // Check exact match
+        if (desc === normalized || descNormalized === searchNormalized) {
+          return true;
+        }
+        
+        // Check if search text contains description or vice versa
+        if (desc.includes(searchNormalized) || searchNormalized.includes(desc)) {
+          return true;
+        }
+        
+        // Check word-by-word matching
+        const searchWords = searchNormalized.split(/\s+/).filter(w => w.length > 2);
+        if (searchWords.length > 0) {
+          const allWordsMatch = searchWords.every(word => descNormalized.includes(word));
           if (allWordsMatch && searchWords.length >= 1) {
             return true;
           }
         }
         
         // Check partial match in description (first 50 chars)
-        if (desc && (desc.includes(searchNormalized) || searchNormalized.includes(desc.substring(0, 50)))) {
-          return true;
-        }
-        
-        // Check long description
-        if (longDesc && longDesc.includes(searchNormalized)) {
+        if (desc.includes(searchNormalized) || searchNormalized.includes(desc.substring(0, 50))) {
           return true;
         }
         

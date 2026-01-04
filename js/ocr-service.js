@@ -154,6 +154,72 @@ export class OCRService {
   }
 
   /**
+   * Capture and process a single image from video element
+   * @param {HTMLVideoElement} videoElement - Video element to capture frame from
+   * @returns {Promise<string[]>} Array of detected text strings
+   */
+  async captureAndProcessImage(videoElement) {
+    if (this.isProcessing) {
+      console.warn('OCR processing already in progress');
+      return [];
+    }
+
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    if (!videoElement || videoElement.paused || videoElement.ended) {
+      throw new Error('Video element not ready for OCR capture');
+    }
+
+    // Check if video is ready
+    if (videoElement.readyState < 2) {
+      throw new Error('Video not ready - please wait a moment');
+    }
+
+    this.isProcessing = true;
+
+    try {
+      // Capture frame from video
+      const width = videoElement.videoWidth || 640;
+      const height = videoElement.videoHeight || 480;
+      
+      if (width === 0 || height === 0) {
+        throw new Error('Video dimensions not available');
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      
+      ctx.drawImage(videoElement, 0, 0, width, height);
+
+      // Preprocess for better OCR results
+      this.preprocessCanvasForOCR(canvas);
+
+      // Perform OCR
+      const result = await this.worker.recognize(canvas);
+      
+      // Extract and clean text lines
+      const lines = result.data.lines
+        .map(line => this.cleanOcrText(line.text))
+        .filter(text => text.length > 2); // Filter out very short text
+
+      // Deduplicate
+      const detectedTexts = [...new Set(lines)];
+
+      console.log('📝 OCR detected text:', detectedTexts);
+      return detectedTexts;
+    } catch (error) {
+      console.error('OCR capture error:', error);
+      throw error;
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  /**
    * Clean OCR text: remove excessive whitespace, normalize, extract useful patterns
    * @param {string} text - Raw OCR text
    * @returns {string} Cleaned text
