@@ -300,6 +300,101 @@ body {
   100% { top: 60%; }
 }
 
+/* Text Capture Overlay Styles - Larger area for better OCR context */
+.text-capture-area {
+  position: absolute;
+  top: 15%;
+  left: 8%;
+  right: 8%;
+  bottom: 15%;
+  border: 3px dashed #10b981;
+  border-radius: 16px;
+  box-sizing: border-box;
+  z-index: 2;
+  display: none;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+/* Corner guides - top left */
+.text-capture-area::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 30px;
+  height: 30px;
+  border-top: 3px solid #10b981;
+  border-left: 3px solid #10b981;
+  border-top-left-radius: 16px;
+}
+
+/* Corner guides - bottom right */
+.text-capture-area::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 30px;
+  height: 30px;
+  border-bottom: 3px solid #10b981;
+  border-right: 3px solid #10b981;
+  border-bottom-right-radius: 16px;
+}
+
+.text-capture-corners {
+  position: absolute;
+  top: 15%;
+  left: 8%;
+  right: 8%;
+  bottom: 15%;
+  z-index: 3;
+  display: none;
+  pointer-events: none;
+}
+
+/* Corner guides - top right */
+.text-capture-corners::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 30px;
+  height: 30px;
+  border-top: 3px solid #10b981;
+  border-right: 3px solid #10b981;
+  border-top-right-radius: 16px;
+}
+
+/* Corner guides - bottom left */
+.text-capture-corners::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: -3px;
+  width: 30px;
+  height: 30px;
+  border-bottom: 3px solid #10b981;
+  border-left: 3px solid #10b981;
+  border-bottom-left-radius: 16px;
+}
+
+.text-capture-instruction {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(16, 185, 129, 0.9);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  z-index: 4;
+  display: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
 .manual-entry {
   width: 100%;
   margin: calc(var(--spacing-unit) * 2.25) 0 var(--spacing-unit) 0;

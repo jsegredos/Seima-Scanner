@@ -59,8 +59,12 @@ export class HybridScannerController {
     this.onScanCallback = callback;
   }
 
-  async startScanning() {
-    if (this.isScanning) return;
+  async startScanning(mode = 'barcode') {
+    // Allow restart if switching modes, but prevent duplicate starts in same mode
+    if (this.isScanning && mode === 'barcode') {
+      // Already scanning in barcode mode
+      return;
+    }
 
     const viewport = document.getElementById('scanner-viewport');
     if (!viewport) {
@@ -69,23 +73,30 @@ export class HybridScannerController {
     }
 
     try {
-      // Initialize scanner engine if not done
-      if (!this.detectorReady) {
+      // Stop existing stream if switching modes
+      if (this.isScanning && this.streamRef) {
+        this.streamRef.getTracks().forEach(track => track.stop());
+        this.streamRef = null;
+        this.videoElement = null;
+      }
+
+      // Initialize scanner engine if not done (only needed for barcode mode)
+      if (mode === 'barcode' && !this.detectorReady) {
         console.log('Initializing scanner...');
         await this.initialize();
       }
 
-      if (!this.detectorReady) {
+      if (mode === 'barcode' && !this.detectorReady) {
         console.error('Scanner not ready after initialization');
         this.showCameraError();
         return;
       }
 
       this.isScanning = true;
-      this.scanningRef = true;
+      this.scanningRef = (mode === 'barcode'); // Only scan barcodes in barcode mode
       this.lastScannedCode = null;
       
-      await this.startDetectorScanning();
+      await this.startDetectorScanning(mode);
     } catch (error) {
       console.error('Failed to start scanner:', error);
       console.error('Error details:', error.name, error.message);
@@ -95,7 +106,7 @@ export class HybridScannerController {
     }
   }
 
-  async startDetectorScanning() {
+  async startDetectorScanning(mode = 'barcode') {
     const viewport = document.getElementById('scanner-viewport');
     
     // Create video element
@@ -108,12 +119,28 @@ export class HybridScannerController {
     viewport.appendChild(this.videoElement);
     
     try {
+      // Different camera settings for barcode vs text capture
+      const videoConstraints = {
+        facingMode: 'environment',
+      };
+
+      if (mode === 'text') {
+        // Text capture mode: Higher resolution and better focus for OCR
+        videoConstraints.width = { ideal: 1920, min: 1280 };
+        videoConstraints.height = { ideal: 1080, min: 720 };
+        videoConstraints.focusMode = 'continuous'; // Better for text reading
+        videoConstraints.advanced = [
+          { focusMode: 'continuous' },
+          { exposureMode: 'continuous' }
+        ];
+      } else {
+        // Barcode mode: Standard resolution (faster, better for close-up)
+        videoConstraints.width = { ideal: 1280 };
+        videoConstraints.height = { ideal: 720 };
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+        video: videoConstraints
       });
 
       this.streamRef = stream;
@@ -122,12 +149,37 @@ export class HybridScannerController {
       this.videoElement.setAttribute('playsinline', 'true');
       await this.videoElement.play();
 
-      this.scanBarcodes();
+      if (mode === 'text') {
+        // For text mode, don't start barcode scanning
+        console.log('📷 Camera started in text capture mode (higher resolution)');
+      } else {
+        this.scanBarcodes();
+      }
       
     } catch (err) {
       console.error("Error starting scanner:", err);
-      this.showCameraError("Camera access denied or unavailable");
-      this.isScanning = false;
+      // Fallback to standard settings if advanced settings fail
+      if (mode === 'text') {
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: 'environment',
+              width: { ideal: 1920 },
+              height: { ideal: 1080 }
+            }
+          });
+          this.streamRef = fallbackStream;
+          this.videoElement.srcObject = fallbackStream;
+          await this.videoElement.play();
+          console.log('📷 Camera started with fallback settings');
+        } catch (fallbackErr) {
+          this.showCameraError("Camera access denied or unavailable");
+          this.isScanning = false;
+        }
+      } else {
+        this.showCameraError("Camera access denied or unavailable");
+        this.isScanning = false;
+      }
     }
   }
 

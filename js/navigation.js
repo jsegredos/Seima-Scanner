@@ -304,6 +304,9 @@ export class NavigationManager {
       // Setup event handlers
       this.setupScannerScreenHandlers();
       
+      // Ensure barcode scanning overlay is shown (default mode)
+      this.showBarcodeScanOverlay();
+      
       // Start scanning immediately (permission already granted)
       this.scannerController.startScanning().catch(error => {
         console.error('Failed to start scanner:', error);
@@ -1293,21 +1296,31 @@ export class NavigationManager {
       this.scannerController.stopScanning();
 
       // Get video element from scanner
-      const videoElement = this.scannerController.videoElement;
+      let videoElement = this.scannerController.videoElement;
+      
+      // If camera not running or needs restart for text mode, start with text mode settings
       if (!videoElement || videoElement.paused || videoElement.ended) {
-        // Need to start camera first
-        await this.scannerController.startScanning();
+        // Start camera with text mode settings (higher resolution)
+        await this.scannerController.startScanning('text');
         // Wait a bit for video to be ready
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 800));
+        videoElement = this.scannerController.videoElement;
+      } else {
+        // Camera is already running - try to apply text mode settings
+        // Note: Changing constraints on active stream requires renegotiation
+        // For now, we'll use the existing stream but switch overlay
+        console.log('📷 Using existing camera stream for text mode');
       }
 
-      const activeVideoElement = this.scannerController.videoElement;
-      if (!activeVideoElement) {
+      if (!videoElement) {
         throw new Error('Camera not available for Text Scan');
       }
 
+      // Switch to text capture overlay with guidelines
+      this.showTextCaptureOverlay();
+
       // Show feedback
-      this.showScanFeedback('Frame the product label and tap Capture');
+      this.showScanFeedback('Position product label in the center area and tap Capture');
 
       // Update button states - show capture button, hide text scan button
       const textScanBtn = document.getElementById('text-scan-btn');
@@ -1383,6 +1396,21 @@ export class NavigationManager {
   stopTextScanMode() {
     ocrService.stopScanning();
     
+    // Restore barcode scanning overlay
+    this.showBarcodeScanOverlay();
+    
+    // Restart camera with barcode mode settings (lower resolution, faster)
+    // Only restart if camera is still active
+    if (this.scannerController.videoElement && !this.scannerController.videoElement.paused) {
+      // Stop current stream and restart with barcode settings
+      this.scannerController.stopScanning();
+      setTimeout(() => {
+        this.scannerController.startScanning('barcode').catch(err => {
+          console.warn('Failed to restart barcode scanning:', err);
+        });
+      }, 300);
+    }
+    
     const textScanBtn = document.getElementById('text-scan-btn');
     const captureBtn = document.getElementById('ocr-capture-btn');
     
@@ -1398,6 +1426,70 @@ export class NavigationManager {
     }
 
     this.showScanFeedback('Text Scan stopped');
+  }
+
+  /**
+   * Show text capture overlay with guidelines (larger area for better OCR)
+   */
+  showTextCaptureOverlay() {
+    const overlay = document.getElementById('scanner-overlay');
+    if (!overlay) return;
+
+    // Hide barcode scanning elements
+    const scanArea = overlay.querySelector('.scan-area');
+    const scanLine = overlay.querySelector('.scan-line');
+    if (scanArea) scanArea.style.display = 'none';
+    if (scanLine) scanLine.style.display = 'none';
+
+    // Remove existing text capture overlay if present
+    let textCaptureArea = overlay.querySelector('.text-capture-area');
+    if (!textCaptureArea) {
+      textCaptureArea = document.createElement('div');
+      textCaptureArea.className = 'text-capture-area';
+      overlay.appendChild(textCaptureArea);
+    }
+    textCaptureArea.style.display = 'block';
+
+    // Add corner guides (all 4 corners)
+    let cornerGuides = overlay.querySelector('.text-capture-corners');
+    if (!cornerGuides) {
+      cornerGuides = document.createElement('div');
+      cornerGuides.className = 'text-capture-corners';
+      overlay.appendChild(cornerGuides);
+    }
+    cornerGuides.style.display = 'block';
+
+    // Add instruction text
+    let instructionText = overlay.querySelector('.text-capture-instruction');
+    if (!instructionText) {
+      instructionText = document.createElement('div');
+      instructionText.className = 'text-capture-instruction';
+      instructionText.textContent = 'Position product label with Order Code here';
+      overlay.appendChild(instructionText);
+    }
+    instructionText.style.display = 'block';
+  }
+
+  /**
+   * Show barcode scanning overlay
+   */
+  showBarcodeScanOverlay() {
+    const overlay = document.getElementById('scanner-overlay');
+    if (!overlay) return;
+
+    // Show barcode scanning elements
+    const scanArea = overlay.querySelector('.scan-area');
+    const scanLine = overlay.querySelector('.scan-line');
+    if (scanArea) scanArea.style.display = 'block';
+    if (scanLine) scanLine.style.display = 'block';
+
+    // Hide text capture elements
+    const textCaptureArea = overlay.querySelector('.text-capture-area');
+    const cornerGuides = overlay.querySelector('.text-capture-corners');
+    const instructionText = overlay.querySelector('.text-capture-instruction');
+    if (textCaptureArea) textCaptureArea.style.display = 'none';
+    if (cornerGuides) cornerGuides.style.display = 'none';
+    if (instructionText) instructionText.style.display = 'none';
   }
 
   /**
